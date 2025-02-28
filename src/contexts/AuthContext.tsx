@@ -9,7 +9,7 @@ import { User } from "@/types";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string, redirectPath?: string) => Promise<void>;
+  signIn: (email: string, password: string, redirectPath?: string) => Promise<User | null>;
   signUp: (email: string, password: string, name: string, redirectPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -58,47 +58,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     // Helper function to fetch user profile
-    // Update fetchUserProfile
-const fetchUserProfile = async (userId: string) => {
-  try {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const fetchUserProfile = async (userId: string) => {
+      try {
+        const { data: currentSession } = await supabase.auth.getSession();
+        const session = currentSession.session;
+        
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-    // Create profile if missing
-    if (error?.code === 'PGRST116') {
-      console.log('Creating new profile for user');
-      const { error: createError } = await supabase
-        .from('profiles')
-        .insert({
+        // Create profile if missing
+        if (error?.code === 'PGRST116') {
+          console.log('Creating new profile for user');
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: session?.user.email,
+              name: session?.user.user_metadata?.name || 'New User',
+            });
+
+          if (createError) throw createError;
+          return fetchUserProfile(userId); // Recursive retry
+        }
+
+        setUser({
           id: userId,
-          email: session?.user.email,
-          name: session?.user.user_metadata?.name || 'New User',
+          name: profile?.name || 'New User',
+          email: profile?.email || session?.user.email || '',
+          isAdmin: profile?.is_admin || false,
+          phone: profile?.phone || '',
+          company: profile?.company || '',
         });
-
-      if (createError) throw createError;
-      return fetchUserProfile(userId); // Recursive retry
-    }
-
-    setUser({
-      id: userId,
-      name: profile?.name || 'New User',
-      email: profile?.email || session?.user.email || '',
-      isAdmin: profile?.is_admin || false,
-      phone: profile?.phone || '',
-      company: profile?.company || '',
-    });
-    
-  } catch (error) {
-    console.error("Profile error:", error);
-    setUser(null);
-  } finally {
-    setLoading(false);
-    setAuthCheckComplete(true);
-  }
-};
+        
+      } catch (error) {
+        console.error("Profile error:", error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+        setAuthCheckComplete(true);
+      }
+    };
     
     initializeAuth();
     
@@ -138,7 +140,43 @@ const fetchUserProfile = async (userId: string) => {
     };
   }, [navigate]);
   
-  
+  // Implement the signIn function
+  const signIn = async (email: string, password: string): Promise<User | null> => {
+    try {
+      console.log("Signing in:", email);
+      setLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        // The user state will be updated by the auth state listener
+        return {
+          id: data.user.id,
+          name: data.user.user_metadata.name || 'User',
+          email: data.user.email || '',
+          isAdmin: false, // Will be updated when profile is fetched
+          phone: '',
+          company: '',
+        };
+      }
+      
+      return null;
+      
+    } catch (error: any) {
+      console.error("Sign in error:", error.message);
+      toast.error("Eroare la autentificare", {
+        description: error.message || "Nu s-a putut efectua autentificarea. Verifică datele și încearcă din nou."
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const signUp = async (email: string, password: string, name: string, redirectPath?: string) => {
     try {

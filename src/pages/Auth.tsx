@@ -40,11 +40,12 @@ const Auth = () => {
       setFormLoading(true);
       setError(null);
       
-      const user = await signIn(email, password);
-      console.log('Login successful', user);
+      // The function now returns User | null instead of void
+      const userResult = await signIn(email, password);
+      console.log('Login successful', userResult);
       
       // Check if we need to wait for auth state update
-      if (!authLoading && user) {
+      if (!authLoading && userResult) {
         navigate(redirectPath || from || '/dashboard');
       }
       
