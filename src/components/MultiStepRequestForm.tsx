@@ -36,6 +36,15 @@ const formSchema = z.object({
   // Step 4: Features & Confirmation
   features: z.array(z.string()).optional(),
   terms: z.boolean().refine(val => val === true, { message: "Trebuie să fii de acord cu termenii și condițiile" }),
+  
+  // Additional fields to store URL parameters
+  pageCount: z.number().optional(),
+  designComplexity: z.string().optional(),
+  hasCms: z.boolean().optional(),
+  hasEcommerce: z.boolean().optional(),
+  hasSeo: z.boolean().optional(),
+  hasMaintenance: z.boolean().optional(),
+  price: z.number().optional(),
 });
 
 export type RequestFormValues = z.infer<typeof formSchema>;
@@ -80,6 +89,14 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       deadline: initialValues?.deadline,
       features: initialValues?.features || [],
       terms: initialValues?.terms || false,
+      // Additional fields from URL
+      pageCount: initialValues?.pageCount,
+      designComplexity: initialValues?.designComplexity,
+      hasCms: initialValues?.hasCms,
+      hasEcommerce: initialValues?.hasEcommerce,
+      hasSeo: initialValues?.hasSeo,
+      hasMaintenance: initialValues?.hasMaintenance,
+      price: initialValues?.price,
     },
   });
   
@@ -145,13 +162,13 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       
       await refreshUser();
       setLoginDialogOpen(false);
-      toast.success("Ați fost conectat cu succes");
+      toast.success("Ați fost conectat cu succes", { description: "Vă mulțumim pentru conectare." });
       // Submit the form after successful login
       setTimeout(() => finalSubmit(), 500);
       
     } catch (error: any) {
       console.error("Error during login:", error);
-      toast.error(error.message || "Nu s-a putut realiza conectarea");
+      toast.error("Eroare la conectare", { description: error.message || "Nu s-a putut realiza conectarea" });
     } finally {
       setIsSubmitting(false);
     }
@@ -174,16 +191,14 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       if (error) throw error;
       
       setLoginDialogOpen(false);
-      toast.success("Cont creat cu succes! Verificați email-ul pentru a confirma", {
-        duration: 6000,
-      });
+      toast.success("Cont creat cu succes!", { description: "Verificați email-ul pentru a confirma" });
       
       // For development, we'll proceed with the form submission without email verification
       setTimeout(() => finalSubmit(), 500);
       
     } catch (error: any) {
       console.error("Error during signup:", error);
-      toast.error(error.message || "Nu s-a putut crea contul");
+      toast.error("Eroare la crearea contului", { description: error.message || "Nu s-a putut crea contul" });
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +211,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       // Navigate to dashboard is handled by the parent component
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast.error("A apărut o eroare la trimiterea cererii");
+      toast.error("Eroare la trimiterea cererii", { description: "Vă rugăm să încercați din nou" });
     } finally {
       setIsSubmitting(false);
     }

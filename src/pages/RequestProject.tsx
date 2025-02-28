@@ -16,9 +16,47 @@ const RequestProject = () => {
   const [initialValues, setInitialValues] = useState<Partial<RequestFormValues> | null>(null);
   
   useEffect(() => {
+    // Parse URL search parameters
+    const searchParams = new URLSearchParams(location.search);
+    
+    // If we have URL parameters, prepare them for the form
+    const urlParams: Partial<RequestFormValues> = {};
+    
+    // Handle numeric parameters
+    if (searchParams.has('pageCount')) {
+      urlParams.pageCount = parseInt(searchParams.get('pageCount') || '0');
+    }
+    
+    if (searchParams.has('price')) {
+      urlParams.price = parseInt(searchParams.get('price') || '0');
+    }
+    
+    // Handle string parameters
+    if (searchParams.has('designComplexity')) {
+      urlParams.designComplexity = searchParams.get('designComplexity') || '';
+    }
+    
+    // Handle boolean parameters
+    if (searchParams.has('hasCms')) {
+      urlParams.hasCms = searchParams.get('hasCms') === 'true';
+    }
+    
+    if (searchParams.has('hasEcommerce')) {
+      urlParams.hasEcommerce = searchParams.get('hasEcommerce') === 'true';
+    }
+    
+    if (searchParams.has('hasSeo')) {
+      urlParams.hasSeo = searchParams.get('hasSeo') === 'true';
+    }
+    
+    if (searchParams.has('hasMaintenance')) {
+      urlParams.hasMaintenance = searchParams.get('hasMaintenance') === 'true';
+    }
+    
     // Check if we have initial data from state (e.g., if navigated from home page)
     if (location.state?.initialData) {
       setInitialValues({
+        ...urlParams,
         ...location.state.initialData,
         name: user?.name || location.state.initialData.name || "",
         email: user?.email || location.state.initialData.email || "",
@@ -28,13 +66,19 @@ const RequestProject = () => {
     } else if (user && !loading) {
       // If no initial data but user is logged in, pre-fill with user data
       setInitialValues({
+        ...urlParams,
         name: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
         company: user.company || "",
       });
+    } else {
+      // Just use the URL parameters if nothing else is available
+      if (Object.keys(urlParams).length > 0) {
+        setInitialValues(urlParams);
+      }
     }
-  }, [user, loading, location.state]);
+  }, [user, loading, location.state, location.search]);
   
   const handleSubmit = async (formData: RequestFormValues) => {
     try {
@@ -51,7 +95,15 @@ const RequestProject = () => {
         timeline: "2-3 months", // Default timeline
         communication_preference: "email", // Default communication preference
         user_id: user?.id,
-        status: 'new'
+        status: 'new',
+        // Map additional fields if they exist
+        has_ecommerce: formData.hasEcommerce,
+        has_cms: formData.hasCms,
+        has_seo: formData.hasSeo,
+        has_maintenance: formData.hasMaintenance,
+        page_count: formData.pageCount,
+        design_complexity: formData.designComplexity,
+        custom_budget: formData.price ? formData.price.toString() : undefined
       };
       
       const { data, error } = await supabase

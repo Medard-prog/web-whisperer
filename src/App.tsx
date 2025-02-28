@@ -16,6 +16,9 @@ import ProjectDetails from "@/pages/ProjectDetails";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Settings from "@/pages/Settings";
 import Logout from "@/pages/Logout";
+import Support from "@/pages/dashboard/Support";
+import Messages from "@/pages/dashboard/Messages";
+import Projects from "@/pages/dashboard/Projects";
 
 function App() {
   const location = useLocation();
@@ -40,6 +43,24 @@ function App() {
           <Route path="/dashboard/settings" element={
             <RequireAuth>
               <Settings />
+            </RequireAuth>
+          } />
+          
+          <Route path="/dashboard/support" element={
+            <RequireAuth>
+              <Support />
+            </RequireAuth>
+          } />
+          
+          <Route path="/dashboard/messages" element={
+            <RequireAuth>
+              <Messages />
+            </RequireAuth>
+          } />
+          
+          <Route path="/dashboard/projects" element={
+            <RequireAuth>
+              <Projects />
             </RequireAuth>
           } />
           
