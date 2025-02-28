@@ -1,10 +1,11 @@
+
 import React from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { BentoBox } from "@/components/BentoBox";
-import { TestimonialCard } from "@/components/TestimonialCard";
+import BentoBox from "@/components/BentoBox";
+import TestimonialCard from "@/components/TestimonialCard";
 
 const Index = () => {
   return (
@@ -118,35 +119,32 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
             <TestimonialCard
-              key={1}
-              testimonial={{
+              content="Colaborarea cu această echipă a fost una dintre cele mai bune decizii pentru afacerea noastră. Profesionalism și calitate!"
+              author={{
                 name: "Maria Popescu",
                 role: "Director Marketing",
                 company: "TechSolutions Romania",
                 image: "/images/testimonial-1.jpg"
               }}
-              quote="Colaborarea cu această echipă a fost una dintre cele mai bune decizii pentru afacerea noastră. Profesionalism și calitate!"
             />
           
           <TestimonialCard
-            key={2}
-            testimonial={{
+            content="Am fost impresionat de creativitatea și atenția la detalii. Recomand cu încredere!"
+            author={{
               name: "Ion Gheorghe",
               role: "Fondator",
               company: "StartUp Innovation",
               image: "/images/testimonial-2.jpg"
             }}
-            quote="Am fost impresionat de creativitatea și atenția la detalii. Recomand cu încredere!"
           />
           <TestimonialCard
-            key={3}
-            testimonial={{
+            content="Echipa a înțeles perfect nevoile noastre și a livrat un produs excelent. Comunicare eficientă și rezultate pe măsură!"
+            author={{
               name: "Elena Ionescu",
               role: "Manager Vânzări",
               company: "Global Trading SRL",
               image: "/images/testimonial-3.jpg"
             }}
-            quote="Echipa a înțeles perfect nevoile noastre și a livrat un produs excelent. Comunicare eficientă și rezultate pe măsură!"
           />
         </div>
       </section>
