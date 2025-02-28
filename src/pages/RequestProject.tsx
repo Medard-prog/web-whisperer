@@ -1,4 +1,5 @@
 
+
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -301,9 +302,8 @@ const RequestProject = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error submitting project request:", error);
-      sonnerToast("Eroare la trimiterea cererii", {
-        description: error.message || "Vă rugăm să încercați din nou.",
-        variant: "destructive"
+      sonnerToast.error("Eroare la trimiterea cererii", {
+        description: error.message || "Vă rugăm să încercați din nou."
       });
     } finally {
       setIsSubmitting(false);
@@ -314,9 +314,8 @@ const RequestProject = () => {
     try {
       if (isSignUp) {
         if (!data.name) {
-          sonnerToast("Eroare la înregistrare", {
-            description: "Numele este obligatoriu.",
-            variant: "destructive"
+          sonnerToast.error("Eroare la înregistrare", {
+            description: "Numele este obligatoriu."
           });
           return;
         }

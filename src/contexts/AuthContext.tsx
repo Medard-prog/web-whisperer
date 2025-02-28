@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { toast as sonnerToast } from "sonner"; // Fixed import
+import { toast as sonnerToast } from "sonner"; 
 import { User } from "@/types";
 
 interface AuthContextType {
@@ -171,9 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error("Sign in catch error:", error.message);
-      sonnerToast("Eroare de autentificare", {
-        description: error.message || "Credențiale invalide. Încearcă din nou.",
-        variant: "destructive"
+      sonnerToast.error("Eroare de autentificare", {
+        description: error.message || "Credențiale invalide. Încearcă din nou."
       });
     } finally {
       setLoading(false);
@@ -219,9 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error("Sign up catch error:", error.message);
-      sonnerToast("Eroare la înregistrare", {
-        description: error.message || "Nu s-a putut crea contul. Încearcă din nou.",
-        variant: "destructive"
+      sonnerToast.error("Eroare la înregistrare", {
+        description: error.message || "Nu s-a putut crea contul. Încearcă din nou."
       });
     } finally {
       setLoading(false);
@@ -243,9 +241,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       navigate('/');
     } catch (error: any) {
       console.error("Sign out catch error:", error.message);
-      sonnerToast("Eroare la deconectare", {
-        description: error.message || "Nu s-a putut efectua deconectarea.",
-        variant: "destructive"
+      sonnerToast.error("Eroare la deconectare", {
+        description: error.message || "Nu s-a putut efectua deconectarea."
       });
     } finally {
       setLoading(false);
@@ -266,13 +263,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       sonnerToast("Email trimis", {
-        description: "Verifică-ți emailul pentru instrucțiuni de resetare a parolei.",
+        description: "Verifică-ți emailul pentru instrucțiuni de resetare a parolei."
       });
     } catch (error: any) {
       console.error("Password reset catch error:", error.message);
-      sonnerToast("Eroare la trimiterea emailului", {
-        description: error.message || "Nu s-a putut trimite emailul de resetare.",
-        variant: "destructive"
+      sonnerToast.error("Eroare la trimiterea emailului", {
+        description: error.message || "Nu s-a putut trimite emailul de resetare."
       });
     } finally {
       setLoading(false);
