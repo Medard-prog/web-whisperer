@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingScreen from "./LoadingScreen";
@@ -12,10 +12,25 @@ interface RequireAuthProps {
 const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const [localLoading, setLocalLoading] = useState(true);
+  
+  // Use a local loading state with a timeout to prevent infinite loading
+  useEffect(() => {
+    if (!loading) {
+      setLocalLoading(false);
+    }
+    
+    // Safety timeout to prevent infinite loading
+    const timer = setTimeout(() => {
+      setLocalLoading(false);
+    }, 3000); // 3 seconds timeout
+    
+    return () => clearTimeout(timer);
+  }, [loading]);
 
-  // Show loading screen while checking auth state, but with a timeout
-  if (loading) {
-    return <LoadingScreen isLoading={loading} />;
+  // Show loading screen but with a timeout
+  if (localLoading && loading) {
+    return <LoadingScreen isLoading={true} timeout={3000} />;
   }
 
   // Redirect to login if not authenticated

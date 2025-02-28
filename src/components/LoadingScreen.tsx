@@ -13,6 +13,7 @@ const LoadingScreen = ({ isLoading = true, timeout = 10000 }: LoadingScreenProps
   useEffect(() => {
     if (!isLoading) return;
     
+    // Show timeout message after specified time
     const timer = setTimeout(() => {
       setShowTimeoutMessage(true);
     }, timeout);

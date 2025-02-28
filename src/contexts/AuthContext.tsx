@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,6 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               description: "Te-ai conectat cu succes!"
             });
             
+            // Explicitly set loading to false after sign in
+            setLoading(false);
+            
             // Redirect to dashboard after sign in
             navigate('/dashboard');
           }
@@ -164,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) {
         console.error("Sign in error:", error.message);
+        setLoading(false); // Ensure loading is set to false on error
         throw error;
       }
       
@@ -198,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     } finally {
-      setLoading(false);
+      setLoading(false); // Always ensure loading is set to false
     }
   };
 
@@ -218,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) {
         console.error("Sign up error:", error.message);
+        setLoading(false); // Ensure loading is set to false on error
         throw error;
       }
       
@@ -246,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     } finally {
-      setLoading(false);
+      setLoading(false); // Always ensure loading is set to false
     }
   };
 
@@ -269,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message || "Nu s-a putut efectua deconectarea."
       });
     } finally {
-      setLoading(false);
+      setLoading(false); // Always ensure loading is set to false
     }
   };
 
@@ -295,7 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message || "Nu s-a putut trimite emailul de resetare."
       });
     } finally {
-      setLoading(false);
+      setLoading(false); // Always ensure loading is set to false
     }
   };
 
@@ -337,7 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     } finally {
-      setLoading(false);
+      setLoading(false); // Always ensure loading is set to false
     }
   };
 

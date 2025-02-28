@@ -77,6 +77,11 @@ const Auth = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Show loading screen while auth is being checked
+  if (authLoading) {
+    return <LoadingScreen isLoading={authLoading} timeout={3000} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <WavyBackground className="absolute inset-0 z-0">
