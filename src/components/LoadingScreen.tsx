@@ -5,13 +5,21 @@ import { useEffect, useState } from "react";
 interface LoadingScreenProps {
   isLoading?: boolean;
   timeout?: number;
+  message?: string;
 }
 
-const LoadingScreen = ({ isLoading = true, timeout = 10000 }: LoadingScreenProps) => {
+const LoadingScreen = ({ 
+  isLoading = true, 
+  timeout = 10000,
+  message = "Se încarcă..."
+}: LoadingScreenProps) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   
   useEffect(() => {
-    if (!isLoading) return;
+    if (!isLoading) {
+      setShowTimeoutMessage(false);
+      return;
+    }
     
     // Show timeout message after specified time
     const timer = setTimeout(() => {
@@ -27,7 +35,7 @@ const LoadingScreen = ({ isLoading = true, timeout = 10000 }: LoadingScreenProps
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-card p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-        <h2 className="text-xl font-semibold">Se încarcă...</h2>
+        <h2 className="text-xl font-semibold">{message}</h2>
         <p className="text-muted-foreground">Vă rugăm așteptați</p>
         
         {showTimeoutMessage && (

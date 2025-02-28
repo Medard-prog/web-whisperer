@@ -14,23 +14,26 @@ const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const location = useLocation();
   const [localLoading, setLocalLoading] = useState(true);
   
-  // Use a local loading state with a timeout to prevent infinite loading
+  // Use effect to handle loading state with a timeout
   useEffect(() => {
+    // If auth context is not loading anymore, update local state
     if (!loading) {
       setLocalLoading(false);
+      return;
     }
     
     // Safety timeout to prevent infinite loading
     const timer = setTimeout(() => {
+      console.log("RequireAuth safety timeout triggered");
       setLocalLoading(false);
-    }, 3000); // 3 seconds timeout
+    }, 2000); // 2 seconds timeout is usually enough
     
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // Show loading screen but with a timeout
+  // Show loading screen with timeout only if both localLoading and context loading are true
   if (localLoading && loading) {
-    return <LoadingScreen isLoading={true} timeout={3000} />;
+    return <LoadingScreen isLoading={true} timeout={3000} message="Verificare autentificare..." />;
   }
 
   // Redirect to login if not authenticated

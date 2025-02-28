@@ -13,6 +13,7 @@ import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import WavyBackground from '@/components/WavyBackground';
 import { Mail, Lock, User, Building, Phone, ArrowLeft, Loader2 } from 'lucide-react';
 import LoadingScreen from '@/components/LoadingScreen';
+import { toast } from 'sonner';
 
 const Auth = () => {
   const { signIn, signUp, loading: authLoading, user } = useAuth();
@@ -25,16 +26,28 @@ const Auth = () => {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialLoadChecked, setInitialLoadChecked] = useState(false);
   
   // Get default tab from query params
   const defaultTab = searchParams.get('tab') || 'login';
 
-  // If user is already logged in, redirect to dashboard
+  // Check for authenticated user and redirect if needed
+  useEffect(() => {
+    // Set a timeout to prevent infinite loading state
+    const checkTimeout = setTimeout(() => {
+      setInitialLoadChecked(true);
+    }, 2000);
+    
+    return () => clearTimeout(checkTimeout);
+  }, []);
+  
+  // Redirect when user changes
   useEffect(() => {
     if (user) {
-      navigate(redirectPath || '/dashboard');
+      console.log("Auth: User is logged in, redirecting to", redirectPath || '/dashboard');
+      navigate(redirectPath || '/dashboard', { replace: true });
     }
   }, [user, navigate, redirectPath]);
 
@@ -42,16 +55,16 @@ const Auth = () => {
     e.preventDefault();
     
     try {
-      setLoading(true);
+      setFormLoading(true);
       setError(null);
       
-      // Use the signIn function from AuthContext
       await signIn(email, password, redirectPath || undefined);
+      // Successful login will be handled by the auth state change in AuthContext
     } catch (error: any) {
       console.error('Error logging in:', error);
       setError(error.message || 'A apărut o eroare la autentificare');
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
@@ -59,27 +72,27 @@ const Auth = () => {
     e.preventDefault();
     
     try {
-      setLoading(true);
+      setFormLoading(true);
       setError(null);
       
-      // Use the signUp function from AuthContext
       await signUp(email, password, name, redirectPath || undefined);
+      // Successful signup will be handled by the auth state change in AuthContext
     } catch (error: any) {
       console.error('Error signing up:', error);
       setError(error.message || 'A apărut o eroare la crearea contului');
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
-  // If already authenticated, redirect to dashboard
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
+  // If still in initial loading state but haven't confirmed anything yet, show loading
+  if (authLoading && !initialLoadChecked) {
+    return <LoadingScreen message="Verificare sesiune..." timeout={3000} />;
   }
 
-  // Show loading screen while auth is being checked
-  if (authLoading) {
-    return <LoadingScreen isLoading={authLoading} timeout={3000} />;
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    return <Navigate to={redirectPath || "/dashboard"} replace />;
   }
 
   return (
@@ -140,6 +153,7 @@ const Auth = () => {
                           className="pl-10"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
+                          disabled={formLoading}
                           required
                         />
                       </div>
@@ -165,6 +179,7 @@ const Auth = () => {
                           className="pl-10"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
+                          disabled={formLoading}
                           required
                         />
                       </div>
@@ -173,10 +188,10 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={loading}
+                      disabled={formLoading}
                     >
-                      {loading ? 
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...</> : 
+                      {formLoading ? 
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se procesează...</> : 
                         'Autentificare'
                       }
                     </Button>
@@ -203,6 +218,7 @@ const Auth = () => {
                           className="pl-10"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
+                          disabled={formLoading}
                           required
                         />
                       </div>
@@ -219,6 +235,7 @@ const Auth = () => {
                           className="pl-10"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
+                          disabled={formLoading}
                           required
                         />
                       </div>
@@ -234,6 +251,7 @@ const Auth = () => {
                           className="pl-10"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
+                          disabled={formLoading}
                           required
                         />
                       </div>
@@ -250,6 +268,7 @@ const Auth = () => {
                           className="pl-10"
                           value={company}
                           onChange={(e) => setCompany(e.target.value)}
+                          disabled={formLoading}
                         />
                       </div>
                     </div>
@@ -265,6 +284,7 @@ const Auth = () => {
                           className="pl-10"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
+                          disabled={formLoading}
                         />
                       </div>
                     </div>
@@ -272,10 +292,10 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={loading}
+                      disabled={formLoading}
                     >
-                      {loading ? 
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...</> : 
+                      {formLoading ? 
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se procesează...</> : 
                         'Creează cont'
                       }
                     </Button>
