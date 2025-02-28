@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [navigate]);
   
-  const signIn = async (email: string, password: string, redirectPath?: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
       console.log("Signing in:", email);
       setLoading(true);
@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Navigate to the right place
-      navigate(redirectPath || '/dashboard');
+      //navigate(redirectPath || '/dashboard');
       
     } catch (error: any) {
       console.error("Sign in error:", error.message);
