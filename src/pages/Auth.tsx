@@ -34,27 +34,38 @@ const Auth = () => {
   }, []);
   
   // Redirect when user changes
-  useEffect(() => {
-    if (user) {
-      const finalRedirectPath = redirectPath || from || '/dashboard';
-      console.log("Auth: User is logged in, redirecting to", finalRedirectPath);
-      navigate(finalRedirectPath, { replace: true });
+  // Update handleLogin function
+const handleLogin = async (email: string, password: string) => {
+  try {
+    console.log('Login started');
+    setFormLoading(true);
+    setError(null);
+    
+    const user = await signIn(email, password);
+    console.log('Login successful', user);
+    
+    // Check if we need to wait for auth state update
+    if (!authLoading && user) {
+      navigate(redirectPath || from || '/dashboard');
     }
-  }, [user, navigate, redirectPath, from]);
+    
+  } catch (error: any) {
+    console.error('Login error:', error);
+    setError(error.message || 'A apărut o eroare la autentificare');
+  } finally {
+    console.log('Login finalized');
+    setFormLoading(false);
+  }
+};
 
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      setFormLoading(true);
-      setError(null);
-      
-      await signIn(email, password, redirectPath || from || undefined);
-      // Navigation will be handled by the useEffect above
-    } catch (error: any) {
-      console.error('Error logging in:', error);
-      setError(error.message || 'A apărut o eroare la autentificare');
-    } finally {
-      setFormLoading(false);
-    }
+// Update useEffect
+useEffect(() => {
+  if (user && !authLoading) {
+    console.log('Valid session detected, redirecting...');
+    const finalRedirectPath = redirectPath || from || '/dashboard';
+    navigate(finalRedirectPath, { replace: true });
+  }
+}, [user, authLoading, navigate, redirectPath, from]);
   };
 
   const handleSignup = async (email: string, password: string, name: string, company: string, phone: string) => {

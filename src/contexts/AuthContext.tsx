@@ -58,37 +58,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     // Helper function to fetch user profile
-    const fetchUserProfile = async (userId: string) => {
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching profile:", error.message);
-          setUser(null);
-        } else {
-          setUser({
-            id: userId,
-            name: profile?.name || '',
-            email: profile?.email || '',
-            isAdmin: profile?.is_admin || false,
-            phone: profile?.phone || '',
-            company: profile?.company || '',
-          });
-        }
-        
-        setLoading(false);
-        setAuthCheckComplete(true);
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-        setUser(null);
-        setLoading(false);
-        setAuthCheckComplete(true);
-      }
-    };
+    // Update fetchUserProfile
+const fetchUserProfile = async (userId: string) => {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    // Create profile if missing
+    if (error?.code === 'PGRST116') {
+      console.log('Creating new profile for user');
+      const { error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: session?.user.email,
+          name: session?.user.user_metadata?.name || 'New User',
+        });
+
+      if (createError) throw createError;
+      return fetchUserProfile(userId); // Recursive retry
+    }
+
+    setUser({
+      id: userId,
+      name: profile?.name || 'New User',
+      email: profile?.email || session?.user.email || '',
+      isAdmin: profile?.is_admin || false,
+      phone: profile?.phone || '',
+      company: profile?.company || '',
+    });
+    
+  } catch (error) {
+    console.error("Profile error:", error);
+    setUser(null);
+  } finally {
+    setLoading(false);
+    setAuthCheckComplete(true);
+  }
+};
     
     initializeAuth();
     
@@ -128,53 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [navigate]);
   
-  const signIn = async (email: string, password: string) => {
-    try {
-      console.log("Signing in:", email);
-      setLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) throw error;
-      
-      if (!data.user) throw new Error("No user returned from sign in");
-      
-      // Fetch user profile to ensure we have the latest data
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-        
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error("Error fetching profile:", profileError.message);
-      } else {
-        setUser({
-          id: data.user.id,
-          name: profile?.name || data.user.user_metadata?.name || '',
-          email: profile?.email || data.user.email || '',
-          isAdmin: profile?.is_admin || false,
-          phone: profile?.phone || '',
-          company: profile?.company || '',
-        });
-      }
-      
-      // Navigate to the right place
-      //navigate(redirectPath || '/dashboard');
-      
-    } catch (error: any) {
-      console.error("Sign in error:", error.message);
-      toast.error("Eroare de autentificare", {
-        description: error.message || "Credențiale invalide. Încearcă din nou."
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const signUp = async (email: string, password: string, name: string, redirectPath?: string) => {
     try {
