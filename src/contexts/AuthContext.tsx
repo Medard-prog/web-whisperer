@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         if (session?.user) {
-          // Use correct table name that should already exist in your Supabase
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
@@ -44,16 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw profileError;
           }
           
-          if (profile) {
-            setUser({
-              id: session.user.id,
-              name: profile.name || '',
-              email: profile.email || session.user.email || '',
-              isAdmin: profile.is_admin || false,
-              phone: profile.phone || '',
-              company: profile.company || '',
-            });
-          }
+          setUser({
+            id: session.user.id,
+            name: profile.name || '',
+            email: profile.email || session.user.email || '',
+            isAdmin: profile.is_admin || false,
+            phone: profile.phone || '',
+            company: profile.company || '',
+          });
         }
       } catch (error) {
         console.error('Error fetching session:', error);
@@ -79,16 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        if (profile) {
-          setUser({
-            id: session.user.id,
-            name: profile.name || '',
-            email: profile.email || session.user.email || '',
-            isAdmin: profile.is_admin || false,
-            phone: profile.phone || '',
-            company: profile.company || '',
-          });
-        }
+        setUser({
+          id: session.user.id,
+          name: profile.name || '',
+          email: profile.email || session.user.email || '',
+          isAdmin: profile.is_admin || false,
+          phone: profile.phone || '',
+          company: profile.company || '',
+        });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       }
@@ -122,27 +117,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw profileError;
         }
         
-        if (profile) {
-          setUser({
-            id: data.user.id,
-            name: profile.name || '',
-            email: profile.email || data.user.email || '',
-            isAdmin: profile.is_admin || false,
-            phone: profile.phone || '',
-            company: profile.company || '',
-          });
-          
-          toast({
-            title: "Autentificare reușită",
-            description: "Te-ai conectat cu succes!",
-          });
-          
-          // Redirect based on user role
-          if (profile.is_admin) {
-            navigate('/admin');
-          } else {
-            navigate('/dashboard');
-          }
+        setUser({
+          id: data.user.id,
+          name: profile.name || '',
+          email: profile.email || data.user.email || '',
+          isAdmin: profile.is_admin || false,
+          phone: profile.phone || '',
+          company: profile.company || '',
+        });
+        
+        toast({
+          title: "Autentificare reușită",
+          description: "Te-ai conectat cu succes!",
+        });
+        
+        // Redirect based on user role
+        if (profile.is_admin) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
         }
       }
     } catch (error: any) {
