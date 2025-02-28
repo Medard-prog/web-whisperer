@@ -209,7 +209,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       setIsSubmitting(true);
       await onSubmit(data);
       // Navigate to dashboard is handled by the parent component
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
       toast.error("Eroare la trimiterea cererii", { description: "Vă rugăm să încercați din nou" });
     } finally {

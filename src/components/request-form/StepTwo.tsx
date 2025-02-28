@@ -64,10 +64,6 @@ const StepTwo = () => {
                       aria-expanded={open}
                       className="w-full justify-between border-gray-300 text-left font-normal"
                       type="button" // Make sure it's a button type
-                      onClick={(e) => {
-                        e.preventDefault(); // Prevent form submission
-                        setOpen(!open);
-                      }}
                     >
                       {field.value
                         ? projectTypes.find((type) => type.value === field.value)?.label
