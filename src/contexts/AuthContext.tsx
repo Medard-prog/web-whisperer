@@ -72,11 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Error fetching session:', error);
       } finally {
+        // Ensure loading is set to false regardless of any errors
         setLoading(false);
       }
     };
     
     getSession();
+    
+    // Ensure loading state is eventually cleared even if something goes wrong
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.log("Auth loading timed out, resetting loading state");
+        setLoading(false);
+      }
+    }, 5000);
     
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -125,6 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (err) {
           console.error('Error in auth state change handler:', err);
+        } finally {
+          setLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out");
@@ -132,15 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sonnerToast.success("Deconectare reușită", {
           description: "Te-ai deconectat cu succes."
         });
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
     
     return () => {
       subscription.unsubscribe();
+      clearTimeout(loadingTimeout);
     };
-  }, [navigate]);
+  }, [navigate, loading]);
   
   const signIn = async (email: string, password: string, redirectPath?: string) => {
     try {

@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { Mail, Lock, User, Building, Phone, ArrowLeft, Loader2 } from 'lucide-re
 import LoadingScreen from '@/components/LoadingScreen';
 
 const Auth = () => {
-  const { signIn, signUp, loading: authLoading } = useAuth();
+  const { signIn, signUp, loading: authLoading, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '';
@@ -30,6 +30,13 @@ const Auth = () => {
   
   // Get default tab from query params
   const defaultTab = searchParams.get('tab') || 'login';
+
+  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    if (user) {
+      navigate(redirectPath || '/dashboard');
+    }
+  }, [user, navigate, redirectPath]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,8 +72,9 @@ const Auth = () => {
     }
   };
 
-  if (authLoading) {
-    return <LoadingScreen isLoading={authLoading} />;
+  // If already authenticated, redirect to dashboard
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (

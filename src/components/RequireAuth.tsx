@@ -13,7 +13,7 @@ const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Show loading screen while checking auth state
+  // Show loading screen while checking auth state, but with a timeout
   if (loading) {
     return <LoadingScreen isLoading={loading} />;
   }

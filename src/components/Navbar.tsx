@@ -2,8 +2,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { User } from "lucide-react";
 
 const Navbar = () => {
+  const { user } = useAuth();
+
   return (
     <nav className="border-b border-gray-100 py-4 bg-white dark:bg-gray-950 dark:border-gray-800 sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between">
@@ -32,13 +36,21 @@ const Navbar = () => {
           <Link to="/contact" className="text-gray-700 hover:text-purple-600 dark:text-gray-200 dark:hover:text-purple-400">
             Contact
           </Link>
-          <Link to="/auth" className="text-gray-700 hover:text-purple-600 dark:text-gray-200 dark:hover:text-purple-400">
-            Autentificare
-          </Link>
+          
+          {user ? (
+            <Link to="/dashboard" className="flex items-center gap-2 text-gray-700 hover:text-purple-600 dark:text-gray-200 dark:hover:text-purple-400">
+              <User className="h-4 w-4" />
+              <span>Dashboard</span>
+            </Link>
+          ) : (
+            <Link to="/auth" className="text-gray-700 hover:text-purple-600 dark:text-gray-200 dark:hover:text-purple-400">
+              Autentificare
+            </Link>
+          )}
         </div>
 
         {/* CTA Button */}
-        <Link to="/request-project">
+        <Link to="/request">
           <Button className="bg-purple-600 hover:bg-purple-700 text-white px-6">
             Solicită ofertă
           </Button>
