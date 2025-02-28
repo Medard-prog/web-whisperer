@@ -21,7 +21,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import WavyBackground from '@/components/WavyBackground';
-import { ArrowLeft, Phone, Mail, Building, Globe } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Building, Globe, User } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -314,7 +314,12 @@ const RequestProject = () => {
                       <div className="flex justify-end pt-4">
                         <Button
                           type="button"
-                          onClick={() => document.querySelector('[data-value="project"]')?.click()}
+                          onClick={() => {
+                            const tab = document.querySelector('[data-value="project"]');
+                            if (tab instanceof HTMLElement) {
+                              tab.click();
+                            }
+                          }}
                         >
                           Următorul pas
                         </Button>
@@ -574,7 +579,12 @@ const RequestProject = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => document.querySelector('[data-value="contact"]')?.click()}
+                          onClick={() => {
+                            const tab = document.querySelector('[data-value="contact"]');
+                            if (tab instanceof HTMLElement) {
+                              tab.click();
+                            }
+                          }}
                         >
                           Înapoi
                         </Button>

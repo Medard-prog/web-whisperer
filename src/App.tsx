@@ -41,7 +41,7 @@ function App() {
           } />
           
           <Route path="/admin" element={
-            <RequireAuth adminOnly>
+            <RequireAuth adminOnly={true}>
               <AdminDashboard />
             </RequireAuth>
           } />
@@ -56,7 +56,7 @@ function App() {
         </Routes>
       </AnimatePresence>
       
-      <SonnerToast position="bottom-right" />
+      <SonnerToaster position="bottom-right" />
       <Toaster />
       <LoadingScreen />
     </AuthProvider>

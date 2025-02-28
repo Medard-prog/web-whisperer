@@ -6,10 +6,10 @@ import LoadingScreen from "./LoadingScreen";
 
 interface RequireAuthProps {
   children: ReactNode;
-  requireAdmin?: boolean;
+  adminOnly?: boolean;
 }
 
-const RequireAuth = ({ children, requireAdmin = false }: RequireAuthProps) => {
+const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -24,7 +24,7 @@ const RequireAuth = ({ children, requireAdmin = false }: RequireAuthProps) => {
   }
 
   // Check for admin access if required
-  if (requireAdmin && !user.isAdmin) {
+  if (adminOnly && !user.isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 
