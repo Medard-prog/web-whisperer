@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
@@ -45,7 +46,9 @@ const Auth = () => {
       setFormLoading(true);
       setError(null);
       
-      await signIn(email, password);
+      const result = await signIn(email, password);
+      // We don't need to manually navigate as the useEffect will handle it
+      console.log('Login result:', result);
       
     } catch (error: any) {
       console.error('Login error:', error);
@@ -62,6 +65,7 @@ const Auth = () => {
       setError(null);
       
       await signUp(email, password, name);
+      // Navigation will be handled by the effect hook
       
     } catch (error: any) {
       console.error('Error signing up:', error);

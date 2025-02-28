@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fetchUserProfile = async (userId: string) => {
       try {
         const { data: currentSession } = await supabase.auth.getSession();
-        const session = currentSession.session;
+        const currentUserSession = currentSession.session;
         
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -76,8 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .from('profiles')
             .insert({
               id: userId,
-              email: session?.user.email,
-              name: session?.user.user_metadata?.name || 'New User',
+              email: currentUserSession?.user.email,
+              name: currentUserSession?.user.user_metadata?.name || 'New User',
             });
 
           if (createError) throw createError;
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({
           id: userId,
           name: profile?.name || 'New User',
-          email: profile?.email || session?.user.email || '',
+          email: profile?.email || currentUserSession?.user.email || '',
           isAdmin: profile?.is_admin || false,
           phone: profile?.phone || '',
           company: profile?.company || '',
