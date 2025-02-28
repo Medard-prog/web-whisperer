@@ -64,9 +64,10 @@ const filesSchema = z.object({
   fileDescription: z.string().optional(),
 });
 
+// Modified schema to fix the type error: use boolean() instead of literal(true)
 const termsSchema = z.object({
-  acceptTerms: z.literal(true, {
-    errorMap: () => ({ message: "Trebuie să accepți termenii și condițiile pentru a continua" }),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: "Trebuie să accepți termenii și condițiile pentru a continua",
   }),
   newsletter: z.boolean().default(false),
 });
@@ -254,7 +255,9 @@ const RequestProject = () => {
         newsletter_consent: data.newsletter
       };
 
-      const { error } = await supabase.from('project_requests').insert(requestData);
+      const { error } = await supabase
+        .from('project_requests')
+        .insert(requestData);
 
       if (error) {
         console.error('Error saving project request:', error);
@@ -1122,7 +1125,7 @@ const RequestProject = () => {
                               <FormControl>
                                 <Checkbox
                                   checked={field.value}
-                                  onCheckedChange={field.onChange as (checked: boolean) => void}
+                                  onCheckedChange={field.onChange}
                                 />
                               </FormControl>
                               <div className="space-y-1 leading-none">
@@ -1214,3 +1217,4 @@ const RequestProject = () => {
 };
 
 export default RequestProject;
+
