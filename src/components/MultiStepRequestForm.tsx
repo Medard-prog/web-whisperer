@@ -330,7 +330,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       </Card>
       
       {/* Authentication Dialog */}
-      <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+      <Dialog open={loginDialogOpen} onOpenChange={(open) => setLoginDialogOpen(open)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{authMode === 'login' ? 'Conectare cont' : 'Creează un cont nou'}</DialogTitle>
