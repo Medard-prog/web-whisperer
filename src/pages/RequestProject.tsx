@@ -171,26 +171,24 @@ const RequestProject = () => {
           .filter((url) => url.length > 0);
       }
 
-      // Instead of using the from() method with "project_requests" directly
-      // We'll use the REST API approach which doesn't depend on TypeScript types
-      const { error } = await supabase.rest.post('/project_requests', {
-        user_id: user.id,
-        title: data.title,
-        description: data.description,
-        company_name: data.companyName,
-        contact_name: data.contactName,
-        contact_email: data.contactEmail,
-        contact_phone: data.contactPhone,
-        website_type: data.websiteType,
-        design_complexity: data.designComplexity,
-        page_count: data.pageCount,
-        has_cms: data.hasCMS,
-        has_ecommerce: data.hasEcommerce,
-        has_seo: data.hasSEO,
-        has_maintenance: data.hasMaintenance,
-        reference_urls: exampleUrlsArray,
-        status: "pending",
-      });
+      // Use from() method with insert() instead of REST API approach
+      const { error } = await supabase
+        .from('projects')
+        .insert({
+          user_id: user.id,
+          title: data.title,
+          description: data.description,
+          website_type: data.websiteType,
+          design_complexity: data.designComplexity,
+          page_count: data.pageCount,
+          has_cms: data.hasCMS,
+          has_ecommerce: data.hasEcommerce,
+          has_seo: data.hasSEO,
+          has_maintenance: data.hasMaintenance,
+          example_urls: exampleUrlsArray,
+          additional_info: `Company: ${data.companyName}, Contact: ${data.contactName}, Phone: ${data.contactPhone}`,
+          status: "pending",
+        });
 
       if (error) throw error;
 
