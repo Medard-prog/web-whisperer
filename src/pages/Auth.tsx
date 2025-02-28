@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,13 +10,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
-import { useToast } from '@/hooks/use-toast';
 import WavyBackground from '@/components/WavyBackground';
 import { Mail, Lock, User, Building, Phone, ArrowLeft } from 'lucide-react';
 
 const Auth = () => {
+  const { signIn, signUp, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get('redirect') || '';
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -24,6 +26,9 @@ const Auth = () => {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get default tab from query params
+  const defaultTab = searchParams.get('tab') || 'login';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,28 +37,11 @@ const Auth = () => {
       setLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Autentificare reușită',
-        description: 'Ai fost autentificat cu succes!',
-      });
-      
-      navigate('/dashboard');
+      // Use the signIn function from AuthContext
+      await signIn(email, password, redirectPath || undefined);
     } catch (error: any) {
       console.error('Error logging in:', error);
       setError(error.message || 'A apărut o eroare la autentificare');
-      
-      toast({
-        variant: 'destructive',
-        title: 'Eroare de autentificare',
-        description: 'Verifică adresa de email și parola',
-      });
     } finally {
       setLoading(false);
     }
@@ -66,38 +54,11 @@ const Auth = () => {
       setLoading(true);
       setError(null);
       
-      // Register the user
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-            company,
-            phone,
-          },
-        },
-      });
-      
-      if (error) throw error;
-      
-      // Show success message
-      toast({
-        title: 'Cont creat cu succes',
-        description: 'Te rugăm să verifici emailul pentru a confirma contul',
-      });
-      
-      // Redirect to verification page
-      navigate('/verify-email');
+      // Use the signUp function from AuthContext
+      await signUp(email, password, name, redirectPath || undefined);
     } catch (error: any) {
       console.error('Error signing up:', error);
       setError(error.message || 'A apărut o eroare la crearea contului');
-      
-      toast({
-        variant: 'destructive',
-        title: 'Eroare la înregistrare',
-        description: error.message || 'A apărut o eroare la crearea contului',
-      });
     } finally {
       setLoading(false);
     }
@@ -135,7 +96,7 @@ const Auth = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Tabs defaultValue="login" className="space-y-4">
+              <Tabs defaultValue={defaultTab} className="space-y-4">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">Autentificare</TabsTrigger>
                   <TabsTrigger value="register">Înregistrare</TabsTrigger>
@@ -173,6 +134,7 @@ const Auth = () => {
                           variant="link"
                           className="p-0 h-auto font-normal text-xs"
                           onClick={() => navigate('/reset-password')}
+                          type="button"
                         >
                           Ai uitat parola?
                         </Button>
@@ -193,9 +155,9 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={loading}
+                      disabled={loading || authLoading}
                     >
-                      {loading ? 'Se încarcă...' : 'Autentificare'}
+                      {loading || authLoading ? 'Se încarcă...' : 'Autentificare'}
                     </Button>
                   </form>
                 </TabsContent>
@@ -289,9 +251,9 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={loading}
+                      disabled={loading || authLoading}
                     >
-                      {loading ? 'Se încarcă...' : 'Creează cont'}
+                      {loading || authLoading ? 'Se încarcă...' : 'Creează cont'}
                     </Button>
                   </form>
                 </TabsContent>

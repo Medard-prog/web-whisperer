@@ -13,6 +13,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, redirectPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -111,13 +112,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         // Show toast notification
-        sonnerToast("Autentificare reușită", {
+        sonnerToast.success("Autentificare reușită", {
           description: "Te-ai conectat cu succes!"
         });
+        
+        // Redirect to dashboard after sign in
+        navigate('/dashboard');
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out");
         setUser(null);
-        sonnerToast("Deconectare reușită", {
+        sonnerToast.success("Deconectare reușită", {
           description: "Te-ai deconectat cu succes."
         });
       }
@@ -126,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
   
   const signIn = async (email: string, password: string, redirectPath?: string) => {
     try {
@@ -144,29 +148,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data?.user) {
         console.log("Sign in successful for:", data.user.id);
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-          
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error fetching profile after sign in:', profileError);
-        }
         
-        // User data will be set by the auth state change listener
-        
-        sonnerToast("Autentificare reușită", {
+        sonnerToast.success("Autentificare reușită", {
           description: "Te-ai conectat cu succes!"
         });
         
         // Redirect based on user role or provided redirect path
         if (redirectPath) {
           navigate(redirectPath);
-        } else if (profile?.is_admin) {
-          navigate('/admin');
         } else {
-          navigate('/dashboard');
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profile?.is_admin) {
+            navigate('/admin');
+          } else {
+            navigate('/dashboard');
+          }
         }
       }
     } catch (error: any) {
@@ -198,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      sonnerToast("Înregistrare reușită", {
+      sonnerToast.success("Înregistrare reușită", {
         description: "Contul tău a fost creat cu succes!"
       });
       
@@ -262,13 +263,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      sonnerToast("Email trimis", {
+      sonnerToast.success("Email trimis", {
         description: "Verifică-ți emailul pentru instrucțiuni de resetare a parolei."
       });
     } catch (error: any) {
       console.error("Password reset catch error:", error.message);
       sonnerToast.error("Eroare la trimiterea emailului", {
         description: error.message || "Nu s-a putut trimite emailul de resetare."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      if (!user || !user.id) {
+        throw new Error("Nu există un utilizator autentificat");
+      }
+      
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          company: data.company,
+        })
+        .eq('id', user.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update user state
+      setUser({
+        ...user,
+        ...data,
+      });
+      
+      sonnerToast.success("Profil actualizat", {
+        description: "Profilul tău a fost actualizat cu succes!"
+      });
+    } catch (error: any) {
+      console.error("Profile update error:", error.message);
+      sonnerToast.error("Eroare la actualizarea profilului", {
+        description: error.message || "Nu s-a putut actualiza profilul."
       });
     } finally {
       setLoading(false);
@@ -284,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         resetPassword,
+        updateProfile,
       }}
     >
       {children}
