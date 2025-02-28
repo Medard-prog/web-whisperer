@@ -7,18 +7,21 @@ import { Link } from "react-router-dom";
 import { Clock, Calendar, MessageCircle, Eye, ArrowRight, FileEdit } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { Project } from "@/types";
 
 export interface ProjectCardProps {
-  id: string;
-  title: string;
-  description: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
-  date: string;
+  id?: string;
+  title?: string;
+  description?: string;
+  status?: "pending" | "in_progress" | "completed" | "cancelled";
+  date?: string;
   dueDate?: string;
   price?: number;
-  messagesCount: number;
+  messagesCount?: number;
   image?: string;
   isAdmin?: boolean;
+  project?: Project;
+  onClick?: () => void;
 }
 
 const ProjectCard = ({
@@ -29,10 +32,21 @@ const ProjectCard = ({
   date,
   dueDate,
   price,
-  messagesCount,
+  messagesCount = 0,
   image,
   isAdmin = false,
+  project,
+  onClick,
 }: ProjectCardProps) => {
+  
+  // If project is provided, use its properties
+  const projectId = project?.id || id;
+  const projectTitle = project?.title || title;
+  const projectDescription = project?.description || description;
+  const projectStatus = project?.status || status || "pending";
+  const projectDate = project?.createdAt || date;
+  const projectDueDate = project?.dueDate || dueDate;
+  const projectPrice = project?.price || price;
   
   const statusMap = {
     pending: { label: "În așteptare", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -47,41 +61,44 @@ const ProjectCard = ({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
+      onClick={onClick}
     >
       <Card className="overflow-hidden border-2 h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
         {image && (
           <div className="h-48 overflow-hidden">
             <img 
               src={image} 
-              alt={title} 
+              alt={projectTitle} 
               className="w-full h-full object-cover object-center transition-transform duration-500 hover:scale-105"
             />
           </div>
         )}
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start mb-2">
-            <Badge variant="outline" className={`${statusMap[status].color}`}>
-              {statusMap[status].label}
+            <Badge variant="outline" className={`${statusMap[projectStatus].color}`}>
+              {statusMap[projectStatus].label}
             </Badge>
-            {price && (
-              <div className="text-lg font-semibold text-gray-900">{formatPrice(price)}</div>
+            {projectPrice && projectPrice > 0 && (
+              <div className="text-lg font-semibold text-gray-900">{formatPrice(projectPrice)}</div>
             )}
           </div>
-          <CardTitle className="text-xl line-clamp-1">{title}</CardTitle>
+          <CardTitle className="text-xl line-clamp-1">{projectTitle}</CardTitle>
         </CardHeader>
         <CardContent className="pb-4">
           <CardDescription className="text-gray-600 mb-4 line-clamp-2">
-            {description}
+            {projectDescription}
           </CardDescription>
           <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-1" />
-              <span>{formatDate(date)}</span>
-            </div>
-            {dueDate && (
+            {projectDate && (
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>{formatDate(projectDate)}</span>
+              </div>
+            )}
+            {projectDueDate && (
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-1" />
-                <span>Termen: {formatDate(dueDate)}</span>
+                <span>Termen: {formatDate(projectDueDate)}</span>
               </div>
             )}
             <div className="flex items-center">
@@ -91,7 +108,7 @@ const ProjectCard = ({
           </div>
         </CardContent>
         <CardFooter className="flex justify-between gap-3">
-          <Link to={`/${isAdmin ? 'admin' : 'dashboard'}/projects/${id}`} className="w-full">
+          <Link to={`/${isAdmin ? 'admin' : 'dashboard'}/projects/${projectId}`} className="w-full">
             <Button variant="outline" className="w-full group">
               <Eye className="h-4 w-4 mr-2 group-hover:text-brand-500" /> 
               <span>Vizualizează</span>
@@ -99,15 +116,15 @@ const ProjectCard = ({
             </Button>
           </Link>
           {isAdmin && (
-            <Link to={`/admin/projects/${id}/edit`} className="w-full">
+            <Link to={`/admin/projects/${projectId}/edit`} className="w-full">
               <Button className="w-full bg-brand-600 hover:bg-brand-700">
                 <FileEdit className="h-4 w-4 mr-2" />
                 Gestionează
               </Button>
             </Link>
           )}
-          {!isAdmin && status === "pending" && (
-            <Link to={`/dashboard/projects/${id}/pay`} className="w-full">
+          {!isAdmin && projectStatus === "pending" && (
+            <Link to={`/dashboard/projects/${projectId}/pay`} className="w-full">
               <Button className="w-full bg-brand-600 hover:bg-brand-700">
                 Plătește
               </Button>
