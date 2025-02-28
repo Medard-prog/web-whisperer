@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
@@ -20,34 +19,33 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [initialCheck, setInitialCheck] = useState(true);
   
-  // Get default tab from query params
   const defaultTab = searchParams.get('tab') || 'login';
 
-  // Check for authenticated user and redirect if needed
+  // Handle automatic redirection when auth state changes
   useEffect(() => {
-    // Set a timeout to prevent infinite loading state
+    if (user && !authLoading) {
+      console.log('Valid session detected, redirecting...');
+      const finalRedirectPath = redirectPath || from || '/dashboard';
+      navigate(finalRedirectPath, { replace: true });
+    }
+  }, [user, authLoading, navigate, redirectPath, from]);
+
+  // Handle initial session check timeout
+  useEffect(() => {
     const checkTimeout = setTimeout(() => {
       setInitialCheck(false);
     }, 2000);
     
     return () => clearTimeout(checkTimeout);
   }, []);
-  
-  // Update handleLogin function
+
   const handleLogin = async (email: string, password: string) => {
     try {
       console.log('Login started');
       setFormLoading(true);
       setError(null);
       
-      // The function now returns User | null instead of void
-      const userResult = await signIn(email, password);
-      console.log('Login successful', userResult);
-      
-      // Check if we need to wait for auth state update
-      if (!authLoading && userResult) {
-        navigate(redirectPath || from || '/dashboard');
-      }
+      await signIn(email, password);
       
     } catch (error: any) {
       console.error('Login error:', error);
@@ -58,22 +56,13 @@ const Auth = () => {
     }
   };
 
-  // Redirect when user changes
-  useEffect(() => {
-    if (user && !authLoading) {
-      console.log('Valid session detected, redirecting...');
-      const finalRedirectPath = redirectPath || from || '/dashboard';
-      navigate(finalRedirectPath, { replace: true });
-    }
-  }, [user, authLoading, navigate, redirectPath, from]);
-
   const handleSignup = async (email: string, password: string, name: string, company: string, phone: string) => {
     try {
       setFormLoading(true);
       setError(null);
       
-      await signUp(email, password, name, redirectPath || from || undefined);
-      // Navigation will be handled by the useEffect above
+      await signUp(email, password, name);
+      
     } catch (error: any) {
       console.error('Error signing up:', error);
       setError(error.message || 'A apărut o eroare la crearea contului');
@@ -82,12 +71,10 @@ const Auth = () => {
     }
   };
 
-  // If still in initial loading state but haven't confirmed anything yet, show loading
   if (authLoading && initialCheck) {
     return <LoadingScreen message="Verificare sesiune..." timeout={3000} />;
   }
 
-  // If user is already logged in, redirect to dashboard
   if (user) {
     return <Navigate to={redirectPath || from || "/dashboard"} replace />;
   }
