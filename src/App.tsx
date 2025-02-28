@@ -15,6 +15,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Settings from "@/pages/Settings";
+import Logout from "@/pages/Logout";
 
 function App() {
   const location = useLocation();
@@ -28,6 +29,7 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/request" element={<RequestProject />} />
+          <Route path="/logout" element={<Logout />} />
           
           <Route path="/dashboard" element={
             <RequireAuth>

@@ -41,7 +41,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       
       if (session?.user) {
-        await fetchUserProfile(session.user);
+        try {
+          // Basic user info from session
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            isAdmin: session.user.user_metadata?.isAdmin || false
+          });
+          
+          // Try to fetch additional profile data, but don't block on errors
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (data) {
+            setUser(prevUser => ({
+              ...prevUser as UserDetails,
+              name: data.name || prevUser?.name,
+              isAdmin: data.is_admin || prevUser?.isAdmin,
+              phone: data.phone,
+              company: data.company,
+            }));
+          }
+        } catch (error) {
+          console.error('Error setting up user data:', error);
+          // Continue with basic user info even if profile fetch fails
+        }
+      } else {
+        setUser(null);
       }
       
       // Listen for auth changes
@@ -51,7 +81,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           
           if (session?.user) {
-            await fetchUserProfile(session.user);
+            try {
+              // Basic user info from session
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                isAdmin: session.user.user_metadata?.isAdmin || false
+              });
+              
+              // Try to fetch profile data
+              const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+                
+              if (data) {
+                setUser(prevUser => ({
+                  ...prevUser as UserDetails,
+                  name: data.name || prevUser?.name,
+                  isAdmin: data.is_admin || prevUser?.isAdmin,
+                  phone: data.phone,
+                  company: data.company,
+                }));
+              }
+            } catch (error) {
+              console.error('Error updating user data on auth change:', error);
+              // Continue with basic user info
+            }
           } else {
             setUser(null);
           }
@@ -69,39 +127,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
   }, []);
   
-  // Fetch the user's profile from the profiles table
-  const fetchUserProfile = async (authUser: User) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-        
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        return;
-      }
-      
-      if (data) {
-        setUser({
-          id: authUser.id,
-          email: authUser.email || '',
-          name: data.name,
-          isAdmin: data.is_admin,
-          phone: data.phone,
-          company: data.company,
-        });
-      }
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-    }
-  };
-  
   // Refresh the user's profile data
   const refreshUser = async () => {
     if (session?.user) {
-      await fetchUserProfile(session.user);
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (data) {
+          setUser(prevUser => ({
+            ...prevUser as UserDetails,
+            name: data.name,
+            isAdmin: data.is_admin,
+            phone: data.phone,
+            company: data.company,
+          }));
+        }
+      } catch (error) {
+        console.error('Error refreshing user data:', error);
+        toast.error('Nu s-a putut actualiza profilul');
+      }
     }
   };
   
@@ -110,7 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await supabase.auth.signOut();
       setUser(null);
-      navigate('/auth');
+      navigate('/logout');
       toast.success('Te-ai deconectat cu succes');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -125,14 +173,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
+      // Update profile in database
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           name: userData.name,
           phone: userData.phone,
           company: userData.company,
-        })
-        .eq('id', user.id);
+          updated_at: new Date().toISOString(),
+        });
         
       if (error) {
         throw error;
@@ -140,9 +190,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Update local user state
       setUser({ ...user, ...userData });
+      toast.success('Profilul a fost actualizat');
       
     } catch (error) {
       console.error('Error updating profile:', error);
+      toast.error('Nu s-a putut actualiza profilul');
       throw error;
     }
   };
