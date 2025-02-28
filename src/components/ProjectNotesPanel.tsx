@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, fetchProjectNotes } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ProjectNote } from "@/types";
+import { ProjectNote, mapProjectNote } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,15 +33,8 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('project_notes')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
-      
-      setNotes(data as ProjectNote[]);
+      const notes = await fetchProjectNotes(projectId);
+      setNotes(notes);
     } catch (error) {
       console.error('Error fetching notes:', error);
       toast({
@@ -74,7 +67,9 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
         
       if (error) throw error;
       
-      setNotes(prev => [data as ProjectNote, ...prev]);
+      // Use the mapper function to convert the snake_case response to camelCase
+      const mappedNote = mapProjectNote(data);
+      setNotes(prev => [mappedNote, ...prev]);
       setNewNote("");
       
       toast({

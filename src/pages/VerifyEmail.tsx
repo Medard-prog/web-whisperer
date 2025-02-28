@@ -1,77 +1,63 @@
 
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Mail, CheckCircle2 } from "lucide-react";
-import WavyBackground from "@/components/WavyBackground";
-import PageTransition from "@/components/PageTransition";
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail, ArrowLeft } from 'lucide-react';
+import WavyBackground from '@/components/WavyBackground';
+import { motion } from 'framer-motion';
 
 const VerifyEmail = () => {
+  const navigate = useNavigate();
+
   return (
-    <PageTransition>
-      <div className="min-h-screen relative overflow-hidden">
-        <WavyBackground className="h-full w-full absolute inset-0" />
-        <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="w-full max-w-md"
-          >
-            <Card className="border-2 shadow-xl bg-white/90 backdrop-blur-sm">
-              <CardHeader className="space-y-1 text-center">
-                <div className="mx-auto bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <Mail className="h-8 w-8 text-purple-600" />
-                </div>
-                <CardTitle className="text-2xl">Verifică-ți email-ul</CardTitle>
-                <CardDescription>
-                  Ți-am trimis un email cu un link pentru a verifica adresa ta de email.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 text-center">
-                <p className="text-gray-600">
-                  Pentru a finaliza procesul de înregistrare, accesează linkul din email și revino apoi pe această pagină.
+    <div className="min-h-screen flex flex-col">
+      <WavyBackground className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-500/20 to-indigo-500/20" />
+      </WavyBackground>
+      
+      <div className="flex-1 flex items-center justify-center p-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-center">
+                Verifică-ți adresa de email
+              </CardTitle>
+              <CardDescription className="text-center">
+                Ți-am trimis un link de verificare pe adresa de email
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 flex flex-col items-center">
+              <div className="h-24 w-24 rounded-full bg-indigo-100 flex items-center justify-center">
+                <Mail className="h-12 w-12 text-indigo-600" />
+              </div>
+              
+              <div className="text-center space-y-2">
+                <p className="text-gray-700">
+                  Pentru a-ți verifica contul, te rugăm să deschizi linkul pe care l-ai primit pe email.
                 </p>
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-medium mb-2 flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-green-500 mr-2" />
-                    Verifică și folderul de Spam
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Dacă nu găsești email-ul în Inbox, te rugăm să verifici și folderul de Spam sau Junk.
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col space-y-4">
-                <Button 
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                  asChild
-                >
-                  <Link to="/auth">Am verificat email-ul</Link>
-                </Button>
-                <div className="text-center text-sm text-gray-500">
-                  <span>Nu ai primit email-ul? </span>
-                  <Link to="/auth" className="text-purple-600 hover:text-purple-800 font-medium">
-                    Încearcă din nou
-                  </Link>
-                </div>
-              </CardFooter>
-            </Card>
-            
-            <div className="text-center mt-6">
-              <Button 
-                variant="ghost" 
-                asChild
-                className="text-sm text-gray-600 hover:text-purple-600"
+                <p className="text-sm text-gray-500">
+                  Dacă nu găsești emailul, verifică și folderul de spam.
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                onClick={() => navigate('/auth')}
               >
-                <Link to="/">Înapoi la pagina principală</Link>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Înapoi la autentificare
               </Button>
-            </div>
-          </motion.div>
-        </div>
+            </CardFooter>
+          </Card>
+        </motion.div>
       </div>
-    </PageTransition>
+    </div>
   );
 };
 

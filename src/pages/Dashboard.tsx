@@ -1,51 +1,37 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { fetchProjects } from "@/integrations/supabase/client";
 import { Project } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FolderKanban, Clock, MessageSquare, LayoutList, Search } from "lucide-react";
 import ProjectCard from "@/components/ProjectCard";
 import PageTransition from "@/components/PageTransition";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  CreditCard, 
-  Calendar, 
-  PlusCircle,
-  Bell 
-} from "lucide-react";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
-  
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchUserProjects = async () => {
+      if (!user?.id) return;
+      
       try {
-        if (!user) return;
-        
         setLoading(true);
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(3);
-          
-        if (error) {
-          throw error;
-        }
         
-        setProjects(data || []);
+        const projectsData = await fetchProjects(user.id);
+        setProjects(projectsData);
       } catch (error) {
         console.error('Error fetching projects:', error);
         toast({
@@ -58,13 +44,20 @@ const Dashboard = () => {
       }
     };
     
-    fetchProjects();
+    fetchUserProjects();
   }, [user, toast]);
+
+  const filteredProjects = projects.filter(project => 
+    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.websiteType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.status.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
-  const fadeInUp = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.4 }
+  const statusMap = {
+    pending: { label: "În așteptare", color: "bg-yellow-500" },
+    in_progress: { label: "În curs", color: "bg-blue-500" },
+    completed: { label: "Finalizat", color: "bg-green-500" },
+    cancelled: { label: "Anulat", color: "bg-red-500" },
   };
   
   return (
@@ -73,217 +66,188 @@ const Dashboard = () => {
       
       <main className="flex-1 p-6 overflow-y-auto">
         <PageTransition>
-          <div className="space-y-6 max-w-7xl mx-auto">
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h1 className="text-3xl font-bold tracking-tight">Salut, {user?.name || 'Client'}!</h1>
-              <p className="text-gray-500">Bine ai revenit în contul tău WebCreator</p>
-            </motion.div>
+          <div className="space-y-6 max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+                <p className="text-gray-500">Bine ai venit, {user?.name || "Utilizator"}!</p>
+              </div>
+              <div className="mt-4 md:mt-0">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="search"
+                    placeholder="Caută proiecte..."
+                    className="pl-8 w-full md:w-[300px]"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
             
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-              variants={{
-                initial: { opacity: 0 },
-                animate: { opacity: 1, transition: { staggerChildren: 0.1 } }
-              }}
-              initial="initial"
-              animate="animate"
-            >
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Proiecte active
-                    </CardTitle>
-                    <LayoutDashboard className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {loading ? (
-                        <Skeleton className="h-8 w-12" />
-                      ) : (
-                        projects.filter(p => p.status !== 'completed' && p.status !== 'cancelled').length
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Proiecte în lucru
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Mesaje noi
-                    </CardTitle>
-                    <Bell className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      <Skeleton className="h-8 w-12" />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Din ultimele 7 zile
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Facturi scadente
-                    </CardTitle>
-                    <CreditCard className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      <Skeleton className="h-8 w-12" />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Plăți în așteptare
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Întâlniri programate
-                    </CardTitle>
-                    <Calendar className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      <Skeleton className="h-8 w-12" />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Pentru următoarele 30 zile
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Tabs defaultValue="projects" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="projects">Proiectele mele</TabsTrigger>
-                  <TabsTrigger value="messages">Mesaje recente</TabsTrigger>
-                  <TabsTrigger value="invoices">Facturi</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="projects" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Proiectele mele recente</h2>
-                    <Link to="/dashboard/projects">
-                      <Button variant="outline">Vezi toate proiectele</Button>
-                    </Link>
-                  </div>
-                  
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Proiecte active</CardTitle>
+                </CardHeader>
+                <CardContent>
                   {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[...Array(3)].map((_, index) => (
-                        <Card key={index}>
-                          <CardHeader>
-                            <Skeleton className="h-6 w-24 mb-2" />
-                            <Skeleton className="h-4 w-full" />
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <Skeleton className="h-28 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                          </CardContent>
-                        </Card>
-                      ))}
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-2xl font-bold">
+                      {projects.filter(p => p.status === "in_progress").length}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Proiecte finalizate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-2xl font-bold">
+                      {projects.filter(p => p.status === "completed").length}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total proiecte</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-2xl font-bold">{projects.length}</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Projects Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <FolderKanban className="h-5 w-5 mr-2 text-blue-500" />
+                  Proiectele mele
+                </CardTitle>
+                <CardDescription>
+                  Vizualizează și gestionează proiectele tale
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : filteredProjects.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                    {filteredProjects.map((project) => (
+                      <ProjectCard key={project.id} project={project} onClick={() => navigate(`/project/${project.id}`)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <FolderKanban className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900">Nu ai proiecte</h3>
+                    <p className="text-gray-500">Solicită o ofertă pentru a începe un proiect nou.</p>
+                    <Button 
+                      className="mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      onClick={() => navigate('/request')}
+                    >
+                      Solicită ofertă
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="col-span-1 md:col-span-1">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center">
+                    <LayoutList className="h-5 w-5 mr-2 text-indigo-500" />
+                    Acțiuni rapide
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start" 
+                    onClick={() => navigate('/request')}
+                  >
+                    <FolderKanban className="mr-2 h-4 w-4" />
+                    Solicită un proiect nou
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => navigate('/contact')}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Contactează-ne
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => navigate('/schedule')}
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    Programează o consultație
+                  </Button>
+                </CardContent>
+              </Card>
+              
+              <Card className="col-span-1 md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-yellow-500" />
+                    Activitate recentă
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="space-y-4">
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
                     </div>
                   ) : projects.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {projects.map((project) => (
-                        <ProjectCard
-                          key={project.id}
-                          id={project.id}
-                          title={project.title}
-                          description={project.description}
-                          status={project.status as any}
-                          date={project.createdAt}
-                          dueDate={project.dueDate}
-                          price={project.price}
-                          messagesCount={0} // This would need to be fetched separately
-                        />
+                    <div className="space-y-4">
+                      {projects.slice(0, 4).map((project) => (
+                        <div key={project.id} className="flex justify-between items-center border-b pb-2">
+                          <div>
+                            <div className="font-medium">{project.title}</div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(project.createdAt).toLocaleDateString('ro-RO')}
+                            </div>
+                          </div>
+                          <div className={`px-2 py-1 rounded-full text-xs text-white ${statusMap[project.status]?.color || "bg-gray-500"}`}>
+                            {statusMap[project.status]?.label || project.status}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
-                    <Card className="border-dashed border-2">
-                      <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                        <PlusCircle className="h-12 w-12 text-gray-300 mb-4" />
-                        <CardTitle className="text-xl mb-2">Niciun proiect activ</CardTitle>
-                        <CardDescription className="mb-6">
-                          Nu ai creat încă niciun proiect. Solicită o ofertă pentru a începe.
-                        </CardDescription>
-                        <Link to="/request-project">
-                          <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
-                            Solicită ofertă
-                          </Button>
-                        </Link>
-                      </CardContent>
-                    </Card>
+                    <div className="text-center py-6">
+                      <p className="text-gray-500">Nu există activitate recentă</p>
+                    </div>
                   )}
-                </TabsContent>
-                
-                <TabsContent value="messages" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Mesaje recente</CardTitle>
-                      <CardDescription>
-                        Nu ai mesaje noi în ultimele 7 zile.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                      <MessageSquare className="h-12 w-12 text-gray-300 mb-4" />
-                      <p className="text-gray-500 mb-4">
-                        Comunicarea cu echipa noastră se face prin secțiunea de mesaje a fiecărui proiect.
-                      </p>
-                      {projects.length > 0 && (
-                        <Link to={`/dashboard/projects/${projects[0].id}`}>
-                          <Button variant="outline">
-                            Vezi proiectul recent
-                          </Button>
-                        </Link>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                
-                <TabsContent value="invoices" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Facturi</CardTitle>
-                      <CardDescription>
-                        Nu ai facturi în așteptare.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                      <CreditCard className="h-12 w-12 text-gray-300 mb-4" />
-                      <p className="text-gray-500">
-                        Facturile și plățile pentru proiectele tale vor apărea aici.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </PageTransition>
       </main>

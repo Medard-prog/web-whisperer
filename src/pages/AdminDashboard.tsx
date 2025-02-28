@@ -1,62 +1,45 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { supabase, fetchProjects, fetchUsers } from "@/integrations/supabase/client";
 import { Project, User } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { UsersRound, FolderKanban, CheckCircle, Clock, Users, LayoutDashboard, FileText, Mail, Phone, Building, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import ProjectCard from "@/components/ProjectCard";
 import PageTransition from "@/components/PageTransition";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  BarChart3, 
-  Users, 
-  FolderKanban, 
-  Clock, 
-  MessageSquare, 
-  DollarSign,
-  PlusCircle
-} from "lucide-react";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<User[]>([]);
-  
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Fetch recent projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (projectsError) throw projectsError;
+        // Fetch projects and users using our helper functions
+        const projectsData = await fetchProjects();
+        const usersData = await fetchUsers();
         
-        // Fetch clients
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('is_admin', false)
-          .limit(5);
-          
-        if (clientsError) throw clientsError;
-        
-        setProjects(projectsData || []);
-        setClients(clientsData || []);
+        setProjects(projectsData);
+        setUsers(usersData);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('Error fetching data:', error);
         toast({
           variant: "destructive",
           title: "Eroare",
@@ -67,13 +50,49 @@ const AdminDashboard = () => {
       }
     };
     
-    fetchDashboardData();
+    fetchData();
   }, [toast]);
+
+  const filteredProjects = projects.filter(project => 
+    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.websiteType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.status.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
-  const fadeInUp = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.4 }
+  const filteredUsers = users.filter(user => 
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.company?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  // Analytics data
+  const statusData = [
+    { name: "În curs", value: projects.filter(p => p.status === "in_progress").length },
+    { name: "Finalizat", value: projects.filter(p => p.status === "completed").length },
+    { name: "În așteptare", value: projects.filter(p => p.status === "pending").length },
+    { name: "Anulat", value: projects.filter(p => p.status === "cancelled").length },
+  ];
+  
+  const COLORS = ['#6366F1', '#22C55E', '#F59E0B', '#EF4444'];
+  
+  const websiteTypeData = [
+    { name: "Landing", value: projects.filter(p => p.websiteType === "landing").length },
+    { name: "Blog", value: projects.filter(p => p.websiteType === "blog").length },
+    { name: "E-commerce", value: projects.filter(p => p.websiteType === "ecommerce").length },
+    { name: "Prezentare", value: projects.filter(p => p.websiteType === "presentation").length },
+    { name: "Altele", value: projects.filter(p => p.websiteType && !["landing", "blog", "ecommerce", "presentation"].includes(p.websiteType)).length },
+  ].filter(item => item.value > 0);
+  
+  // Functions to get project statistics
+  const getCompletionRate = () => {
+    const completed = projects.filter(p => p.status === "completed").length;
+    return projects.length ? Math.round((completed / projects.length) * 100) : 0;
+  };
+  
+  const getAverageProjectSize = () => {
+    if (!projects.length) return 0;
+    const total = projects.reduce((acc, project) => acc + (project.pageCount || 0), 0);
+    return Math.round(total / projects.length);
   };
   
   return (
@@ -83,275 +102,293 @@ const AdminDashboard = () => {
       <main className="flex-1 p-6 overflow-y-auto">
         <PageTransition>
           <div className="space-y-6 max-w-7xl mx-auto">
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h1 className="text-3xl font-bold tracking-tight">Panou Administrator</h1>
-              <p className="text-gray-500">Bine ai revenit, {user?.name || 'Admin'}!</p>
-            </motion.div>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Dashboard Admin</h1>
+                <p className="text-gray-500">Gestionează proiectele și utilizatorii</p>
+              </div>
+              <div className="mt-4 md:mt-0">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="search"
+                    placeholder="Caută proiecte sau utilizatori..."
+                    className="pl-8 w-full md:w-[300px]"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
             
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-              variants={{
-                initial: { opacity: 0 },
-                animate: { opacity: 1, transition: { staggerChildren: 0.1 } }
-              }}
-              initial="initial"
-              animate="animate"
-            >
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Proiecte active
-                    </CardTitle>
-                    <FolderKanban className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {loading ? (
-                        <Skeleton className="h-8 w-12" />
-                      ) : (
-                        projects.filter(p => p.status === 'in_progress').length
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Proiecte în dezvoltare
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Clienți
-                    </CardTitle>
-                    <Users className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {loading ? (
-                        <Skeleton className="h-8 w-12" />
-                      ) : (
-                        clients.length
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Total clienți
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Sarcini active
-                    </CardTitle>
-                    <Clock className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      <Skeleton className="h-8 w-12" />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      De finalizat săptămâna aceasta
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={fadeInUp}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Venituri
-                    </CardTitle>
-                    <DollarSign className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      <Skeleton className="h-8 w-12" />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Luna aceasta
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Tabs defaultValue="projects" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="projects">Proiecte recente</TabsTrigger>
-                  <TabsTrigger value="clients">Clienți</TabsTrigger>
-                  <TabsTrigger value="tasks">Sarcini</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="projects" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Proiecte recente</h2>
-                    <Link to="/admin/projects">
-                      <Button variant="outline">Vezi toate proiectele</Button>
-                    </Link>
-                  </div>
-                  
-                  {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[...Array(3)].map((_, index) => (
-                        <Card key={index}>
-                          <CardHeader>
-                            <Skeleton className="h-6 w-24 mb-2" />
-                            <Skeleton className="h-4 w-full" />
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <Skeleton className="h-28 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : projects.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {projects.map((project) => (
-                        <ProjectCard
-                          key={project.id}
-                          id={project.id}
-                          title={project.title}
-                          description={project.description}
-                          status={project.status as any}
-                          date={project.createdAt}
-                          dueDate={project.dueDate}
-                          price={project.price}
-                          messagesCount={0} // This would need to be fetched separately
-                          isAdmin={true}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <Card>
-                      <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                        <FolderKanban className="h-12 w-12 text-gray-300 mb-4" />
-                        <CardTitle className="text-xl mb-2">Niciun proiect</CardTitle>
-                        <CardDescription className="mb-6">
-                          Nu există proiecte active în sistem.
-                        </CardDescription>
-                        <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
-                          Adaugă proiect nou
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="clients" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Clienți recenți</h2>
-                    <Link to="/admin/clients">
-                      <Button variant="outline">Vezi toți clienții</Button>
-                    </Link>
-                  </div>
-                  
-                  {loading ? (
-                    <Card>
-                      <CardContent className="py-6">
-                        <Skeleton className="h-10 w-full mb-4" />
-                        <Skeleton className="h-10 w-full mb-4" />
-                        <Skeleton className="h-10 w-full mb-4" />
-                        <Skeleton className="h-10 w-full" />
-                      </CardContent>
-                    </Card>
-                  ) : clients.length > 0 ? (
-                    <Card>
-                      <CardContent className="p-0">
-                        <div className="divide-y">
-                          {clients.map((client) => (
-                            <div key={client.id} className="flex items-center justify-between p-4">
-                              <div className="flex items-center">
-                                <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-semibold">
-                                  {client.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="ml-3">
-                                  <div className="font-medium">{client.name}</div>
-                                  <div className="text-sm text-gray-500">{client.email}</div>
-                                </div>
-                              </div>
-                              <Button variant="ghost" size="sm">
-                                Vezi detalii
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card>
-                      <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                        <Users className="h-12 w-12 text-gray-300 mb-4" />
-                        <CardTitle className="text-xl mb-2">Niciun client</CardTitle>
-                        <CardDescription>
-                          Nu există clienți înregistrați în sistem.
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="tasks" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Sarcini active</h2>
-                    <Link to="/admin/tasks">
-                      <Button variant="outline">Vezi toate sarcinile</Button>
-                    </Link>
-                  </div>
-                  
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                      <Clock className="h-12 w-12 text-gray-300 mb-4" />
-                      <CardTitle className="text-xl mb-2">Nicio sarcină activă</CardTitle>
-                      <CardDescription className="mb-6">
-                        Nu există sarcini active în sistem.
-                      </CardDescription>
-                      <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
-                        Adaugă sarcină nouă
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
-            
-            {/* Activity Feed or Recent Messages */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
+            {/* Dashboard cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Mesaje recente</CardTitle>
-                  <CardDescription>
-                    Ultimele mesaje de la clienți
-                  </CardDescription>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <FolderKanban className="h-5 w-5 mr-2 text-blue-500" />
+                    Proiecte
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                  <MessageSquare className="h-12 w-12 text-gray-300 mb-4" />
-                  <p className="text-gray-500">
-                    Nu există mesaje recente de la clienți.
-                  </p>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-3xl font-bold">{projects.length}</div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Proiecte totale</p>
                 </CardContent>
               </Card>
-            </motion.div>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-purple-500" />
+                    Utilizatori
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-3xl font-bold">{users.length}</div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Clienți înregistrați</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                    Finalizare
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-3xl font-bold">{getCompletionRate()}%</div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Rata de finalizare</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-yellow-500" />
+                    Pagini
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <div className="text-3xl font-bold">{getAverageProjectSize()}</div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Media paginilor per proiect</p>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center">
+                    <LayoutDashboard className="h-5 w-5 mr-2 text-indigo-500" />
+                    Statistici proiecte
+                  </CardTitle>
+                  <CardDescription>Distribuția proiectelor după status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="h-64 flex items-center justify-center">
+                      <Skeleton className="h-48 w-48 rounded-full" />
+                    </div>
+                  ) : (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={statusData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            paddingAngle={5}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {statusData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-purple-500" />
+                    Tipuri de website
+                  </CardTitle>
+                  <CardDescription>Distribuția proiectelor după tip</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="h-64 flex items-center justify-center">
+                      <Skeleton className="h-48 w-full" />
+                    </div>
+                  ) : (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          layout="vertical"
+                          data={websiteTypeData}
+                          margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
+                        >
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={80} />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#6366F1" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Latest Projects */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <FolderKanban className="h-5 w-5 mr-2 text-blue-500" />
+                  Proiecte recente
+                </CardTitle>
+                <CardDescription>
+                  {filteredProjects.length} proiecte în total
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : filteredProjects.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredProjects.slice(0, 6).map((project) => (
+                      <ProjectCard key={project.id} project={project} onClick={() => navigate(`/project/${project.id}`)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <FolderKanban className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900">Nu există proiecte</h3>
+                    <p className="text-gray-500">Nu a fost găsit niciun proiect care să corespundă criteriilor de căutare.</p>
+                  </div>
+                )}
+                
+                {filteredProjects.length > 6 && (
+                  <div className="mt-6 text-center">
+                    <Button variant="outline" onClick={() => navigate('/projects')}>
+                      Vezi toate proiectele
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Users */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <UsersRound className="h-5 w-5 mr-2 text-green-500" />
+                  Utilizatori recenți
+                </CardTitle>
+                <CardDescription>
+                  {filteredUsers.length} utilizatori în total
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : filteredUsers.length > 0 ? (
+                  <div className="space-y-4">
+                    {filteredUsers.slice(0, 5).map((user) => (
+                      <motion.div
+                        key={user.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Avatar>
+                            <AvatarFallback>{user.name?.slice(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{user.name || "Utilizator"}</div>
+                            <div className="text-sm text-gray-500">{user.email}</div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          {user.isAdmin && (
+                            <Badge variant="outline" className="mb-1 text-purple-700 border-purple-200 bg-purple-50">
+                              Admin
+                            </Badge>
+                          )}
+                          <div className="flex space-x-2">
+                            {user.phone && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Phone className="h-4 w-4 text-gray-500" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Mail className="h-4 w-4 text-gray-500" />
+                            </Button>
+                            {user.company && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Building className="h-4 w-4 text-gray-500" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <UsersRound className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900">Nu există utilizatori</h3>
+                    <p className="text-gray-500">Nu a fost găsit niciun utilizator care să corespundă criteriilor de căutare.</p>
+                  </div>
+                )}
+                
+                {filteredUsers.length > 5 && (
+                  <div className="mt-6 text-center">
+                    <Button variant="outline" onClick={() => navigate('/users')}>
+                      Vezi toți utilizatorii
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </PageTransition>
       </main>

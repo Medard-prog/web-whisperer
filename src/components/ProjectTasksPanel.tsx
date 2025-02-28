@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, fetchProjectTasks } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ProjectTask } from "@/types";
+import { ProjectTask, mapProjectTask } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,9 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
         
       if (error) throw error;
       
-      setTasks(prev => prev ? [data as ProjectTask, ...prev] : [data as ProjectTask]);
+      // Use the mapper function to convert the snake_case response to camelCase
+      const mappedTask = mapProjectTask(data);
+      setTasks(prev => prev ? [mappedTask, ...prev] : [mappedTask]);
       setNewTaskTitle("");
       
       toast({
@@ -127,13 +129,12 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
       console.error('Error deleting task:', error);
       
       // Refetch tasks if there was an error
-      const { data } = await supabase
-        .from('project_tasks')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-        
-      setTasks(data as ProjectTask[] || []);
+      try {
+        const tasks = await fetchProjectTasks(projectId);
+        setTasks(tasks);
+      } catch (fetchError) {
+        console.error('Error refetching tasks:', fetchError);
+      }
       
       toast({
         variant: "destructive",

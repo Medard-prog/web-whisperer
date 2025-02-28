@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, fetchProjectTasks } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Project, ProjectTask } from "@/types";
+import { Project, ProjectTask, mapProject } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
 import ProjectTasksPanel from "@/components/ProjectTasksPanel";
@@ -39,21 +39,12 @@ const ProjectDetails = ({ isAdmin = false }: ProjectDetailsProps) => {
           throw error;
         }
         
-        setProject(data as Project);
+        setProject(mapProject(data));
         
         // If admin, fetch tasks
         if (isAdmin) {
-          const { data: tasksData, error: tasksError } = await supabase
-            .from('project_tasks')
-            .select('*')
-            .eq('project_id', id)
-            .order('created_at', { ascending: false });
-            
-          if (tasksError) {
-            throw tasksError;
-          }
-          
-          setTasks(tasksData as ProjectTask[]);
+          const projectTasks = await fetchProjectTasks(id);
+          setTasks(projectTasks);
         }
       } catch (error) {
         console.error('Error fetching project details:', error);
