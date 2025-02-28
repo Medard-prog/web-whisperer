@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Envelope, ArrowLeft, RefreshCcw } from "lucide-react";
+import { Mail, ArrowLeft, RefreshCcw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,7 +70,7 @@ const VerifyEmail = () => {
           <Card className="border-0 shadow-xl bg-card/95 backdrop-blur-sm">
             <CardHeader className="space-y-1">
               <div className="mx-auto bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mb-2">
-                <Envelope className="h-8 w-8 text-indigo-600" />
+                <Mail className="h-8 w-8 text-indigo-600" />
               </div>
               <CardTitle className="text-2xl font-bold text-center">Verifică-ți emailul</CardTitle>
               <CardDescription className="text-center">

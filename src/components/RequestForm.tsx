@@ -1,12 +1,13 @@
+
 import { useState } from "react";
-import { zodResolver } from "zod-form-data";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { submitProjectRequest } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowRight, CheckCircle, Circle, Loader2 } from "lucide-react";
+import { ArrowRight, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -37,7 +38,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Define the form schema
+// Define the form schema using regular zod instead of zod-form-data
 const formSchema = z.object({
   // Contact info
   name: z.string().min(2, { message: "Numele trebuie să aibă minim 2 caractere" }),
