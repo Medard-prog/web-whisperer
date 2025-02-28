@@ -12,32 +12,31 @@ interface RequireAuthProps {
 const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
-  const [localLoading, setLocalLoading] = useState(true);
+  const [initialCheck, setInitialCheck] = useState(true);
   
-  // Use effect to handle loading state with a timeout
+  // Effect to handle initial loading state
   useEffect(() => {
-    // If auth context is not loading anymore, update local state
+    // If auth context is no longer loading, mark initial check as complete
     if (!loading) {
-      setLocalLoading(false);
-      return;
+      setInitialCheck(false);
     }
     
     // Safety timeout to prevent infinite loading
     const timer = setTimeout(() => {
-      console.log("RequireAuth safety timeout triggered");
-      setLocalLoading(false);
-    }, 2000); // 2 seconds timeout is usually enough
+      setInitialCheck(false);
+    }, 2000);
     
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // Show loading screen with timeout only if both localLoading and context loading are true
-  if (localLoading && loading) {
+  // Show loading screen only during initial check
+  if (initialCheck && loading) {
     return <LoadingScreen isLoading={true} timeout={3000} message="Verificare autentificare..." />;
   }
 
   // Redirect to login if not authenticated
   if (!user) {
+    // Store the current location to redirect back after login
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 

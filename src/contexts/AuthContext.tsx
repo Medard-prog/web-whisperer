@@ -23,55 +23,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const [authCheckComplete, setAuthCheckComplete] = useState(false);
 
-  // Initialize auth state when component mounts
+  // Initialize and maintain auth state when component mounts
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         console.log("Initializing auth state...");
-        setLoading(true);
         
         // Get current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Error getting session:", error.message);
+          setLoading(false);
+          setAuthCheckComplete(true);
           return;
         }
         
         if (session) {
           console.log("Found existing session");
+          await fetchUserProfile(session.user.id);
+        } else {
+          console.log("No active session found");
+          setUser(null);
+          setLoading(false);
+          setAuthCheckComplete(true);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+        setLoading(false);
+        setAuthCheckComplete(true);
+      }
+    };
+    
+    // Helper function to fetch user profile
+    const fetchUserProfile = async (userId: string) => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
           
-          // Fetch user profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error("Error fetching profile:", profileError.message);
-          }
-            
-          // Set user state
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching profile:", error.message);
+          setUser(null);
+        } else {
           setUser({
-            id: session.user.id,
-            name: profile?.name || session.user.user_metadata?.name || '',
-            email: profile?.email || session.user.email || '',
+            id: userId,
+            name: profile?.name || '',
+            email: profile?.email || '',
             isAdmin: profile?.is_admin || false,
             phone: profile?.phone || '',
             company: profile?.company || '',
           });
-        } else {
-          console.log("No active session found");
-          setUser(null);
         }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-      } finally {
+        
         setLoading(false);
-        setInitialized(true);
+        setAuthCheckComplete(true);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setUser(null);
+        setLoading(false);
+        setAuthCheckComplete(true);
       }
     };
     
@@ -82,54 +97,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         console.log("Auth state changed:", event, session?.user?.id);
         
-        if (event === 'INITIAL_SESSION') {
-          // Skip processing, was handled by initializeAuth
-          return;
-        }
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (!session) return;
-          
-          try {
-            // Fetch user profile
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (profileError && profileError.code !== 'PGRST116') {
-              console.error("Error fetching profile:", profileError.message);
-            }
-            
-            // Set user state
-            setUser({
-              id: session.user.id,
-              name: profile?.name || session.user.user_metadata?.name || '',
-              email: profile?.email || session.user.email || '',
-              isAdmin: profile?.is_admin || false,
-              phone: profile?.phone || '',
-              company: profile?.company || '',
+        if (event === 'SIGNED_IN') {
+          if (session) {
+            await fetchUserProfile(session.user.id);
+            toast.success("Autentificare reușită", {
+              description: "Te-ai conectat cu succes!"
             });
-            
-            if (event === 'SIGNED_IN') {
-              toast.success("Autentificare reușită", {
-                description: "Te-ai conectat cu succes!"
-              });
-              
-              // Redirect to dashboard after sign in
-              navigate('/dashboard');
-            }
-          } catch (error) {
-            console.error("Error handling auth state change:", error);
-          } finally {
-            setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          setLoading(false);
           toast.success("Deconectare reușită", {
             description: "Te-ai deconectat cu succes."
           });
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Just update the session without a full profile refetch
+          if (session && user) {
+            console.log("Token refreshed, session updated");
+          }
+        } else if (event === 'USER_UPDATED') {
+          if (session) {
+            await fetchUserProfile(session.user.id);
+          }
         }
       }
     );
@@ -153,7 +142,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!data.user) throw new Error("No user returned from sign in");
       
-      // Auth state change listener will handle user state and redirect
+      // Fetch user profile to ensure we have the latest data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+        
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error("Error fetching profile:", profileError.message);
+      } else {
+        setUser({
+          id: data.user.id,
+          name: profile?.name || data.user.user_metadata?.name || '',
+          email: profile?.email || data.user.email || '',
+          isAdmin: profile?.is_admin || false,
+          phone: profile?.phone || '',
+          company: profile?.company || '',
+        });
+      }
+      
+      // Navigate to the right place
+      navigate(redirectPath || '/dashboard');
       
     } catch (error: any) {
       console.error("Sign in error:", error.message);
@@ -162,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     } finally {
-      // Note: We don't set loading to false here because the auth state change listener will do that
+      setLoading(false);
     }
   };
 
@@ -189,12 +199,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // If email confirmation is required
       if (!data.session) {
-        setLoading(false);
         navigate('/verify-email');
         return;
       }
       
-      // Auth state change listener will handle user state and redirect
+      // If email confirmation is not required, user is signed in
+      if (data.user) {
+        // Create or update the profile record
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            name,
+            email,
+          });
+          
+        if (profileError) {
+          console.error("Error creating profile:", profileError.message);
+        }
+        
+        setUser({
+          id: data.user.id,
+          name,
+          email,
+          isAdmin: false,
+          phone: '',
+          company: '',
+        });
+        
+        navigate(redirectPath || '/dashboard');
+      }
       
     } catch (error: any) {
       console.error("Sign up error:", error.message);
@@ -203,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     } finally {
-      // Note: We don't set loading to false here because the auth state change listener will do that
+      setLoading(false);
     }
   };
 
@@ -216,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) throw error;
       
-      // Auth state change listener will handle user state and redirect
+      setUser(null);
       navigate('/');
       
     } catch (error: any) {
@@ -300,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        loading: loading && initialized, // Only show loading state after initialization
+        loading: loading && !authCheckComplete,
         signIn,
         signUp,
         signOut,
