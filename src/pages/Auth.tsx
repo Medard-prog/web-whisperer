@@ -101,12 +101,6 @@ const Auth = () => {
                 }}
                 providers={[]}
                 redirectTo={`${window.location.origin}/auth/callback`}
-                onError={(error) => {
-                  console.error('Auth error:', error);
-                  toast.error('Eroare de autentificare', {
-                    description: error.message,
-                  });
-                }}
               />
             </CardContent>
           </Card>

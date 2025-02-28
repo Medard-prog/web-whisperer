@@ -1,728 +1,390 @@
 
 import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { submitProjectRequest } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { ArrowRight, CheckCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 
-// Define the form schema using regular zod instead of zod-form-data
 const formSchema = z.object({
-  // Contact info
   name: z.string().min(2, { message: "Numele trebuie să aibă minim 2 caractere" }),
-  email: z.string().email({ message: "Email invalid" }),
-  phone: z.string().optional(),
+  email: z.string().email({ message: "Adresa de email nu este validă" }),
+  phone: z.string().min(10, { message: "Numărul de telefon trebuie să aibă minim 10 caractere" }),
   company: z.string().optional(),
-  communication_preference: z.enum(["email", "phone", "whatsapp", "custom"], {
-    required_error: "Selectează o metodă de comunicare",
-  }),
-  custom_communication: z.string().optional(),
-
-  // Project details
-  project_type: z.enum(["website", "e-commerce", "application", "other"], {
-    required_error: "Selectează tipul de proiect",
-  }),
-  specific_type: z.string().optional(),
-  project_name: z.string().min(2, { message: "Numele proiectului trebuie să aibă minim 2 caractere" }),
+  projectName: z.string().min(2, { message: "Numele proiectului trebuie să aibă minim 2 caractere" }),
+  projectType: z.string({ required_error: "Selectează tipul proiectului" }),
   description: z.string().min(10, { message: "Descrierea trebuie să aibă minim 10 caractere" }),
-  business_goal: z.string().optional(),
-  target_audience: z.string().optional(),
-
-  // Budget and timeline
-  budget: z.enum(["small", "medium", "large", "custom"], {
-    required_error: "Selectează un buget",
-  }),
-  custom_budget: z.string().optional(),
-  timeline: z.enum(["urgent", "normal", "flexible", "custom"], {
-    required_error: "Selectează un termen",
-  }),
-  custom_timeline: z.string().optional(),
-
-  // Files
-  has_files: z.boolean().default(false),
-  file_description: z.string().optional(),
-
-  // Consent
-  newsletter_consent: z.boolean().default(false),
+  budget: z.string({ required_error: "Selectează bugetul estimat" }),
+  deadline: z.date().optional(),
+  features: z.array(z.string()).optional(),
+  terms: z.boolean().refine(val => val === true, { message: "Trebuie să fii de acord cu termenii și condițiile" }),
 });
 
-const RequestForm = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const projectTypes = [
+  { label: "Website", value: "website" },
+  { label: "Aplicație Web", value: "web_app" },
+  { label: "eCommerce", value: "ecommerce" },
+  { label: "Optimizare SEO", value: "seo" },
+  { label: "Altele", value: "other" },
+];
 
-  const totalSteps = 3;
+const budgetRanges = [
+  { label: "Sub 1,000 €", value: "under_1000" },
+  { label: "1,000 € - 3,000 €", value: "1000_3000" },
+  { label: "3,000 € - 5,000 €", value: "3000_5000" },
+  { label: "5,000 € - 10,000 €", value: "5000_10000" },
+  { label: "Peste 10,000 €", value: "over_10000" },
+];
 
-  // Initialize the form with default values
+const commonFeatures = [
+  { id: "responsive", label: "Design Responsive" },
+  { id: "seo", label: "Optimizare SEO" },
+  { id: "cms", label: "Sistem de Management al Conținutului" },
+  { id: "analytics", label: "Integrare Google Analytics" },
+  { id: "social", label: "Integrare cu Rețelele Sociale" },
+  { id: "payments", label: "Procesare Plăți" },
+];
+
+interface RequestFormProps {
+  onSubmit: (data: z.infer<typeof formSchema>) => void;
+  initialValues?: Partial<z.infer<typeof formSchema>>;
+}
+
+const RequestForm = ({ onSubmit, initialValues }: RequestFormProps) => {
+  const [open, setOpen] = useState(false);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: user?.name || "",
-      email: user?.email || "",
-      phone: user?.phone || "",
-      company: user?.company || "",
-      communication_preference: "email",
-      custom_communication: "",
-      project_type: "website",
-      specific_type: "",
-      project_name: "",
+      name: initialValues?.name || "",
+      email: initialValues?.email || "",
+      phone: initialValues?.phone || "",
+      company: initialValues?.company || "",
+      projectName: "",
+      projectType: "",
       description: "",
-      business_goal: "",
-      target_audience: "",
-      budget: "medium",
-      custom_budget: "",
-      timeline: "normal",
-      custom_timeline: "",
-      has_files: false,
-      file_description: "",
-      newsletter_consent: false,
+      budget: "",
+      features: [],
+      terms: false,
     },
   });
 
-  // Handle form submission
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsSubmitting(true);
-    
-    try {
-      // Add user_id if authenticated
-      const requestData = {
-        ...values,
-        user_id: user?.id,
-      };
-      
-      await submitProjectRequest(requestData);
-      
-      // Show success message
-      toast.success("Cerere trimisă cu succes!", {
-        description: "Te vom contacta în curând pe baza preferințelor tale."
-      });
-      
-      // Redirect to thank you page or dashboard
-      if (user) {
-        navigate("/dashboard");
-      } else {
-        navigate("/", { state: { requestSubmitted: true } });
-      }
-    } catch (error: any) {
-      console.error("Error submitting request:", error);
-      toast.error("Eroare la trimiterea cererii", {
-        description: error.message || "Te rugăm să încerci din nou."
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleSubmit = (data: z.infer<typeof formSchema>) => {
+    onSubmit(data);
   };
-
-  // Function to handle step navigation
-  const handleStepChange = async (direction: "next" | "prev") => {
-    if (direction === "next") {
-      // Validate only the fields in the current step
-      const fieldsToValidate = 
-        step === 1 
-          ? ["name", "email", "phone", "company", "communication_preference", "custom_communication"]
-          : step === 2
-          ? ["project_type", "specific_type", "project_name", "description", "business_goal", "target_audience"]
-          : ["budget", "custom_budget", "timeline", "custom_timeline", "has_files", "file_description"];
-      
-      const isValid = await form.trigger(fieldsToValidate as any);
-      
-      if (isValid) {
-        setStep(Math.min(step + 1, totalSteps));
-        window.scrollTo(0, 0);
-      }
-    } else {
-      setStep(Math.max(step - 1, 1));
-      window.scrollTo(0, 0);
-    }
-  };
-
-  // Render steps indicators
-  const renderStepIndicators = () => (
-    <div className="flex justify-center mb-6">
-      {Array.from({ length: totalSteps }).map((_, index) => (
-        <div key={index} className="flex items-center">
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full ${
-              step > index + 1
-                ? "bg-green-100 text-green-600"
-                : step === index + 1
-                ? "bg-indigo-100 text-indigo-600"
-                : "bg-gray-100 text-gray-400"
-            }`}
-          >
-            {step > index + 1 ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <span>{index + 1}</span>
-            )}
-          </div>
-          {index < totalSteps - 1 && (
-            <div
-              className={`w-10 h-1 ${
-                step > index + 1 ? "bg-green-200" : "bg-gray-200"
-              }`}
-            ></div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
 
   return (
-    <Card className="border-0 shadow-xl">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">Solicită o ofertă</CardTitle>
-        <CardDescription>
-          Completează formularul și vom reveni cu o ofertă personalizată.
-        </CardDescription>
-        {renderStepIndicators()}
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Step 1: Contact Information */}
-            {step === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Informații de contact</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nume complet <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input placeholder="email@example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Telefon</FormLabel>
-                        <FormControl>
-                          <Input placeholder="+40 xxx xxx xxx" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="company"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Companie</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Numele companiei" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="communication_preference"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        Metoda preferată de comunicare <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="email" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Email
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="phone" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Telefon
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="whatsapp" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              WhatsApp
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="custom" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Altă metodă (specifică mai jos)
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {form.watch("communication_preference") === "custom" && (
-                  <FormField
-                    control={form.control}
-                    name="custom_communication"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Specifică metoda de comunicare</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Ex: Skype, Telegram, etc."
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+    <Card className="p-6 bg-white shadow-md">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nume complet</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nume și prenume" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="exemplu@email.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefon</FormLabel>
+                  <FormControl>
+                    <Input placeholder="+40 712 345 678" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Companie (opțional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Numele companiei" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="border-t pt-6 mt-6">
+            <h3 className="text-lg font-medium mb-4">Detalii Proiect</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="projectName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numele Proiectului</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Numele proiectului tău" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-            )}
-
-            {/* Step 2: Project Details */}
-            {step === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Detalii proiect</h3>
-                <FormField
-                  control={form.control}
-                  name="project_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipul proiectului <span className="text-red-500">*</span></FormLabel>
-                      <Select
+              />
+              
+              <FormField
+                control={form.control}
+                name="projectType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipul Proiectului</FormLabel>
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between"
+                          >
+                            {field.value
+                              ? projectTypes.find((type) => type.value === field.value)?.label
+                              : "Selectează tipul proiectului"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Caută tipul proiectului..." />
+                          <CommandEmpty>Nu a fost găsit niciun tip de proiect.</CommandEmpty>
+                          <CommandGroup>
+                            {projectTypes.map((type) => (
+                              <CommandItem
+                                key={type.value}
+                                value={type.value}
+                                onSelect={(currentValue) => {
+                                  form.setValue("projectType", currentValue);
+                                  setOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === type.value ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {type.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="mt-4">
+                  <FormLabel>Descrierea Proiectului</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Descrie în detaliu proiectul tău, specificând funcționalitățile și obiectivele dorite..."
+                      className="min-h-[120px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <FormField
+                control={form.control}
+                name="budget"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Buget Estimat</FormLabel>
+                    <FormControl>
+                      <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        className="flex flex-col space-y-1"
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selectează tipul de proiect" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="website">Website</SelectItem>
-                          <SelectItem value="e-commerce">
-                            Magazin online
-                          </SelectItem>
-                          <SelectItem value="application">Aplicație</SelectItem>
-                          <SelectItem value="other">Altul</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {form.watch("project_type") === "other" && (
-                  <FormField
-                    control={form.control}
-                    name="specific_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Specifică tipul de proiect</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                        {budgetRanges.map((range) => (
+                          <div key={range.value} className="flex items-center space-x-2">
+                            <RadioGroupItem value={range.value} id={range.value} />
+                            <FormLabel htmlFor={range.value} className="font-normal cursor-pointer">
+                              {range.label}
+                            </FormLabel>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <FormField
-                  control={form.control}
-                  name="project_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Numele proiectului <span className="text-red-500">*</span></FormLabel>
-                      <FormControl>
-                        <Input placeholder="WebCraft Project" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrierea proiectului <span className="text-red-500">*</span></FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descrie pe scurt ce dorești să realizezi..."
-                          className="min-h-[120px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Include detalii despre funcționalitățile dorite și cerințele specifice.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="business_goal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Obiectivul de afaceri</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Ce dorești să obții cu ajutorul acestui proiect?"
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Explică cum va ajuta acest proiect afacerea sau organizația ta.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="target_audience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Publicul țintă</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex: Tineri profesioniști, 25-40 ani"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Descrie cine sunt utilizatorii finali ai produsului tău.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 3: Budget and Timeline */}
-            {step === 3 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Buget și termen</h3>
-                <FormField
-                  control={form.control}
-                  name="budget"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        Buget estimat <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="small" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Mic (sub 1.000€)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="medium" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Mediu (1.000€ - 5.000€)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="large" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Mare (peste 5.000€)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="custom" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Personalizat (specifică mai jos)
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {form.watch("budget") === "custom" && (
-                  <FormField
-                    control={form.control}
-                    name="custom_budget"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Specifică bugetul</FormLabel>
+              />
+              
+              <FormField
+                control={form.control}
+                name="deadline"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Termen Limită (opțional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                          <Input placeholder="Ex: Flexibil, 7.000€, etc." {...field} />
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PP")
+                            ) : (
+                              <span>Selectează o dată</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                <FormField
-                  control={form.control}
-                  name="timeline"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        Termen de implementare <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="urgent" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Urgent (sub 1 lună)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="normal" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Normal (1-3 luni)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="flexible" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Flexibil (peste 3 luni)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="custom" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Personalizat (specifică mai jos)
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {form.watch("timeline") === "custom" && (
-                  <FormField
-                    control={form.control}
-                    name="custom_timeline"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Specifică termenul</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Ex: 2 săptămâni, depinde de etc."
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                <FormField
-                  control={form.control}
-                  name="has_files"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
                         />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Am fișiere sau documente relevante</FormLabel>
-                        <FormDescription>
-                          Schiţe, specificații, design-uri, exemple, referințe
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                {form.watch("has_files") && (
-                  <FormField
-                    control={form.control}
-                    name="file_description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrie fișierele disponibile</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Descrie ce fișiere ai și cum pot ajuta la realizarea proiectului..."
-                            className="min-h-[100px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Vom organiza un mod de transfer al fișierelor după trimiterea cererii.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <FormField
-                  control={form.control}
-                  name="newsletter_consent"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Abonează-mă la newsletter</FormLabel>
-                        <FormDescription>
-                          Primește sfaturi, noutăți și oferte speciale. Te poți dezabona oricând.
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-4">
-              {step > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleStepChange("prev")}
-                >
-                  Înapoi
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/")}
-                >
-                  Anulează
-                </Button>
-              )}
-
-              {step < totalSteps ? (
-                <Button
-                  type="button"
-                  onClick={() => handleStepChange("next")}
-                >
-                  Continuă
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Se trimite...
-                    </>
-                  ) : (
-                    "Trimite cererea"
-                  )}
-                </Button>
-              )}
+              />
             </div>
-          </form>
-        </Form>
-      </CardContent>
-      <CardFooter className="flex flex-col">
-        <p className="text-sm text-gray-500 mt-4">
-          * Câmpurile marcate cu <span className="text-red-500">*</span> sunt obligatorii
-        </p>
-      </CardFooter>
+            
+            <FormField
+              control={form.control}
+              name="features"
+              render={() => (
+                <FormItem className="mt-4">
+                  <div className="mb-2">
+                    <FormLabel>Funcționalități (opțional)</FormLabel>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {commonFeatures.map((feature) => (
+                      <FormField
+                        key={feature.id}
+                        control={form.control}
+                        name="features"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={feature.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(feature.id)}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = field.value || [];
+                                    if (checked) {
+                                      form.setValue("features", [...currentValues, feature.id]);
+                                    } else {
+                                      form.setValue(
+                                        "features",
+                                        currentValues.filter((value) => value !== feature.id)
+                                      );
+                                    }
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer">
+                                {feature.label}
+                              </FormLabel>
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <FormField
+            control={form.control}
+            name="terms"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 mt-6">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="font-normal">
+                    Sunt de acord cu termenii și condițiile și politica de confidențialitate
+                  </FormLabel>
+                  <FormMessage />
+                </div>
+              </FormItem>
+            )}
+          />
+          
+          <Button type="submit" className="w-full md:w-auto">
+            Trimite Cererea
+          </Button>
+        </form>
+      </Form>
     </Card>
   );
 };
