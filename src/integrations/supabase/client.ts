@@ -68,3 +68,16 @@ export async function fetchProjectNotes(projectId: string): Promise<ProjectNote[
   
   return (data || []).map(mapProjectNote);
 }
+
+// Helper function to submit a project request
+export async function submitProjectRequest(requestData: any) {
+  const { data, error } = await supabase
+    .from('project_requests')
+    .insert(requestData);
+    
+  if (error) {
+    throw error;
+  }
+  
+  return data;
+}

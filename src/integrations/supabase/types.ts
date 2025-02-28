@@ -106,6 +106,87 @@ export type Database = {
           },
         ]
       }
+      project_requests: {
+        Row: {
+          budget: string
+          business_goal: string | null
+          communication_preference: string
+          company: string | null
+          created_at: string | null
+          custom_budget: string | null
+          custom_communication: string | null
+          custom_timeline: string | null
+          description: string
+          email: string
+          file_description: string | null
+          file_urls: string[] | null
+          has_files: boolean | null
+          id: string
+          name: string
+          newsletter_consent: boolean | null
+          phone: string | null
+          project_name: string
+          project_type: string
+          specific_type: string | null
+          status: string | null
+          target_audience: string | null
+          timeline: string
+          user_id: string | null
+        }
+        Insert: {
+          budget: string
+          business_goal?: string | null
+          communication_preference: string
+          company?: string | null
+          created_at?: string | null
+          custom_budget?: string | null
+          custom_communication?: string | null
+          custom_timeline?: string | null
+          description: string
+          email: string
+          file_description?: string | null
+          file_urls?: string[] | null
+          has_files?: boolean | null
+          id?: string
+          name: string
+          newsletter_consent?: boolean | null
+          phone?: string | null
+          project_name: string
+          project_type: string
+          specific_type?: string | null
+          status?: string | null
+          target_audience?: string | null
+          timeline: string
+          user_id?: string | null
+        }
+        Update: {
+          budget?: string
+          business_goal?: string | null
+          communication_preference?: string
+          company?: string | null
+          created_at?: string | null
+          custom_budget?: string | null
+          custom_communication?: string | null
+          custom_timeline?: string | null
+          description?: string
+          email?: string
+          file_description?: string | null
+          file_urls?: string[] | null
+          has_files?: boolean | null
+          id?: string
+          name?: string
+          newsletter_consent?: boolean | null
+          phone?: string | null
+          project_name?: string
+          project_type?: string
+          specific_type?: string | null
+          status?: string | null
+          target_audience?: string | null
+          timeline?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       project_tasks: {
         Row: {
           created_at: string | null

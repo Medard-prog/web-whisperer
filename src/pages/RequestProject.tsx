@@ -22,7 +22,7 @@ import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import WavyBackground from "@/components/WavyBackground";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { ArrowLeft, ArrowRight, Upload, X, Check, FileText, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X, Check, FileText, User, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -230,8 +230,8 @@ const RequestProject = () => {
       }
 
       // Save project request to the database
-      const { error } = await supabase.from('project_requests').insert({
-        user_id: user?.id, // null if not logged in
+      const requestData = {
+        user_id: user?.id || null, // null if not logged in
         project_type: data.projectType,
         specific_type: data.specificType,
         budget: data.budget,
@@ -251,9 +251,10 @@ const RequestProject = () => {
         has_files: data.hasFiles && files.length > 0,
         file_description: data.fileDescription,
         file_urls: fileUrls.length > 0 ? fileUrls : null,
-        newsletter_consent: data.newsletter,
-        status: 'new',
-      });
+        newsletter_consent: data.newsletter
+      };
+
+      const { error } = await supabase.from('project_requests').insert(requestData);
 
       if (error) {
         console.error('Error saving project request:', error);
@@ -1121,7 +1122,7 @@ const RequestProject = () => {
                               <FormControl>
                                 <Checkbox
                                   checked={field.value}
-                                  onCheckedChange={field.onChange}
+                                  onCheckedChange={field.onChange as (checked: boolean) => void}
                                 />
                               </FormControl>
                               <div className="space-y-1 leading-none">
