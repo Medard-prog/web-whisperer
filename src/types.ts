@@ -15,6 +15,12 @@ export interface Project {
   hasCMS?: boolean;
   hasSEO?: boolean;
   hasMaintenance?: boolean;
+  // Adding missing properties that AdminDashboard.tsx is looking for
+  websiteType?: string;
+  pageCount?: number;
+  designComplexity?: string;
+  exampleUrls?: string[];
+  additionalInfo?: string;
 }
 
 export interface ProjectTask {
@@ -60,6 +66,12 @@ export function mapProject(data: any): Project {
     hasCMS: data.has_cms,
     hasSEO: data.has_seo,
     hasMaintenance: data.has_maintenance,
+    // Adding mapping for the additional fields
+    websiteType: data.website_type,
+    pageCount: data.page_count,
+    designComplexity: data.design_complexity,
+    exampleUrls: data.example_urls,
+    additionalInfo: data.additional_info
   };
 }
 

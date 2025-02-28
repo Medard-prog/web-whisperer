@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,16 +38,25 @@ const RequestProject = () => {
   
   const handleSubmit = async (formData: RequestFormValues) => {
     try {
-      // Add the user_id if the user is logged in
+      // Map our form data to match the Supabase project_requests table structure
       const requestData = {
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        project_name: formData.projectName,
+        project_type: formData.projectType,
+        description: formData.description,
+        budget: formData.budget || "medium",
+        timeline: "2-3 months", // Default timeline
+        communication_preference: "email", // Default communication preference
         user_id: user?.id,
         status: 'new'
       };
       
       const { data, error } = await supabase
         .from('project_requests')
-        .insert([requestData]);
+        .insert(requestData);
         
       if (error) {
         throw error;
