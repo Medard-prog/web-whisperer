@@ -1,10 +1,11 @@
 
+import { ReactNode, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Skeleton } from "@/components/ui/skeleton";
+import LoadingScreen from "./LoadingScreen";
 
 interface RequireAuthProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requireAdmin?: boolean;
 }
 
@@ -12,30 +13,22 @@ const RequireAuth = ({ children, requireAdmin = false }: RequireAuthProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  // Show loading screen while checking auth state
   if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="w-full max-w-md space-y-4 p-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-3/4 mx-auto" />
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
+  // Redirect to login if not authenticated
   if (!user) {
-    // Redirect to the login page if not authenticated
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Check admin requirement
+  // Check for admin access if required
   if (requireAdmin && !user.isAdmin) {
-    // Redirect to user dashboard if user is not an admin
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/dashboard" replace />;
   }
 
+  // User is authenticated and meets admin requirements, show the protected content
   return <>{children}</>;
 };
 

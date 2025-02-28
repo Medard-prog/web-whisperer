@@ -9,7 +9,204 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_admin: boolean | null
+          project_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          project_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          project_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          is_admin: boolean | null
+          name: string | null
+          phone: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id: string
+          is_admin?: boolean | null
+          name?: string | null
+          phone?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_admin?: boolean | null
+          name?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      project_notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          project_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          project_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_tasks: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean | null
+          project_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          project_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          project_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          additional_info: string | null
+          created_at: string | null
+          description: string | null
+          design_complexity: string | null
+          due_date: string | null
+          example_urls: string[] | null
+          has_cms: boolean | null
+          has_ecommerce: boolean | null
+          has_maintenance: boolean | null
+          has_seo: boolean | null
+          id: string
+          page_count: number | null
+          price: number | null
+          status: string | null
+          title: string
+          user_id: string | null
+          website_type: string | null
+        }
+        Insert: {
+          additional_info?: string | null
+          created_at?: string | null
+          description?: string | null
+          design_complexity?: string | null
+          due_date?: string | null
+          example_urls?: string[] | null
+          has_cms?: boolean | null
+          has_ecommerce?: boolean | null
+          has_maintenance?: boolean | null
+          has_seo?: boolean | null
+          id?: string
+          page_count?: number | null
+          price?: number | null
+          status?: string | null
+          title: string
+          user_id?: string | null
+          website_type?: string | null
+        }
+        Update: {
+          additional_info?: string | null
+          created_at?: string | null
+          description?: string | null
+          design_complexity?: string | null
+          due_date?: string | null
+          example_urls?: string[] | null
+          has_cms?: boolean | null
+          has_ecommerce?: boolean | null
+          has_maintenance?: boolean | null
+          has_seo?: boolean | null
+          id?: string
+          page_count?: number | null
+          price?: number | null
+          status?: string | null
+          title?: string
+          user_id?: string | null
+          website_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
