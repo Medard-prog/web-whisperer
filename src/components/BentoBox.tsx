@@ -5,12 +5,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
-interface BentoProps {
-  className?: string;
-  items: BentoItem[];
-}
-
-interface BentoItem {
+export interface BentoItem {
   id: string;
   title: string;
   description: string;
@@ -21,6 +16,11 @@ interface BentoItem {
   technologies?: string[];
   link?: string;
   size?: "sm" | "md" | "lg" | "xl";
+}
+
+interface BentoProps {
+  className?: string;
+  items: BentoItem[];
 }
 
 const BentoBox: React.FC<BentoProps> = ({ className, items }) => {
@@ -71,7 +71,7 @@ const BentoBox: React.FC<BentoProps> = ({ className, items }) => {
 
           <div className="relative z-10 flex h-full flex-col justify-end p-6">
             {item.category && (
-              <span className="mb-2 inline-block rounded-full bg-brand-500 px-3 py-1 text-xs text-white">
+              <span className="mb-2 inline-block rounded-full bg-purple-500 px-3 py-1 text-xs text-white">
                 {item.category}
               </span>
             )}
@@ -79,7 +79,7 @@ const BentoBox: React.FC<BentoProps> = ({ className, items }) => {
             <p className="mt-2 text-sm text-white/80">{item.description}</p>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 z-10 h-0 overflow-hidden transition-all duration-300 group-hover:h-12 bg-brand-500/80 flex items-center justify-center">
+          <div className="absolute bottom-0 left-0 right-0 z-10 h-0 overflow-hidden transition-all duration-300 group-hover:h-12 bg-purple-500/80 flex items-center justify-center">
             <p className="text-white font-medium">Vezi detalii</p>
           </div>
         </motion.div>
@@ -99,7 +99,7 @@ const BentoBox: React.FC<BentoProps> = ({ className, items }) => {
             </div>
             <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
               {selectedItem?.category && (
-                <span className="mr-2 inline-block rounded-full bg-brand-500 px-3 py-1 text-xs text-white">
+                <span className="mr-2 inline-block rounded-full bg-purple-500 px-3 py-1 text-xs text-white">
                   {selectedItem.category}
                 </span>
               )}
@@ -155,7 +155,7 @@ const BentoBox: React.FC<BentoProps> = ({ className, items }) => {
                   href={selectedItem.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block rounded-lg bg-brand-500 px-4 py-2 text-white transition-colors hover:bg-brand-600"
+                  className="inline-block rounded-lg bg-purple-500 px-4 py-2 text-white transition-colors hover:bg-purple-600"
                 >
                   Vizitează website
                 </a>
