@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Clock, Calendar, MessageCircle, Eye } from "lucide-react";
+import { Clock, Calendar, MessageCircle, Eye, ArrowRight, FileEdit } from "lucide-react";
+import { motion } from "framer-motion";
+import { formatDate, formatPrice } from "@/lib/utils";
 
 export interface ProjectCardProps {
   id: string;
@@ -40,71 +42,80 @@ const ProjectCard = ({
   };
 
   return (
-    <Card className="overflow-hidden hover-card-effect h-full">
-      {image && (
-        <div className="h-48 overflow-hidden">
-          <img 
-            src={image} 
-            alt={title} 
-            className="w-full h-full object-cover object-center transition-transform duration-500 hover:scale-105"
-          />
-        </div>
-      )}
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start mb-2">
-          <Badge variant="outline" className={`${statusMap[status].color}`}>
-            {statusMap[status].label}
-          </Badge>
-          {price && (
-            <div className="text-lg font-semibold text-gray-900">{price.toLocaleString()} RON</div>
-          )}
-        </div>
-        <CardTitle className="text-xl line-clamp-1">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <CardDescription className="text-gray-600 mb-4 line-clamp-2">
-          {description}
-        </CardDescription>
-        <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-          <div className="flex items-center">
-            <Calendar className="h-4 w-4 mr-1" />
-            <span>{date}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
+    >
+      <Card className="overflow-hidden border-2 h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        {image && (
+          <div className="h-48 overflow-hidden">
+            <img 
+              src={image} 
+              alt={title} 
+              className="w-full h-full object-cover object-center transition-transform duration-500 hover:scale-105"
+            />
           </div>
-          {dueDate && (
+        )}
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-start mb-2">
+            <Badge variant="outline" className={`${statusMap[status].color}`}>
+              {statusMap[status].label}
+            </Badge>
+            {price && (
+              <div className="text-lg font-semibold text-gray-900">{formatPrice(price)}</div>
+            )}
+          </div>
+          <CardTitle className="text-xl line-clamp-1">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <CardDescription className="text-gray-600 mb-4 line-clamp-2">
+            {description}
+          </CardDescription>
+          <div className="flex flex-wrap gap-3 text-sm text-gray-500">
             <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              <span>Termen: {dueDate}</span>
+              <Calendar className="h-4 w-4 mr-1" />
+              <span>{formatDate(date)}</span>
             </div>
-          )}
-          <div className="flex items-center">
-            <MessageCircle className="h-4 w-4 mr-1" />
-            <span>{messagesCount} mesaje</span>
+            {dueDate && (
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>Termen: {formatDate(dueDate)}</span>
+              </div>
+            )}
+            <div className="flex items-center">
+              <MessageCircle className="h-4 w-4 mr-1" />
+              <span>{messagesCount} mesaje</span>
+            </div>
           </div>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between gap-3">
-        <Link to={`/${isAdmin ? 'admin' : 'dashboard'}/projects/${id}`} className="w-full">
-          <Button variant="outline" className="w-full">
-            <Eye className="h-4 w-4 mr-2" /> 
-            Vizualizează
-          </Button>
-        </Link>
-        {isAdmin && (
-          <Link to={`/admin/projects/${id}/edit`} className="w-full">
-            <Button className="w-full">
-              Gestionează
+        </CardContent>
+        <CardFooter className="flex justify-between gap-3">
+          <Link to={`/${isAdmin ? 'admin' : 'dashboard'}/projects/${id}`} className="w-full">
+            <Button variant="outline" className="w-full group">
+              <Eye className="h-4 w-4 mr-2 group-hover:text-brand-500" /> 
+              <span>Vizualizează</span>
+              <ArrowRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
             </Button>
           </Link>
-        )}
-        {!isAdmin && status === "pending" && (
-          <Link to={`/dashboard/projects/${id}/pay`} className="w-full">
-            <Button className="w-full">
-              Plătește
-            </Button>
-          </Link>
-        )}
-      </CardFooter>
-    </Card>
+          {isAdmin && (
+            <Link to={`/admin/projects/${id}/edit`} className="w-full">
+              <Button className="w-full bg-brand-600 hover:bg-brand-700">
+                <FileEdit className="h-4 w-4 mr-2" />
+                Gestionează
+              </Button>
+            </Link>
+          )}
+          {!isAdmin && status === "pending" && (
+            <Link to={`/dashboard/projects/${id}/pay`} className="w-full">
+              <Button className="w-full bg-brand-600 hover:bg-brand-700">
+                Plătește
+              </Button>
+            </Link>
+          )}
+        </CardFooter>
+      </Card>
+    </motion.div>
   );
 };
 
