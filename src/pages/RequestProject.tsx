@@ -246,7 +246,7 @@ const RequestProject = () => {
                     </CardDescription>
                   </div>
                   <div className="hidden md:block">
-                    <formSteps[currentStep].icon className="h-8 w-8 text-brand-500" />
+                    {React.createElement(formSteps[currentStep].icon, { className: "h-8 w-8 text-brand-500" })}
                   </div>
                 </div>
                 <div className="mt-4">
