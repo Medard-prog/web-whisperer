@@ -128,7 +128,7 @@ const Settings = () => {
                           <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input placeholder="Email" {...field} />
+                              <Input placeholder="Email" {...field} disabled />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -193,7 +193,7 @@ const Settings = () => {
                 
                 <Button
                   variant="outline"
-                  onClick={() => window.location.href = '/reset-password'}
+                  onClick={() => window.location.href = '/auth?type=reset-password'}
                 >
                   Resetează parola
                 </Button>

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import RequireAuth from "@/components/RequireAuth";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
+import AuthCallback from "@/pages/AuthCallback";
 import RequestProject from "@/pages/RequestProject";
 import NotFound from "@/pages/NotFound";
 import Dashboard from "@/pages/Dashboard";
@@ -24,6 +25,7 @@ function App() {
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/request" element={<RequestProject />} />
           
