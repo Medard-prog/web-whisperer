@@ -1,183 +1,146 @@
 
 import React, { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 
-export interface BentoItemProps {
-  id: string | number;
+interface BentoProps {
+  className?: string;
+  items: BentoItem[];
+}
+
+interface BentoItem {
+  id: string;
   title: string;
   description: string;
   image: string;
-  category: string;
-  fullDescription?: string;
+  category?: string;
+  detailedDescription?: string;
+  gallery?: string[];
   technologies?: string[];
-  galleryImages?: string[];
   link?: string;
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
-interface BentoBoxProps {
-  items: BentoItemProps[];
-  className?: string;
-}
+const BentoBox: React.FC<BentoProps> = ({ className, items }) => {
+  const [selectedItem, setSelectedItem] = useState<BentoItem | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-const BentoBox: React.FC<BentoBoxProps> = ({ items, className = "" }) => {
-  const [selectedItem, setSelectedItem] = useState<BentoItemProps | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // Handle the dialog opening
-  const handleItemClick = (item: BentoItemProps) => {
+  const handleItemClick = (item: BentoItem) => {
     setSelectedItem(item);
-    setCurrentImageIndex(0);
+    setIsDialogOpen(true);
   };
 
-  // Handle gallery navigation
-  const nextImage = () => {
-    if (!selectedItem?.galleryImages) return;
-    setCurrentImageIndex((prev) => 
-      prev === selectedItem.galleryImages!.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const prevImage = () => {
-    if (!selectedItem?.galleryImages) return;
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? selectedItem.galleryImages!.length - 1 : prev - 1
-    );
-  };
-
-  // Define column spans for different items to create an interesting layout
-  const getSpan = (index: number) => {
-    // First item spans 2 columns and 2 rows
-    if (index === 0) return "md:col-span-2 md:row-span-2";
-    // Every 3rd item (after the first) spans 2 columns
-    if ((index - 1) % 3 === 0) return "md:col-span-2";
-    // Every 5th item spans 2 rows
-    if ((index) % 5 === 0) return "md:row-span-2";
-    // Default is 1 column, 1 row
-    return "";
+  const closeDialog = () => {
+    setIsDialogOpen(false);
   };
 
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${className}`}>
-      {items.map((item, index) => (
+    <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full", className)}>
+      {items.map((item) => (
         <motion.div
           key={item.id}
-          className={`group overflow-hidden rounded-xl ${getSpan(index)} relative cursor-pointer bg-white shadow-md hover:shadow-xl transition-all duration-300`}
           onClick={() => handleItemClick(item)}
-          whileHover={{ y: -5 }}
+          className={cn(
+            "group relative overflow-hidden rounded-xl bg-neutral-50 dark:bg-neutral-900 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer",
+            {
+              "col-span-1 row-span-1": item.size === "sm" || !item.size,
+              "col-span-1 md:col-span-2 row-span-1": item.size === "md",
+              "col-span-1 row-span-2": item.size === "lg",
+              "col-span-1 md:col-span-2 row-span-2": item.size === "xl",
+            }
+          )}
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: index * 0.1 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ 
+            duration: 0.3,
+            delay: Math.random() * 0.3 
+          }}
+          whileHover={{ y: -5 }}
         >
-          <div className="aspect-video w-full h-full overflow-hidden">
-            <img 
-              src={item.image} 
-              alt={item.title} 
-              className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+          <div className="absolute inset-0">
+            <img
+              src={item.image}
+              alt={item.title}
+              className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
-              <h3 className="text-white text-lg md:text-xl font-bold transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">{item.title}</h3>
-              <p className="text-white/80 text-sm md:text-base mt-2 line-clamp-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 delay-75">{item.description}</p>
-            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          </div>
+
+          <div className="relative z-10 flex h-full flex-col justify-end p-6">
+            {item.category && (
+              <span className="mb-2 inline-block rounded-full bg-brand-500 px-3 py-1 text-xs text-white">
+                {item.category}
+              </span>
+            )}
+            <h3 className="text-xl font-bold text-white">{item.title}</h3>
+            <p className="mt-2 text-sm text-white/80">{item.description}</p>
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 z-10 h-0 overflow-hidden transition-all duration-300 group-hover:h-12 bg-brand-500/80 flex items-center justify-center">
+            <p className="text-white font-medium">Vezi detalii</p>
           </div>
         </motion.div>
       ))}
 
-      {/* Project Details Dialog */}
-      <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="sm:max-w-3xl">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">{selectedItem?.title}</DialogTitle>
-            <DialogDescription className="text-brand-600">
-              {selectedItem?.category.charAt(0).toUpperCase() + selectedItem?.category.slice(1)}
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-2xl">{selectedItem?.title}</DialogTitle>
+              <button
+                onClick={closeDialog}
+                className="rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+              {selectedItem?.category && (
+                <span className="mr-2 inline-block rounded-full bg-brand-500 px-3 py-1 text-xs text-white">
+                  {selectedItem.category}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
 
-          {/* Image Gallery */}
-          {selectedItem?.galleryImages && selectedItem.galleryImages.length > 0 ? (
-            <div className="relative aspect-video overflow-hidden rounded-lg mb-4">
-              <img
-                src={selectedItem.galleryImages[currentImageIndex] || selectedItem.image}
-                alt={`${selectedItem.title} gallery image ${currentImageIndex + 1}`}
-                className="w-full h-full object-cover object-center"
-              />
-              
-              {selectedItem.galleryImages.length > 1 && (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70 rounded-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      prevImage();
-                    }}
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70 rounded-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      nextImage();
-                    }}
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </Button>
-                  
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1">
-                    {selectedItem.galleryImages.map((_, idx) => (
-                      <span 
-                        key={idx} 
-                        className={`w-2 h-2 rounded-full ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="aspect-video rounded-lg overflow-hidden mb-4">
-              <img 
-                src={selectedItem?.image} 
-                alt={selectedItem?.title} 
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-          )}
-
-          {/* Project Details */}
-          <div className="space-y-4">
-            {selectedItem?.fullDescription && (
-              <div>
-                <h4 className="text-lg font-semibold mb-2">Descriere</h4>
-                <p className="text-gray-700">{selectedItem.fullDescription}</p>
+          <div className="mt-4 space-y-6">
+            {selectedItem?.gallery && selectedItem.gallery.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedItem.gallery.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`${selectedItem.title} - Image ${index + 1}`}
+                    className="rounded-lg object-cover w-full aspect-video"
+                  />
+                ))}
               </div>
+            ) : (
+              <img
+                src={selectedItem?.image}
+                alt={selectedItem?.title}
+                className="rounded-lg object-cover w-full aspect-video"
+              />
             )}
-            
+
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Descriere</h3>
+              <p className="text-gray-700 dark:text-gray-300">
+                {selectedItem?.detailedDescription || selectedItem?.description}
+              </p>
+            </div>
+
             {selectedItem?.technologies && selectedItem.technologies.length > 0 && (
-              <div>
-                <h4 className="text-lg font-semibold mb-2">Tehnologii</h4>
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Tehnologii</h3>
                 <div className="flex flex-wrap gap-2">
-                  {selectedItem.technologies.map((tech, idx) => (
-                    <span 
-                      key={idx} 
-                      className="inline-block px-3 py-1 rounded-full bg-brand-100 text-brand-700 text-sm font-medium"
+                  {selectedItem.technologies.map((tech, index) => (
+                    <span
+                      key={index}
+                      className="rounded-full bg-gray-100 dark:bg-gray-800 px-3 py-1 text-sm"
                     >
                       {tech}
                     </span>
@@ -185,20 +148,20 @@ const BentoBox: React.FC<BentoBoxProps> = ({ items, className = "" }) => {
                 </div>
               </div>
             )}
-          </div>
 
-          {/* External Link */}
-          {selectedItem?.link && (
-            <div className="mt-4 flex justify-end">
-              <Button 
-                variant="outline"
-                onClick={() => window.open(selectedItem.link, '_blank')}
-                className="flex items-center gap-2"
-              >
-                Vizitează site-ul <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+            {selectedItem?.link && (
+              <div className="pt-4">
+                <a
+                  href={selectedItem.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-lg bg-brand-500 px-4 py-2 text-white transition-colors hover:bg-brand-600"
+                >
+                  Vizitează website
+                </a>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -206,4 +169,3 @@ const BentoBox: React.FC<BentoBoxProps> = ({ items, className = "" }) => {
 };
 
 export default BentoBox;
-export type { BentoItemProps };

@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import ProjectDetails from "./pages/ProjectDetails";
+import RequestProject from "./pages/RequestProject";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/project/:id" element={<ProjectDetails />} />
+            <Route path="/request-project" element={<RequestProject />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
