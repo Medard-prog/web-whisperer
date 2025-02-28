@@ -32,7 +32,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
+import React from "react";
 
 interface NavItem {
   title: string;
@@ -88,7 +89,7 @@ const companyItems: NavItem[] = [
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -187,7 +188,7 @@ const Navbar = () => {
               </NavigationMenuItem>
 
               <NavigationMenuItem>
-                <Link to="/pricing" legacyBehavior passHref>
+                <Link to="/pricing">
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     Prețuri
                   </NavigationMenuLink>
@@ -195,7 +196,7 @@ const Navbar = () => {
               </NavigationMenuItem>
 
               <NavigationMenuItem>
-                <Link to="/contact" legacyBehavior passHref>
+                <Link to="/contact">
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     Contact
                   </NavigationMenuLink>

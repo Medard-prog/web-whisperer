@@ -14,6 +14,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, company?: string, phone?: string) => Promise<{ error: any } | undefined>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any } | undefined>;
+  updateProfile: (profileData: Partial<User>) => Promise<void>;
 }
 
 // Create the auth context
@@ -252,6 +253,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Update user profile
+  const updateProfile = async (profileData: Partial<User>) => {
+    try {
+      setLoading(true);
+      
+      if (!user?.id) {
+        throw new Error("Nu există utilizator autentificat");
+      }
+      
+      // Update auth metadata if name is provided
+      if (profileData.name) {
+        await supabase.auth.updateUser({
+          data: { name: profileData.name }
+        });
+      }
+      
+      // Update profile in profiles table
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          name: profileData.name,
+          phone: profileData.phone,
+          company: profileData.company,
+        })
+        .eq("id", user.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
+      setUser({
+        ...user,
+        ...profileData,
+      });
+      
+      toast.success("Profil actualizat", {
+        description: "Profilul tău a fost actualizat cu succes.",
+      });
+    } catch (error: any) {
+      setError(error.message);
+      toast.error("Eroare la actualizarea profilului", {
+        description: error.message,
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Provide auth values and functions
   const value = {
     user,
@@ -261,6 +312,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signUp,
     signOut,
     resetPassword,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
