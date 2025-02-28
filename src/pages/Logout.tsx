@@ -1,68 +1,45 @@
 
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
-import { LogIn, Home } from 'lucide-react';
 
 const Logout = () => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  
   useEffect(() => {
-    // We can add any cleanup logic here if needed
-    document.title = 'Logged Out - WebCreator';
-  }, []);
-
+    const performLogout = async () => {
+      try {
+        await signOut();
+        // We'll let AuthContext handle the navigation to home
+      } catch (error) {
+        console.error('Error during sign out:', error);
+        // If there's an error, navigate to home anyway
+        navigate('/');
+      }
+    };
+    
+    performLogout();
+  }, [signOut, navigate]);
+  
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="mx-auto h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mb-4">
-              <svg
-                className="h-10 w-10 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+        <div className="text-center p-8 max-w-md">
+          <div className="flex justify-center mb-4">
+            <div className="bg-purple-100 p-3 rounded-full">
+              <LogOut className="h-12 w-12 text-purple-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Deconectat cu succes
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Ți-ai închis sesiunea în siguranță. Mulțumim că ai folosit serviciile noastre!
-            </p>
           </div>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Îți mulțumim pentru vizită</CardTitle>
-              <CardDescription>
-                Te-ai deconectat cu succes din contul tău.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col space-y-4">
-              <Button asChild className="w-full">
-                <Link to="/auth">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Conectează-te din nou
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="w-full">
-                <Link to="/">
-                  <Home className="mr-2 h-4 w-4" />
-                  Înapoi la pagina principală
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Deconectare în curs...</h1>
+          <p className="text-gray-600 mb-8">
+            Vă mulțumim că ați folosit serviciile noastre. Vă redirecționăm către pagina principală.
+          </p>
+          <div className="flex justify-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
+          </div>
         </div>
       </div>
     </PageTransition>

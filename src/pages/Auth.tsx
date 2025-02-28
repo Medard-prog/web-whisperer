@@ -8,6 +8,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import PageTransition from '@/components/PageTransition';
 import { toast } from 'sonner';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 
 const Auth = () => {
   const { session, loading } = useAuth();
@@ -22,22 +23,25 @@ const Auth = () => {
   
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white h-16 w-16 rounded-xl flex items-center justify-center mx-auto mb-6">
+              <span className="font-bold text-2xl">W</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Bine ai venit înapoi
             </h1>
-            <p className="mt-2 text-gray-600">
+            <p className="text-gray-600">
               Conectează-te sau creează un cont pentru a continua
             </p>
           </div>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Autentificare</CardTitle>
+          <Card className="border-none shadow-lg">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Autentificare</CardTitle>
               <CardDescription>
-                Conectează-te cu email și parolă sau creează un cont nou
+                Folosește email-ul și parola pentru a te conecta
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -50,6 +54,19 @@ const Auth = () => {
                       colors: {
                         brand: '#8B5CF6', // Purple-500
                         brandAccent: '#7C3AED', // Purple-600
+                        inputBackground: 'white',
+                        inputBorder: 'lightgray',
+                        inputText: 'black',
+                        inputLabelText: 'gray',
+                      },
+                      borderWidths: {
+                        buttonBorderWidth: '1px',
+                        inputBorderWidth: '1px',
+                      },
+                      radii: {
+                        borderRadiusButton: '0.375rem',
+                        buttonBorderRadius: '0.375rem',
+                        inputBorderRadius: '0.375rem',
                       },
                     },
                   },
@@ -57,11 +74,32 @@ const Auth = () => {
                     button: {
                       borderRadius: '0.375rem',
                       fontSize: '0.875rem',
-                      padding: '0.625rem 1rem',
+                      padding: '0.75rem 1rem',
+                      border: '1px solid transparent',
+                      background: 'linear-gradient(to right, #8B5CF6, #6366F1)',
+                      color: 'white',
+                      fontWeight: '500',
+                      textTransform: 'none',
                     },
                     input: {
                       borderRadius: '0.375rem',
                       fontSize: '0.875rem',
+                      padding: '0.625rem 0.75rem',
+                      border: '1px solid #E5E7EB',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                    },
+                    label: {
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#4B5563',
+                    },
+                    anchor: {
+                      color: '#8B5CF6',
+                      fontSize: '0.875rem',
+                    },
+                    message: {
+                      fontSize: '0.875rem',
+                      color: '#EF4444',
                     },
                   },
                 }}
@@ -102,6 +140,16 @@ const Auth = () => {
                 providers={[]}
                 redirectTo={`${window.location.origin}/auth/callback`}
               />
+              
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => navigate('/')}
+                  className="inline-flex items-center text-sm text-gray-600 hover:text-purple-700"
+                >
+                  <ArrowRight size={14} className="mr-1" />
+                  Înapoi la pagina principală
+                </button>
+              </div>
             </CardContent>
           </Card>
           

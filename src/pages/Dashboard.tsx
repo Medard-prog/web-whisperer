@@ -1,64 +1,76 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects } from "@/integrations/supabase/client";
-import { Project } from "@/types";
-import { useToast } from "@/hooks/use-toast";
+import { supabase, fetchProjects } from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/DashboardSidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { FolderKanban, Clock, MessageSquare, LayoutList, Search } from "lucide-react";
 import ProjectCard from "@/components/ProjectCard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import PageTransition from "@/components/PageTransition";
+import { Project } from "@/types";
+import { Plus, FileText, UserRound, CheckCircle, Clock, BarChart } from "lucide-react";
+import { toast } from "sonner";
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    const fetchUserProjects = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoading(true);
-        
-        const projectsData = await fetchProjects(user.id);
-        setProjects(projectsData);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-au putut încărca proiectele. Încearcă din nou.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUserProjects();
-  }, [user, toast]);
-
-  const filteredProjects = projects.filter(project => 
-    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    project.websiteType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    project.status.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const navigate = useNavigate();
   
-  const statusMap = {
-    pending: { label: "În așteptare", color: "bg-yellow-500" },
-    in_progress: { label: "În curs", color: "bg-blue-500" },
-    completed: { label: "Finalizat", color: "bg-green-500" },
-    cancelled: { label: "Anulat", color: "bg-red-500" },
+  useEffect(() => {
+    if (user && !authLoading) {
+      loadProjects();
+    }
+  }, [user, authLoading]);
+  
+  const loadProjects = async () => {
+    try {
+      setLoading(true);
+      if (!user) return;
+      
+      const projects = await fetchProjects(user.id);
+      setProjects(projects);
+      
+    } catch (error) {
+      console.error("Error loading projects:", error);
+      toast.error("Eroare la încărcarea proiectelor");
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  const handleRequestProject = () => {
+    navigate("/request");
+  };
+  
+  const statsCards = [
+    {
+      title: "Proiecte active",
+      value: projects.filter(p => p.status === "in_progress").length,
+      icon: Clock,
+      color: "bg-blue-100 text-blue-700"
+    },
+    {
+      title: "Proiecte în așteptare",
+      value: projects.filter(p => p.status === "pending").length,
+      icon: FileText,
+      color: "bg-yellow-100 text-yellow-700"
+    },
+    {
+      title: "Proiecte finalizate",
+      value: projects.filter(p => p.status === "completed").length,
+      icon: CheckCircle,
+      color: "bg-green-100 text-green-700" 
+    },
+    {
+      title: "Proiecte totale",
+      value: projects.length,
+      icon: BarChart,
+      color: "bg-purple-100 text-purple-700"
+    }
+  ];
   
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -66,188 +78,134 @@ const Dashboard = () => {
       
       <main className="flex-1 p-6 overflow-y-auto">
         <PageTransition>
-          <div className="space-y-6 max-w-6xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-gray-500">Bine ai venit, {user?.name || "Utilizator"}!</p>
+                <p className="text-gray-500">
+                  Bine ai venit, {user?.name || "User"}! Iată stadiul proiectelor tale.
+                </p>
               </div>
-              <div className="mt-4 md:mt-0">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="search"
-                    placeholder="Caută proiecte..."
-                    className="pl-8 w-full md:w-[300px]"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+              
+              <Button
+                onClick={handleRequestProject}
+                className="mt-4 sm:mt-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Solicită Proiect Nou
+              </Button>
             </div>
             
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Proiecte active</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    <div className="text-2xl font-bold">
-                      {projects.filter(p => p.status === "in_progress").length}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {statsCards.map((stat, index) => (
+                <Card key={index} className="border-none shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className={`${stat.color} p-3 rounded-full`}>
+                        <stat.icon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                        <h3 className="text-3xl font-bold">
+                          {loading ? <Skeleton className="h-8 w-12" /> : stat.value}
+                        </h3>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Proiecte finalizate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    <div className="text-2xl font-bold">
-                      {projects.filter(p => p.status === "completed").length}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total proiecte</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    <div className="text-2xl font-bold">{projects.length}</div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
             
-            {/* Projects Section */}
-            <Card>
+            <Card className="mb-8 border-none shadow-md">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <FolderKanban className="h-5 w-5 mr-2 text-blue-500" />
-                  Proiectele mele
-                </CardTitle>
+                <CardTitle>Proiectele tale</CardTitle>
                 <CardDescription>
-                  Vizualizează și gestionează proiectele tale
+                  Vizualizează lista proiectelor tale în lucru și cele finalizate
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((item) => (
+                      <Card key={item} className="h-[220px]">
+                        <CardHeader className="pb-2">
+                          <Skeleton className="h-5 w-3/4 mb-1" />
+                          <Skeleton className="h-4 w-1/4" />
+                        </CardHeader>
+                        <CardContent className="pb-2">
+                          <Skeleton className="h-4 w-full mb-4" />
+                          <Skeleton className="h-4 w-2/3 mb-4" />
+                          <Skeleton className="h-4 w-1/3" />
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                ) : filteredProjects.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                    {filteredProjects.map((project) => (
-                      <ProjectCard key={project.id} project={project} onClick={() => navigate(`/project/${project.id}`)} />
+                ) : projects.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {projects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onClick={() => navigate(`/project/${project.id}`)}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10">
-                    <FolderKanban className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-900">Nu ai proiecte</h3>
-                    <p className="text-gray-500">Solicită o ofertă pentru a începe un proiect nou.</p>
-                    <Button 
-                      className="mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      onClick={() => navigate('/request')}
+                  <div className="text-center py-16 px-4">
+                    <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <FileText className="h-8 w-8 text-gray-500" />
+                    </div>
+                    <h3 className="text-xl font-medium text-gray-900 mb-2">Niciun proiect momentan</h3>
+                    <p className="text-gray-500 max-w-md mx-auto mb-6">
+                      Nu ai niciun proiect activ în acest moment. Solicită un proiect nou pentru a începe colaborarea.
+                    </p>
+                    <Button
+                      onClick={handleRequestProject}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                     >
-                      Solicită ofertă
+                      <Plus className="h-4 w-4 mr-2" />
+                      Solicită Proiect Nou
                     </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
             
-            {/* Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="col-span-1 md:col-span-1">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <LayoutList className="h-5 w-5 mr-2 text-indigo-500" />
-                    Acțiuni rapide
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start" 
-                    onClick={() => navigate('/request')}
-                  >
-                    <FolderKanban className="mr-2 h-4 w-4" />
-                    Solicită un proiect nou
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => navigate('/contact')}
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Contactează-ne
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => navigate('/schedule')}
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    Programează o consultație
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              <Card className="col-span-1 md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-yellow-500" />
-                    Activitate recentă
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="space-y-4">
-                      <Skeleton className="h-8 w-full" />
-                      <Skeleton className="h-8 w-full" />
-                      <Skeleton className="h-8 w-full" />
-                    </div>
-                  ) : projects.length > 0 ? (
-                    <div className="space-y-4">
-                      {projects.slice(0, 4).map((project) => (
-                        <div key={project.id} className="flex justify-between items-center border-b pb-2">
-                          <div>
-                            <div className="font-medium">{project.title}</div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(project.createdAt).toLocaleDateString('ro-RO')}
-                            </div>
-                          </div>
-                          <div className={`px-2 py-1 rounded-full text-xs text-white ${statusMap[project.status]?.color || "bg-gray-500"}`}>
-                            {statusMap[project.status]?.label || project.status}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <p className="text-gray-500">Nu există activitate recentă</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="border-none shadow-md">
+              <CardHeader>
+                <CardTitle>Profil utilizator</CardTitle>
+                <CardDescription>
+                  Detaliile contului tău
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full p-3 text-white">
+                    <UserRound className="h-8 w-8" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-medium">{user?.name || "Utilizator"}</h3>
+                    <p className="text-sm text-gray-500">{user?.email}</p>
+                    {user?.company && (
+                      <p className="text-sm text-gray-500">
+                        <span className="font-medium">Companie:</span> {user.company}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="ml-auto">
+                    <Button
+                      variant="outline"
+                      className="border-gray-300"
+                      onClick={() => navigate("/dashboard/settings")}
+                    >
+                      Editează profil
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </PageTransition>
       </main>
