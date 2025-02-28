@@ -33,40 +33,38 @@ const Auth = () => {
     return () => clearTimeout(checkTimeout);
   }, []);
   
-  // Redirect when user changes
   // Update handleLogin function
-const handleLogin = async (email: string, password: string) => {
-  try {
-    console.log('Login started');
-    setFormLoading(true);
-    setError(null);
-    
-    const user = await signIn(email, password);
-    console.log('Login successful', user);
-    
-    // Check if we need to wait for auth state update
-    if (!authLoading && user) {
-      navigate(redirectPath || from || '/dashboard');
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      console.log('Login started');
+      setFormLoading(true);
+      setError(null);
+      
+      const user = await signIn(email, password);
+      console.log('Login successful', user);
+      
+      // Check if we need to wait for auth state update
+      if (!authLoading && user) {
+        navigate(redirectPath || from || '/dashboard');
+      }
+      
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error.message || 'A apărut o eroare la autentificare');
+    } finally {
+      console.log('Login finalized');
+      setFormLoading(false);
     }
-    
-  } catch (error: any) {
-    console.error('Login error:', error);
-    setError(error.message || 'A apărut o eroare la autentificare');
-  } finally {
-    console.log('Login finalized');
-    setFormLoading(false);
-  }
-};
-
-// Update useEffect
-useEffect(() => {
-  if (user && !authLoading) {
-    console.log('Valid session detected, redirecting...');
-    const finalRedirectPath = redirectPath || from || '/dashboard';
-    navigate(finalRedirectPath, { replace: true });
-  }
-}, [user, authLoading, navigate, redirectPath, from]);
   };
+
+  // Redirect when user changes
+  useEffect(() => {
+    if (user && !authLoading) {
+      console.log('Valid session detected, redirecting...');
+      const finalRedirectPath = redirectPath || from || '/dashboard';
+      navigate(finalRedirectPath, { replace: true });
+    }
+  }, [user, authLoading, navigate, redirectPath, from]);
 
   const handleSignup = async (email: string, password: string, name: string, company: string, phone: string) => {
     try {
