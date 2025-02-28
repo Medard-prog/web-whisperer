@@ -1,467 +1,613 @@
 
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Card } from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Code,
+  PanelTop,
+  ShoppingBag,
+  Sparkles,
+} from "lucide-react";
+import WavyBackground from "@/components/WavyBackground";
 import ServiceCard from "@/components/ServiceCard";
 import TestimonialCard from "@/components/TestimonialCard";
-import PricingCalculator from "@/components/PricingCalculator";
-import { 
-  Globe, 
-  ShoppingCart, 
-  Smartphone, 
-  Search, 
-  Layers, 
-  Code, 
-  CheckCircle2, 
-  ArrowRight,
-  ChevronDown, 
-  Eye
-} from "lucide-react";
+import BentoBox from "@/components/BentoBox";
+import Footer from "@/components/Footer";
+import { useAuth } from "@/contexts/AuthContext";
+import { Slider } from "@/components/ui/slider";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 
-const Index = () => {
-  const [activeTab, setActiveTab] = useState("all");
-  const [isVisible, setIsVisible] = useState(false);
+const services = [
+  {
+    title: "Dezvoltare Website",
+    description:
+      "Îți construim un website modern, responsive și optimizat pentru performanță.",
+    icon: PanelTop,
+  },
+  {
+    title: "E-commerce",
+    description:
+      "Creăm magazine online complete cu cos de cumpărături, plăți, și gestionare de produse.",
+    icon: ShoppingBag,
+  },
+  {
+    title: "Aplicații Web",
+    description:
+      "Dezvoltăm aplicații web personalizate cu funcționalități avansate pentru afacerea ta.",
+    icon: Code,
+  },
+];
 
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
+const testimonials = [
+  {
+    name: "Elena Popescu",
+    company: "Alinda Fashion",
+    testimonial:
+      "Serviciu excelent! Echipa a înțeles perfect cerințele noastre și a livrat un website care a depășit așteptările. Profesionalism și atenție la detalii.",
+    image: "/placeholder.svg",
+  },
+  {
+    name: "Mihai Dumitrescu",
+    company: "TehnoMax",
+    testimonial:
+      "Am colaborat pentru magazinul nostru online și suntem foarte mulțumiți de rezultat. De la design până la funcționalități, totul a fost implementat impecabil.",
+    image: "/placeholder.svg",
+  },
+  {
+    name: "Ana Ionescu",
+    company: "Green Gardens",
+    testimonial:
+      "Un partener de încredere pentru dezvoltarea prezenței noastre online. Recomand cu căldură pentru orice afacere care dorește să aibă un website de calitate.",
+    image: "/placeholder.svg",
+  },
+];
 
-  const services = [
-    {
-      title: "Website-uri de prezentare",
-      description: "Creăm site-uri de prezentare care reflectă identitatea brandului tău și atrag clienți noi.",
-      icon: Globe,
-      benefits: [
-        "Design modern și responsive",
-        "Optimizat pentru motoarele de căutare",
-        "Încărcare rapidă pe toate dispozitivele",
-        "Integrare cu social media"
-      ],
-      linkTo: "/servicii/website-prezentare"
-    },
-    {
-      title: "Magazine online",
-      description: "Dezvoltăm soluții eCommerce personalizate pentru a-ți vinde produsele online.",
-      icon: ShoppingCart,
-      benefits: [
-        "Sistem de administrare ușor de utilizat",
-        "Procesare plăți securizată",
-        "Gestionare simplă a stocurilor",
-        "Optimizat pentru conversii"
-      ],
-      linkTo: "/servicii/magazin-online"
-    },
-    {
-      title: "Aplicații web",
-      description: "Creăm aplicații web personalizate care automatizează și optimizează procesele afacerii tale.",
-      icon: Layers,
-      benefits: [
-        "Soluții personalizate pentru nevoile tale",
-        "Interfață intuitivă și ușor de utilizat",
-        "Scalabile pe măsură ce afacerea crește",
-        "Securitate avansată"
-      ],
-      linkTo: "/servicii/aplicatii-web"
-    },
-    {
-      title: "Optimizare SEO",
-      description: "Îmbunătățim vizibilitatea ta online și atragem mai mulți clienți prin strategii SEO eficiente.",
-      icon: Search,
-      benefits: [
-        "Analiză competitivă a pieței",
-        "Optimizare on-page și off-page",
-        "Content marketing strategic",
-        "Rapoarte lunare de performanță"
-      ],
-      linkTo: "/servicii/optimizare-seo"
-    },
-    {
-      title: "Design UX/UI",
-      description: "Creăm experiențe digitale intuitive și atractive care convertesc vizitatorii în clienți.",
-      icon: Eye,
-      benefits: [
-        "Design centrat pe utilizator",
-        "Interfețe moderne și intuitive",
-        "Optimizat pentru conversii",
-        "Testare și îmbunătățire continuă"
-      ],
-      linkTo: "/servicii/design-ux-ui"
-    },
-    {
-      title: "Dezvoltare personalizată",
-      description: "Dezvoltăm soluții web personalizate pentru a rezolva provocările unice ale afacerii tale.",
-      icon: Code,
-      benefits: [
-        "Analiză detaliată a nevoilor",
-        "Arhitectură scalabilă",
-        "Integrare cu sisteme existente",
-        "Suport tehnic continuu"
-      ],
-      linkTo: "/servicii/dezvoltare-personalizata"
+// Redesigned PricingCalculator component
+const PricingCalculator = ({ onRequestProject }: { onRequestProject: (data: any) => void }) => {
+  const [websiteType, setWebsiteType] = useState("business");
+  const [designComplexity, setDesignComplexity] = useState("standard");
+  const [pageCount, setPageCount] = useState(5);
+  const [features, setFeatures] = useState({
+    cms: false,
+    ecommerce: false,
+    seo: false,
+    maintenance: false,
+  });
+
+  // Calculate price based on selections
+  const calculatePrice = () => {
+    let basePrice = 0;
+    
+    // Base price by website type
+    switch (websiteType) {
+      case "business":
+        basePrice = 1200;
+        break;
+      case "ecommerce":
+        basePrice = 2500;
+        break;
+      case "blog":
+        basePrice = 1000;
+        break;
+      case "portfolio":
+        basePrice = 900;
+        break;
+      case "custom":
+        basePrice = 3000;
+        break;
+      default:
+        basePrice = 1200;
     }
-  ];
-
-  const testimonials = [
-    {
-      content: "Echipa WebCreator a livrat un site web care a depășit toate așteptările noastre. Procesul a fost simplu, transparent și profesionist de la început până la sfârșit.",
-      author: {
-        name: "Elena Popescu",
-        role: "Director Marketing",
-        company: "TechRo Solutions"
-      }
-    },
-    {
-      content: "După lansarea noului nostru magazin online creat de WebCreator, vânzările au crescut cu 45% în prima lună. Designul intuitiv și experiența de cumpărare fluidă au făcut toată diferența.",
-      author: {
-        name: "Andrei Ionescu",
-        role: "Proprietar",
-        company: "ElectroShop"
-      }
-    },
-    {
-      content: "Am apreciat foarte mult abordarea consultativă și atenția la detalii. Nu doar că au construit site-ul, ci ne-au și sfătuit strategic pentru a obține rezultate optime.",
-      author: {
-        name: "Cristina Dumitrescu",
-        role: "CEO",
-        company: "Artisan Bakery"
-      }
+    
+    // Adjust for design complexity
+    switch (designComplexity) {
+      case "simple":
+        basePrice *= 0.8;
+        break;
+      case "premium":
+        basePrice *= 1.5;
+        break;
+      default:
+        // standard price, no adjustment
+        break;
     }
-  ];
+    
+    // Adjust for page count
+    basePrice += (pageCount - 5) * 100; // €100 per additional page above 5 (or -€100 for fewer)
+    
+    // Add features
+    if (features.cms) basePrice += 500;
+    if (features.ecommerce) basePrice += 1000;
+    if (features.seo) basePrice += 300;
+    if (features.maintenance) basePrice += 500;
 
-  const portfolioItems = [
-    {
-      id: 1,
-      title: "TechRo Solutions",
-      description: "Website corporativ cu design modern și funcționalități avansate.",
-      image: "https://placehold.co/600x400/9b87f5/ffffff?text=TechRo+Solutions",
-      category: "corporate"
-    },
-    {
-      id: 2,
-      title: "ElectroShop",
-      description: "Magazin online cu peste 1000 de produse și sistem de plată integrat.",
-      image: "https://placehold.co/600x400/9b87f5/ffffff?text=ElectroShop",
-      category: "ecommerce"
-    },
-    {
-      id: 3,
-      title: "Artisan Bakery",
-      description: "Site de prezentare pentru o brutărie artizanală cu sistem de comenzi online.",
-      image: "https://placehold.co/600x400/9b87f5/ffffff?text=Artisan+Bakery",
-      category: "presentation"
-    },
-    {
-      id: 4,
-      title: "FitLife Gym",
-      description: "Aplicație web pentru gestionarea membrilor și programărilor la sală.",
-      image: "https://placehold.co/600x400/9b87f5/ffffff?text=FitLife+Gym",
-      category: "application"
-    },
-    {
-      id: 5,
-      title: "Travel Explorer",
-      description: "Portal turistic cu funcționalități de rezervare și recenzii.",
-      image: "https://placehold.co/600x400/9b87f5/ffffff?text=Travel+Explorer",
-      category: "ecommerce"
-    },
-    {
-      id: 6,
-      title: "Studio Design",
-      description: "Portofoliu digital pentru un studio de design interior.",
-      image: "https://placehold.co/600x400/9b87f5/ffffff?text=Studio+Design",
-      category: "presentation"
-    }
-  ];
+    // Ensure minimum price
+    return Math.max(500, Math.round(basePrice));
+  };
 
-  const filteredPortfolio = activeTab === "all" 
-    ? portfolioItems 
-    : portfolioItems.filter(item => item.category === activeTab);
+  const price = calculatePrice();
+  
+  const handleRequestProject = () => {
+    onRequestProject({
+      websiteType,
+      designComplexity,
+      pageCount,
+      hasCMS: features.cms,
+      hasEcommerce: features.ecommerce,
+      hasSEO: features.seo,
+      hasMaintenance: features.maintenance,
+    });
+  };
 
-  const faqItems = [
-    {
-      question: "Cât durează dezvoltarea unui website?",
-      answer: "Durata depinde de complexitatea proiectului. Un site de prezentare simplu poate fi gata în 2-3 săptămâni, în timp ce un magazin online complex poate necesita 1-2 luni. Vom stabili împreună un calendar realist la începutul proiectului."
-    },
-    {
-      question: "Ce informații trebuie să furnizez pentru a începe proiectul?",
-      answer: "Pentru a începe, avem nevoie de: detalii despre afacerea ta, publicul țintă, obiectivele site-ului, preferințele de design, conținut (texte, imagini), și orice alte cerințe specifice. Vom discuta toate acestea în detaliu în etapa de consultare."
-    },
-    {
-      question: "Oferiți servicii de întreținere după lansare?",
-      answer: "Da, oferim pachete de întreținere care includ actualizări de securitate, backup-uri regulate, monitorizare a performanței, și actualizări de conținut la cerere. Acest lucru asigură că website-ul tău funcționează optim în permanență."
-    },
-    {
-      question: "Site-urile sunt optimizate pentru dispozitive mobile?",
-      answer: "Absolut! Toate proiectele noastre sunt create cu o abordare 'mobile-first', asigurând o experiență excelentă pe toate dispozitivele: telefoane, tablete și desktop-uri. Testăm riguros compatibilitatea pe multiple dispozitive și browsere."
-    },
-    {
-      question: "Care sunt modalitățile de plată?",
-      answer: "Acceptăm plăți prin transfer bancar și plăți online. De obicei, structurăm plățile în 3 tranșe: un avans la începutul proiectului, o plată intermediară după aprobarea designului, și plata finală la livrarea proiectului."
-    }
-  ];
+  // Website type descriptions with examples
+  const websiteTypeDescriptions = {
+    business: "Website de prezentare pentru compania ta, cu informații despre servicii și formular de contact.",
+    ecommerce: "Magazin online complet cu produse, coș de cumpărături și procesare plăți.",
+    blog: "Blog sau site de știri pentru conținut regulat și articole.",
+    portfolio: "Website pentru prezentarea proiectelor și lucrărilor tale.",
+    custom: "Aplicație web personalizată cu funcționalități specifice nevoilor tale."
+  };
+
+  // Examples for each website type
+  const websiteTypeExamples = {
+    business: "Exemple: site-uri corporate, website-uri pentru restaurante, cabinete medicale",
+    ecommerce: "Exemple: magazine de modă, produse digitale, servicii cu abonament",
+    blog: "Exemple: blog personal, site de știri, revistă online",
+    portfolio: "Exemple: portofoliu de fotografie, arhitectură, design",
+    custom: "Exemple: platforme educaționale, aplicații de rezervări, dashboard-uri"
+  };
 
   return (
-    <div className={`min-h-screen transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar />
-      
-      {/* Hero Section */}
-      <section className="pt-24 pb-16 md:pt-32 md:pb-24 px-4">
-        <div className="container mx-auto">
-          <div className="flex flex-col lg:flex-row items-center">
-            <div className="lg:w-1/2 lg:pr-8 mb-10 lg:mb-0">
-              <div className="space-y-6 max-w-xl">
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-gray-900 animate-fade-in" style={{animationDelay: "0.1s"}}>
-                  Transformăm <span className="text-brand-600">ideile</span> în experiențe digitale excepționale
-                </h1>
-                <p className="text-xl text-gray-600 animate-fade-in" style={{animationDelay: "0.3s"}}>
-                  Echipa noastră de experți creează website-uri și aplicații web personalizate care aduc rezultate reale pentru afacerea ta.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 animate-fade-in" style={{animationDelay: "0.5s"}}>
-                  <Link to="/request-project">
-                    <Button size="lg" className="w-full sm:w-auto">
-                      Solicită o ofertă gratuită
-                    </Button>
-                  </Link>
-                  <Link to="/#servicii">
-                    <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                      Descoperă serviciile noastre
-                    </Button>
-                  </Link>
-                </div>
-                <div className="flex items-center gap-4 text-gray-500 animate-fade-in" style={{animationDelay: "0.7s"}}>
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-5 w-5 text-brand-500 mr-2" />
-                    <span>Design modern</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-5 w-5 text-brand-500 mr-2" />
-                    <span>100% responsive</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-5 w-5 text-brand-500 mr-2" />
-                    <span>Optimizat SEO</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="lg:w-1/2 relative animate-fade-in-right" style={{animationDelay: "0.5s"}}>
-              <div className="relative z-10 float-animation">
-                <img 
-                  src="https://placehold.co/600x400/9b87f5/ffffff?text=Web+Development" 
-                  alt="Web Development" 
-                  className="rounded-2xl shadow-xl"
-                />
-              </div>
-              <div className="absolute top-0 right-0 -mt-8 -mr-8 z-0 w-full h-full rounded-2xl bg-brand-100"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section id="servicii" className="py-16 bg-gray-50 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Serviciile noastre</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Oferim soluții digitale complete pentru a construi și dezvolta prezența ta online.
-            </p>
+    <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-white to-purple-50 dark:from-gray-900 dark:to-purple-950">
+      <div className="grid md:grid-cols-2">
+        <div className="p-6 md:p-8 space-y-6">
+          <div>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-transparent bg-clip-text mb-2">Calculator de preț</h3>
+            <p className="text-gray-600 dark:text-gray-300">Estimează costul proiectului tău în câțiva pași simpli</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service, index) => (
-              <ServiceCard 
-                key={index}
-                title={service.title}
-                description={service.description}
-                icon={service.icon}
-                benefits={service.benefits}
-                linkTo={service.linkTo}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Process Section */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Cum lucrăm</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Un proces simplu și eficient pentru rezultate excepționale.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center mb-4 text-brand-600 font-bold text-xl">1</div>
-              <h3 className="text-xl font-bold mb-2">Consultare</h3>
-              <p className="text-gray-600">Discutăm despre obiectivele tale și definim cerințele proiectului.</p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center mb-4 text-brand-600 font-bold text-xl">2</div>
-              <h3 className="text-xl font-bold mb-2">Design</h3>
-              <p className="text-gray-600">Creăm wireframe-uri și design-uri care reflectă identitatea brandului tău.</p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center mb-4 text-brand-600 font-bold text-xl">3</div>
-              <h3 className="text-xl font-bold mb-2">Dezvoltare</h3>
-              <p className="text-gray-600">Implementăm funcționalitățile și construim experiența digitală.</p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center mb-4 text-brand-600 font-bold text-xl">4</div>
-              <h3 className="text-xl font-bold mb-2">Lansare</h3>
-              <p className="text-gray-600">Lansăm proiectul și oferim asistență continuă pentru a asigura succesul.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Portfolio Section */}
-      <section id="portofoliu" className="py-16 bg-gray-50 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Portofoliu</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Explorează o selecție din proiectele noastre recente.
-            </p>
-          </div>
-          
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full mb-8">
-            <div className="flex justify-center">
-              <TabsList>
-                <TabsTrigger value="all">Toate</TabsTrigger>
-                <TabsTrigger value="ecommerce">Magazine online</TabsTrigger>
-                <TabsTrigger value="corporate">Corporate</TabsTrigger>
-                <TabsTrigger value="presentation">Prezentare</TabsTrigger>
-                <TabsTrigger value="application">Aplicații</TabsTrigger>
-              </TabsList>
-            </div>
-            
-            <TabsContent value={activeTab} className="mt-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredPortfolio.map((item) => (
-                  <Card key={item.id} className="overflow-hidden hover-card-effect">
-                    <div className="h-48 overflow-hidden">
-                      <img 
-                        src={item.image} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover object-center transition-transform duration-500 hover:scale-105"
-                      />
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <Label className="text-purple-700 dark:text-purple-300 font-medium">Tipul website-ului</Label>
+              <RadioGroup 
+                value={websiteType} 
+                onValueChange={setWebsiteType}
+                className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              >
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${websiteType === "business" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setWebsiteType("business")}>
+                  <RadioGroupItem value="business" id="business" className="sr-only" />
+                  <div className="flex items-start gap-3">
+                    <PanelTop className={`h-5 w-5 mt-0.5 ${websiteType === "business" ? "text-purple-600 dark:text-purple-400" : "text-gray-500"}`} />
+                    <div>
+                      <Label htmlFor="business" className={`font-medium ${websiteType === "business" ? "text-purple-700 dark:text-purple-300" : ""}`}>Website de prezentare</Label>
                     </div>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                      <p className="text-gray-600 mb-4">{item.description}</p>
-                      <Link to={`/portfolio/${item.id}`} className="text-brand-600 hover:text-brand-700 font-medium flex items-center">
-                        Vezi proiectul <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <div className="text-center mt-12">
-            <Link to="/portfolio">
-              <Button variant="outline">
-                Vezi toate proiectele
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ce spun clienții noștri</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Descoperă experiențele reale ale clienților cu care am colaborat.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <TestimonialCard 
-                key={index}
-                content={testimonial.content}
-                author={testimonial.author}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Calculator Section */}
-      <section id="preturi" className="py-16 bg-gray-50 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Estimează costul proiectului tău</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Utilizează calculatorul nostru pentru a obține o estimare rapidă a costului proiectului tău.
-            </p>
-          </div>
-          
-          <PricingCalculator />
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section id="faq" className="py-16 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Întrebări frecvente</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Răspunsuri la cele mai comune întrebări despre serviciile noastre.
-            </p>
-          </div>
-          
-          <div className="max-w-3xl mx-auto space-y-6">
-            {faqItems.map((item, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
-                <details className="group">
-                  <summary className="flex items-center justify-between p-6 cursor-pointer">
-                    <h3 className="text-lg font-medium">{item.question}</h3>
-                    <ChevronDown className="h-5 w-5 text-gray-500 transition-transform group-open:rotate-180" />
-                  </summary>
-                  <div className="px-6 pb-6 pt-0">
-                    <p className="text-gray-600">{item.answer}</p>
                   </div>
-                </details>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-brand-600 text-white px-4">
-        <div className="container mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between">
-            <div className="lg:w-2/3 mb-8 lg:mb-0">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Gata să transformi viziunea ta în realitate?</h2>
-              <p className="text-xl text-white/80 max-w-2xl">
-                Solicită acum o ofertă personalizată și descoperă cum putem să te ajutăm să-ți construiești prezența online.
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${websiteType === "ecommerce" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setWebsiteType("ecommerce")}>
+                  <RadioGroupItem value="ecommerce" id="ecommerce" className="sr-only" />
+                  <div className="flex items-start gap-3">
+                    <ShoppingBag className={`h-5 w-5 mt-0.5 ${websiteType === "ecommerce" ? "text-purple-600 dark:text-purple-400" : "text-gray-500"}`} />
+                    <div>
+                      <Label htmlFor="ecommerce" className={`font-medium ${websiteType === "ecommerce" ? "text-purple-700 dark:text-purple-300" : ""}`}>Magazin online</Label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${websiteType === "blog" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setWebsiteType("blog")}>
+                  <RadioGroupItem value="blog" id="blog" className="sr-only" />
+                  <div className="flex items-start gap-3">
+                    <Code className={`h-5 w-5 mt-0.5 ${websiteType === "blog" ? "text-purple-600 dark:text-purple-400" : "text-gray-500"}`} />
+                    <div>
+                      <Label htmlFor="blog" className={`font-medium ${websiteType === "blog" ? "text-purple-700 dark:text-purple-300" : ""}`}>Blog / Știri</Label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${websiteType === "portfolio" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setWebsiteType("portfolio")}>
+                  <RadioGroupItem value="portfolio" id="portfolio" className="sr-only" />
+                  <div className="flex items-start gap-3">
+                    <Code className={`h-5 w-5 mt-0.5 ${websiteType === "portfolio" ? "text-purple-600 dark:text-purple-400" : "text-gray-500"}`} />
+                    <div>
+                      <Label htmlFor="portfolio" className={`font-medium ${websiteType === "portfolio" ? "text-purple-700 dark:text-purple-300" : ""}`}>Portofoliu</Label>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {websiteTypeDescriptions[websiteType as keyof typeof websiteTypeDescriptions]}
+              </p>
+              <p className="text-xs text-gray-500/80 dark:text-gray-400/80 italic">
+                {websiteTypeExamples[websiteType as keyof typeof websiteTypeExamples]}
               </p>
             </div>
-            <div>
-              <Link to="/request-project">
-                <Button size="lg" variant="secondary" className="font-medium">
-                  Solicită o ofertă gratuită
-                </Button>
-              </Link>
+            
+            <Separator className="my-6 bg-gray-200 dark:bg-gray-700" />
+            
+            <div className="space-y-3">
+              <Label className="text-purple-700 dark:text-purple-300 font-medium">Complexitatea designului</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <div className={`border rounded-md p-3 cursor-pointer text-center transition-all ${designComplexity === "simple" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setDesignComplexity("simple")}>
+                  <RadioGroupItem value="simple" id="simple" className="sr-only" />
+                  <Label htmlFor="simple" className={`font-medium block mb-1 ${designComplexity === "simple" ? "text-purple-700 dark:text-purple-300" : ""}`}>Simplu</Label>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Design basic, funcționalități esențiale</span>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer text-center transition-all ${designComplexity === "standard" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setDesignComplexity("standard")}>
+                  <RadioGroupItem value="standard" id="standard" className="sr-only" />
+                  <Label htmlFor="standard" className={`font-medium block mb-1 ${designComplexity === "standard" ? "text-purple-700 dark:text-purple-300" : ""}`}>Standard</Label>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Design modern, funcționalități extinse</span>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer text-center transition-all ${designComplexity === "premium" ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setDesignComplexity("premium")}>
+                  <RadioGroupItem value="premium" id="premium" className="sr-only" />
+                  <Label htmlFor="premium" className={`font-medium block mb-1 ${designComplexity === "premium" ? "text-purple-700 dark:text-purple-300" : ""}`}>Premium</Label>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Design personalizat, animații, interactivitate</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label className="text-purple-700 dark:text-purple-300 font-medium">Număr de pagini: <span className="text-purple-600 font-semibold">{pageCount}</span></Label>
+                <Badge variant="outline" className="font-normal border-purple-200 dark:border-purple-700">
+                  +€100/pagină
+                </Badge>
+              </div>
+              <Slider 
+                value={[pageCount]} 
+                onValueChange={([value]) => setPageCount(value)} 
+                min={1} 
+                max={20} 
+                step={1}
+                className="py-4"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>1 pagină</span>
+                <span>20 pagini</span>
+              </div>
+            </div>
+            
+            <Separator className="my-6 bg-gray-200 dark:bg-gray-700" />
+            
+            <div className="space-y-3">
+              <Label className="text-purple-700 dark:text-purple-300 font-medium">Funcționalități suplimentare</Label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${features.cms ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setFeatures({...features, cms: !features.cms})}>
+                  <div className="flex items-start gap-3">
+                    <Checkbox 
+                      checked={features.cms}
+                      onCheckedChange={(checked) => setFeatures({...features, cms: !!checked})}
+                      className="mt-0.5 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <div>
+                      <p className={`font-medium ${features.cms ? "text-purple-700 dark:text-purple-300" : ""}`}>
+                        Sistem de administrare (CMS)
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Editează conținutul fără cunoștințe tehnice
+                      </p>
+                      <Badge className="mt-1 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900 dark:text-purple-300">+€500</Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${features.ecommerce ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setFeatures({...features, ecommerce: !features.ecommerce})}>
+                  <div className="flex items-start gap-3">
+                    <Checkbox 
+                      checked={features.ecommerce}
+                      onCheckedChange={(checked) => setFeatures({...features, ecommerce: !!checked})}
+                      className="mt-0.5 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <div>
+                      <p className={`font-medium ${features.ecommerce ? "text-purple-700 dark:text-purple-300" : ""}`}>
+                        Funcționalități E-commerce
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Coș de cumpărături, plăți online
+                      </p>
+                      <Badge className="mt-1 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900 dark:text-purple-300">+€1,000</Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${features.seo ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setFeatures({...features, seo: !features.seo})}>
+                  <div className="flex items-start gap-3">
+                    <Checkbox 
+                      checked={features.seo}
+                      onCheckedChange={(checked) => setFeatures({...features, seo: !!checked})}
+                      className="mt-0.5 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <div>
+                      <p className={`font-medium ${features.seo ? "text-purple-700 dark:text-purple-300" : ""}`}>
+                        Optimizare SEO
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Optimizare pentru motoarele de căutare
+                      </p>
+                      <Badge className="mt-1 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900 dark:text-purple-300">+€300</Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`border rounded-md p-3 cursor-pointer transition-all ${features.maintenance ? "border-purple-400 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/30" : "border-gray-200 dark:border-gray-700"}`}
+                  onClick={() => setFeatures({...features, maintenance: !features.maintenance})}>
+                  <div className="flex items-start gap-3">
+                    <Checkbox 
+                      checked={features.maintenance}
+                      onCheckedChange={(checked) => setFeatures({...features, maintenance: !!checked})}
+                      className="mt-0.5 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <div>
+                      <p className={`font-medium ${features.maintenance ? "text-purple-700 dark:text-purple-300" : ""}`}>
+                        Plan de mentenanță
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Update-uri, backup-uri și suport tehnic
+                      </p>
+                      <Badge className="mt-1 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900 dark:text-purple-300">+€500</Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white p-6 md:p-8 flex flex-col">
+          <div className="mb-6">
+            <h3 className="text-2xl font-bold mb-2">Estimare de preț</h3>
+            <p className="opacity-80">Bazată pe selecțiile tale</p>
+          </div>
+          
+          <div className="grow space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span>Tipul website-ului</span>
+                <span className="font-medium capitalize">{
+                  websiteType === "business" ? "Website de prezentare" :
+                  websiteType === "ecommerce" ? "Magazin online" :
+                  websiteType === "blog" ? "Blog / Știri" :
+                  websiteType === "portfolio" ? "Portofoliu" :
+                  "Aplicație web personalizată"
+                }</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span>Design</span>
+                <span className="font-medium capitalize">{
+                  designComplexity === "simple" ? "Simplu" :
+                  designComplexity === "standard" ? "Standard" :
+                  "Premium"
+                }</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span>Pagini</span>
+                <span className="font-medium">{pageCount}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span>Funcționalități adăugate</span>
+                <span className="font-medium">{
+                  Object.values(features).filter(Boolean).length
+                }</span>
+              </div>
+            </div>
+            
+            <Separator className="bg-white/20 my-4" />
+            
+            <div className="flex flex-col items-center py-6">
+              <div className="text-4xl font-bold mb-2">€{price}</div>
+              <p className="opacity-70 text-center">Aceasta este o estimare. Prețul final poate varia în funcție de cerințele exacte.</p>
+            </div>
+            
+            <div className="space-y-3">
+              <Button 
+                onClick={handleRequestProject}
+                className="w-full bg-white text-purple-700 hover:bg-purple-50 font-medium text-base py-6"
+              >
+                Solicită o ofertă personalizată
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              
+              <p className="text-center text-sm opacity-80">
+                Vei primi o ofertă detaliată în maxim 48 de ore.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// Main Index component
+const Index = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
+
+  const handleRequestProject = (data: any) => {
+    navigate("/request-project", { state: data });
+  };
+
+  return (
+    <div className="min-h-screen overflow-hidden">
+      <WavyBackground className="pb-40">
+        <motion.div
+          className="relative pt-24 md:pt-32 px-4 text-center max-w-5xl mx-auto"
+          style={{ opacity, scale }}
+        >
+          <motion.h1
+            className="text-4xl md:text-6xl font-bold mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            Creăm Experiențe Digitale Remarcabile
+          </motion.h1>
+          <motion.p
+            className="text-xl md:text-2xl mb-8 text-muted-foreground"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            Transformăm ideile în soluții digitale inovatoare.
+          </motion.p>
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Button asChild size="lg" className="rounded-full px-8">
+              <Link to="/request-project">Solicită un proiect</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="rounded-full px-8"
+            >
+              <Link to="/dashboard">Proiectele mele</Link>
+            </Button>
+          </motion.div>
+        </motion.div>
+      </WavyBackground>
+
+      <section className="py-20 px-4">
+        <div className="container mx-auto text-center mb-16">
+          <Badge className="mb-3">Serviciile Noastre</Badge>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Ce putem face pentru tine
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Oferim o gamă completă de servicii digitale pentru a te ajuta să îți
+            dezvolți prezența online.
+          </p>
+        </div>
+
+        <div className="container mx-auto grid md:grid-cols-3 gap-8">
+          {services.map((service, index) => (
+            <ServiceCard
+              key={index}
+              title={service.title}
+              description={service.description}
+              icon={service.icon}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="py-20 px-4 bg-slate-50 dark:bg-slate-900">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <Badge className="mb-3">Calculator de preț</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Vezi cât costă proiectul tău
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Calculează rapid costul estimativ al proiectului tău în funcție de
+              cerințele specifice.
+            </p>
+          </div>
+
+          <div className="max-w-5xl mx-auto">
+            <PricingCalculator onRequestProject={handleRequestProject} />
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 px-4">
+        <div className="container mx-auto text-center mb-16">
+          <Badge className="mb-3">Portofoliu</Badge>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Proiecte recente
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Explorează o selecție din proiectele noastre recente pentru a vedea
+            cum putem ajuta și afacerea ta.
+          </p>
+        </div>
+
+        <div className="container mx-auto">
+          <BentoBox />
+        </div>
+      </section>
+
+      <section className="py-20 px-4 bg-slate-50 dark:bg-slate-900">
+        <div className="container mx-auto text-center mb-16">
+          <Badge className="mb-3">Testimoniale</Badge>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Ce spun clienții noștri
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Descoperă experiențele pozitive ale clienților noștri și rezultatele
+            obținute.
+          </p>
+        </div>
+
+        <div className="container mx-auto grid md:grid-cols-3 gap-8">
+          {testimonials.map((testimonial, index) => (
+            <TestimonialCard
+              key={index}
+              name={testimonial.name}
+              company={testimonial.company}
+              testimonial={testimonial.testimonial}
+              image={testimonial.image}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="py-20 px-4">
+        <div className="container mx-auto max-w-4xl bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl p-12 text-white text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Pregătit să începi proiectul tău?
+          </h2>
+          <p className="text-lg mb-8 opacity-90">
+            Hai să transformăm ideile tale în realitate. Contactează-ne pentru o
+            consultație gratuită.
+          </p>
+          <Button
+            asChild
+            size="lg"
+            variant="secondary"
+            className="rounded-full px-8"
+          >
+            <Link to="/request-project">
+              Solicită acum <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
         </div>
       </section>
 

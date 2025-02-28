@@ -3,13 +3,14 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { User } from "@/types";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signIn: (email: string, password: string, redirectPath?: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, redirectPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -18,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast: shadowToast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,10 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error("Session error:", error.message);
           throw error;
         }
         
         if (session?.user) {
+          console.log("Found active session for user:", session.user.id);
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
@@ -40,17 +43,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
             
           if (profileError) {
-            throw profileError;
+            console.error("Profile error:", profileError.message);
+            // If profile error, we'll still try to use session data
+            setUser({
+              id: session.user.id,
+              name: session.user.user_metadata?.name || '',
+              email: session.user.email || '',
+              isAdmin: false,
+              phone: '',
+              company: '',
+            });
+          } else {
+            console.log("Found profile:", profile);
+            setUser({
+              id: session.user.id,
+              name: profile.name || session.user.user_metadata?.name || '',
+              email: profile.email || session.user.email || '',
+              isAdmin: profile.is_admin || false,
+              phone: profile.phone || '',
+              company: profile.company || '',
+            });
           }
-          
-          setUser({
-            id: session.user.id,
-            name: profile.name || '',
-            email: profile.email || session.user.email || '',
-            isAdmin: profile.is_admin || false,
-            phone: profile.phone || '',
-            company: profile.company || '',
-          });
+        } else {
+          console.log("No active session found");
         }
       } catch (error) {
         console.error('Error fetching session:', error);
@@ -63,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session);
       if (event === 'SIGNED_IN' && session) {
         // Fetch user profile
         const { data: profile, error: profileError } = await supabase
@@ -73,19 +89,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
         if (profileError) {
           console.error('Error fetching profile:', profileError);
+          // Still set user with session data if profile fetch fails
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || '',
+            email: session.user.email || '',
+            isAdmin: false,
+            phone: '',
+            company: '',
+          });
           return;
         }
         
         setUser({
           id: session.user.id,
-          name: profile.name || '',
-          email: profile.email || session.user.email || '',
-          isAdmin: profile.is_admin || false,
-          phone: profile.phone || '',
-          company: profile.company || '',
+          name: profile?.name || session.user.user_metadata?.name || '',
+          email: profile?.email || session.user.email || '',
+          isAdmin: profile?.is_admin || false,
+          phone: profile?.phone || '',
+          company: profile?.company || '',
+        });
+
+        // Show toast notification
+        toast("Autentificare reușită", {
+          description: "Te-ai conectat cu succes!"
         });
       } else if (event === 'SIGNED_OUT') {
+        console.log("User signed out");
         setUser(null);
+        toast("Deconectare reușită", {
+          description: "Te-ai deconectat cu succes."
+        });
       }
     });
     
@@ -94,8 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
   
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, redirectPath?: string) => {
     try {
+      console.log("Attempting sign in for:", email);
       setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -103,54 +138,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (error) {
+        console.error("Sign in error:", error.message);
         throw error;
       }
       
       if (data?.user) {
+        console.log("Sign in successful for:", data.user.id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single();
           
-        if (profileError) {
-          throw profileError;
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error fetching profile after sign in:', profileError);
         }
         
-        setUser({
-          id: data.user.id,
-          name: profile.name || '',
-          email: profile.email || data.user.email || '',
-          isAdmin: profile.is_admin || false,
-          phone: profile.phone || '',
-          company: profile.company || '',
+        // User data will be set by the auth state change listener
+        
+        toast("Autentificare reușită", {
+          description: "Te-ai conectat cu succes!"
         });
         
-        toast({
-          title: "Autentificare reușită",
-          description: "Te-ai conectat cu succes!",
-        });
-        
-        // Redirect based on user role
-        if (profile.is_admin) {
+        // Redirect based on user role or provided redirect path
+        if (redirectPath) {
+          navigate(redirectPath);
+        } else if (profile?.is_admin) {
           navigate('/admin');
         } else {
           navigate('/dashboard');
         }
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare de autentificare",
+      console.error("Sign in catch error:", error.message);
+      toast("Eroare de autentificare", {
         description: error.message || "Credențiale invalide. Încearcă din nou.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string, redirectPath?: string) => {
     try {
+      console.log("Attempting sign up for:", email);
       setLoading(true);
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -163,26 +195,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (error) {
+        console.error("Sign up error:", error.message);
         throw error;
       }
       
-      toast({
-        title: "Înregistrare reușită",
-        description: "Contul tău a fost creat cu succes!",
+      toast("Înregistrare reușită", {
+        description: "Contul tău a fost creat cu succes!"
       });
       
       // If email confirmation is required
       if (!data.session) {
-        navigate('/auth/verify-email');
+        navigate('/verify-email');
         return;
       }
       
-      navigate('/dashboard');
+      // User data will be set by the auth state change listener
+      
+      // Redirect to the specified path or dashboard
+      if (redirectPath) {
+        navigate(redirectPath);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare la înregistrare",
+      console.error("Sign up catch error:", error.message);
+      toast("Eroare la înregistrare", {
         description: error.message || "Nu s-a putut crea contul. Încearcă din nou.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -191,20 +230,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log("Attempting sign out");
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       
       if (error) {
+        console.error("Sign out error:", error.message);
         throw error;
       }
       
-      setUser(null);
+      // User will be set to null by the auth state change listener
       navigate('/');
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare la deconectare",
+      console.error("Sign out catch error:", error.message);
+      toast("Eroare la deconectare", {
         description: error.message || "Nu s-a putut efectua deconectarea.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -213,24 +254,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
+      console.log("Attempting password reset for:", email);
       setLoading(true);
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) {
+        console.error("Password reset error:", error.message);
         throw error;
       }
       
-      toast({
-        title: "Email trimis",
+      toast("Email trimis", {
         description: "Verifică-ți emailul pentru instrucțiuni de resetare a parolei.",
       });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare la trimiterea emailului",
+      console.error("Password reset catch error:", error.message);
+      toast("Eroare la trimiterea emailului", {
         description: error.message || "Nu s-a putut trimite emailul de resetare.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
