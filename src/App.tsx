@@ -14,7 +14,6 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Settings from "@/pages/Settings";
-import LoadingScreen from "@/components/LoadingScreen";
 
 function App() {
   const location = useLocation();
@@ -58,7 +57,6 @@ function App() {
       
       <SonnerToaster position="bottom-right" />
       <Toaster />
-      <LoadingScreen />
     </AuthProvider>
   );
 }

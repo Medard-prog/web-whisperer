@@ -15,7 +15,7 @@ const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
 
   // Show loading screen while checking auth state
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen isLoading={loading} />;
   }
 
   // Redirect to login if not authenticated

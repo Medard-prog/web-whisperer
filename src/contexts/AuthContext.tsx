@@ -32,7 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error) {
           console.error("Session error:", error.message);
-          throw error;
+          setLoading(false);
+          return;
         }
         
         if (session?.user) {
@@ -80,44 +81,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session);
-      if (event === 'SIGNED_IN' && session) {
-        // Fetch user profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      
+      if (session) {
+        // For any event with a session, update the user state
+        try {
+          // Fetch user profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error fetching profile:', profileError);
+            // Still set user with session data if profile fetch fails
+            setUser({
+              id: session.user.id,
+              name: session.user.user_metadata?.name || '',
+              email: session.user.email || '',
+              isAdmin: false,
+              phone: '',
+              company: '',
+            });
+          } else if (profile) {
+            setUser({
+              id: session.user.id,
+              name: profile?.name || session.user.user_metadata?.name || '',
+              email: profile?.email || session.user.email || '',
+              isAdmin: profile?.is_admin || false,
+              phone: profile?.phone || '',
+              company: profile?.company || '',
+            });
+          }
           
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-          // Still set user with session data if profile fetch fails
-          setUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.name || '',
-            email: session.user.email || '',
-            isAdmin: false,
-            phone: '',
-            company: '',
-          });
-          return;
+          if (event === 'SIGNED_IN') {
+            // Show toast notification for sign in
+            sonnerToast.success("Autentificare reușită", {
+              description: "Te-ai conectat cu succes!"
+            });
+            
+            // Redirect to dashboard after sign in
+            navigate('/dashboard');
+          }
+        } catch (err) {
+          console.error('Error in auth state change handler:', err);
         }
-        
-        setUser({
-          id: session.user.id,
-          name: profile?.name || session.user.user_metadata?.name || '',
-          email: profile?.email || session.user.email || '',
-          isAdmin: profile?.is_admin || false,
-          phone: profile?.phone || '',
-          company: profile?.company || '',
-        });
-
-        // Show toast notification
-        sonnerToast.success("Autentificare reușită", {
-          description: "Te-ai conectat cu succes!"
-        });
-        
-        // Redirect to dashboard after sign in
-        navigate('/dashboard');
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out");
         setUser(null);
@@ -125,6 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Te-ai deconectat cu succes."
         });
       }
+      
+      setLoading(false);
     });
     
     return () => {
@@ -175,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sonnerToast.error("Eroare de autentificare", {
         description: error.message || "Credențiale invalide. Încearcă din nou."
       });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -222,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sonnerToast.error("Eroare la înregistrare", {
         description: error.message || "Nu s-a putut crea contul. Încearcă din nou."
       });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -312,6 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sonnerToast.error("Eroare la actualizarea profilului", {
         description: error.message || "Nu s-a putut actualiza profilul."
       });
+      throw error;
     } finally {
       setLoading(false);
     }

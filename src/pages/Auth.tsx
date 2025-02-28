@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import WavyBackground from '@/components/WavyBackground';
-import { Mail, Lock, User, Building, Phone, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, Building, Phone, ArrowLeft, Loader2 } from 'lucide-react';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const Auth = () => {
   const { signIn, signUp, loading: authLoading } = useAuth();
@@ -64,6 +65,10 @@ const Auth = () => {
     }
   };
 
+  if (authLoading) {
+    return <LoadingScreen isLoading={authLoading} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <WavyBackground className="absolute inset-0 z-0">
@@ -79,16 +84,16 @@ const Auth = () => {
         >
           <Button
             variant="ghost"
-            className="mb-4 p-0"
+            className="mb-4 p-0 text-primary hover:text-primary/80"
             onClick={() => navigate('/')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Înapoi la pagina principală
           </Button>
           
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-xl bg-card/95 backdrop-blur-sm">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">
+              <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                 WebCraft
               </CardTitle>
               <CardDescription className="text-center">
@@ -132,7 +137,7 @@ const Auth = () => {
                         <Label htmlFor="password">Parolă</Label>
                         <Button
                           variant="link"
-                          className="p-0 h-auto font-normal text-xs"
+                          className="p-0 h-auto font-normal text-xs text-primary"
                           onClick={() => navigate('/reset-password')}
                           type="button"
                         >
@@ -155,9 +160,12 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={loading || authLoading}
+                      disabled={loading}
                     >
-                      {loading || authLoading ? 'Se încarcă...' : 'Autentificare'}
+                      {loading ? 
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...</> : 
+                        'Autentificare'
+                      }
                     </Button>
                   </form>
                 </TabsContent>
@@ -251,9 +259,12 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={loading || authLoading}
+                      disabled={loading}
                     >
-                      {loading || authLoading ? 'Se încarcă...' : 'Creează cont'}
+                      {loading ? 
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...</> : 
+                        'Creează cont'
+                      }
                     </Button>
                   </form>
                 </TabsContent>
