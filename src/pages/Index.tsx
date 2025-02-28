@@ -37,44 +37,88 @@ const services = [
     description:
       "Îți construim un website modern, responsive și optimizat pentru performanță.",
     icon: PanelTop,
+    benefits: ["Design responsive", "SEO optimizat", "Încărcare rapidă"],
+    linkTo: "/request-project",
   },
   {
     title: "E-commerce",
     description:
       "Creăm magazine online complete cu cos de cumpărături, plăți, și gestionare de produse.",
     icon: ShoppingBag,
+    benefits: ["Coș de cumpărături", "Procesare plăți", "Gestionare produse"],
+    linkTo: "/request-project",
   },
   {
     title: "Aplicații Web",
     description:
       "Dezvoltăm aplicații web personalizate cu funcționalități avansate pentru afacerea ta.",
     icon: Code,
+    benefits: ["Funcționalități custom", "Integrări API", "Scalabilitate"],
+    linkTo: "/request-project",
   },
 ];
 
 const testimonials = [
   {
-    name: "Elena Popescu",
+    author: "Elena Popescu",
+    role: "Director",
     company: "Alinda Fashion",
-    testimonial:
+    content:
       "Serviciu excelent! Echipa a înțeles perfect cerințele noastre și a livrat un website care a depășit așteptările. Profesionalism și atenție la detalii.",
-    image: "/placeholder.svg",
+    avatar: "/placeholder.svg",
   },
   {
-    name: "Mihai Dumitrescu",
+    author: "Mihai Dumitrescu",
+    role: "CEO",
     company: "TehnoMax",
-    testimonial:
+    content:
       "Am colaborat pentru magazinul nostru online și suntem foarte mulțumiți de rezultat. De la design până la funcționalități, totul a fost implementat impecabil.",
-    image: "/placeholder.svg",
+    avatar: "/placeholder.svg",
   },
   {
-    name: "Ana Ionescu",
+    author: "Ana Ionescu",
+    role: "Fondator",
     company: "Green Gardens",
-    testimonial:
+    content:
       "Un partener de încredere pentru dezvoltarea prezenței noastre online. Recomand cu căldură pentru orice afacere care dorește să aibă un website de calitate.",
-    image: "/placeholder.svg",
+    avatar: "/placeholder.svg",
   },
 ];
+
+const bentoItems = {
+  items: [
+    {
+      title: "Website corporate",
+      description: "Un website elegant pentru o firmă de consultanță",
+      image: "/placeholder.svg",
+      link: "/projects/1",
+    },
+    {
+      title: "E-commerce fashion",
+      description: "Magazin online pentru un brand de haine",
+      image: "/placeholder.svg",
+      link: "/projects/2",
+    },
+    {
+      title: "Aplicație gestiune stocuri",
+      description: "Sistem de gestiune pentru un distribuitor",
+      image: "/placeholder.svg",
+      link: "/projects/3",
+    },
+    {
+      title: "Portal educațional",
+      description: "Platformă de cursuri online",
+      image: "/placeholder.svg",
+      link: "/projects/4",
+    },
+    {
+      title: "Website restaurant",
+      description: "Site cu rezervări online pentru un restaurant",
+      image: "/placeholder.svg",
+      link: "/projects/5",
+    },
+  ],
+};
 
 // Redesigned PricingCalculator component
 const PricingCalculator = ({ onRequestProject }: { onRequestProject: (data: any) => void }) => {
@@ -523,6 +567,8 @@ const Index = () => {
               title={service.title}
               description={service.description}
               icon={service.icon}
+              benefits={service.benefits}
+              linkTo={service.linkTo}
             />
           ))}
         </div>
@@ -560,7 +606,7 @@ const Index = () => {
         </div>
 
         <div className="container mx-auto">
-          <BentoBox />
+          <BentoBox items={bentoItems.items} />
         </div>
       </section>
 
@@ -580,10 +626,11 @@ const Index = () => {
           {testimonials.map((testimonial, index) => (
             <TestimonialCard
               key={index}
-              name={testimonial.name}
+              author={testimonial.author}
+              role={testimonial.role}
               company={testimonial.company}
-              testimonial={testimonial.testimonial}
-              image={testimonial.image}
+              content={testimonial.content}
+              avatar={testimonial.avatar}
             />
           ))}
         </div>

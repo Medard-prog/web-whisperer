@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/components/ui/sonner";
+import { toast as sonnerToast } from "sonner"; // Fixed import
 import {
   Dialog,
   DialogContent,
@@ -294,14 +294,14 @@ const RequestProject = () => {
 
       if (error) throw error;
 
-      toast("Cerere trimisă cu succes!", {
+      sonnerToast("Cerere trimisă cu succes!", {
         description: "Vă vom contacta în curând."
       });
 
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error submitting project request:", error);
-      toast("Eroare la trimiterea cererii", {
+      sonnerToast("Eroare la trimiterea cererii", {
         description: error.message || "Vă rugăm să încercați din nou.",
         variant: "destructive"
       });
@@ -314,7 +314,7 @@ const RequestProject = () => {
     try {
       if (isSignUp) {
         if (!data.name) {
-          toast("Eroare la înregistrare", {
+          sonnerToast("Eroare la înregistrare", {
             description: "Numele este obligatoriu.",
             variant: "destructive"
           });
