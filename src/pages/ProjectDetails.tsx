@@ -1,144 +1,171 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { 
+  fetchProjectById, 
+  fetchProjectTasks, 
+  fetchProjectNotes, 
+  fetchProjectFiles 
+} from "@/integrations/supabase/client";
+import { Project, ProjectTask, ProjectNote, ProjectFile } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
 import ProjectTasksPanel from "@/components/ProjectTasksPanel";
 import ProjectNotesPanel from "@/components/ProjectNotesPanel";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageTransition from "@/components/PageTransition";
-import { Project, ProjectTask, ProjectNote, mapProject, mapProjectTask, mapProjectNote } from "@/types";
-import { ChevronLeft, PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { FileArrowUp, MessageSquare } from "lucide-react";
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ProjectTask[] | null>(null);
   const [notes, setNotes] = useState<ProjectNote[] | null>(null);
+  const [files, setFiles] = useState<ProjectFile[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (id) {
-      loadProjectData(id);
-    }
+    if (!id) return;
+    
+    const loadProjectData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log("Loading project data for ID:", id);
+        
+        // Load project details
+        const projectData = await fetchProjectById(id);
+        if (!projectData) {
+          throw new Error("Project not found");
+        }
+        setProject(projectData);
+        
+        // Load tasks
+        try {
+          const tasksData = await fetchProjectTasks(id);
+          setTasks(tasksData);
+        } catch (tasksError) {
+          console.error("Error loading tasks:", tasksError);
+          // Don't fail the whole page for tasks
+        }
+        
+        // Load notes
+        try {
+          const notesData = await fetchProjectNotes(id);
+          setNotes(notesData);
+        } catch (notesError) {
+          console.error("Error loading notes:", notesError);
+          // Don't fail the whole page for notes
+        }
+        
+        // Load files
+        try {
+          const filesData = await fetchProjectFiles(id);
+          setFiles(filesData);
+        } catch (filesError) {
+          console.error("Error loading files:", filesError);
+          // Don't fail the whole page for files
+        }
+        
+      } catch (err) {
+        console.error("Error loading project data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load project data");
+        toast.error("Error loading project data", {
+          description: "Please try again later."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadProjectData();
   }, [id]);
   
-  const loadProjectData = async (projectId: string) => {
-    try {
-      setLoading(true);
-      
-      // Fetch project data
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-        
-      if (projectError) throw projectError;
-      if (!projectData) throw new Error("Project not found");
-      
-      // Fetch project tasks
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('project_tasks')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-        
-      if (tasksError) throw tasksError;
-      
-      // Fetch project notes (only for admins)
-      let notesData = null;
-      if (user?.isAdmin) {
-        const { data, error: notesError } = await supabase
-          .from('project_notes')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false });
-          
-        if (notesError) throw notesError;
-        notesData = data;
-      }
-      
-      // Map the data to our types
-      setProject(mapProject(projectData));
-      setTasks(tasksData.map(mapProjectTask));
-      setNotes(notesData ? notesData.map(mapProjectNote) : null);
-      
-    } catch (error) {
-      console.error("Error loading project data:", error);
-      toast.error("Eroare la încărcarea datelor proiectului");
-      navigate("/dashboard");
-    } finally {
-      setLoading(false);
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProject(updatedProject);
+    toast.success("Project updated successfully");
+  };
+  
+  const handleChatNav = () => {
+    if (id) {
+      navigate(`/dashboard/project/${id}/chat`);
     }
   };
   
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <DashboardSidebar isAdmin={user?.isAdmin} />
-      
-      <main className="flex-1 p-6 overflow-y-auto">
-        <PageTransition>
-          <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => navigate(-1)}
-                  className="mr-2"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">{loading ? "Încărcare proiect..." : project?.title}</h1>
-                  <p className="text-gray-500">Detalii despre proiect și stadiul acestuia</p>
-                </div>
-              </div>
+      <DashboardSidebar />
+      <PageTransition>
+        <div className="flex-1 p-6 lg:p-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 className="text-2xl font-bold">
+                {loading ? "Loading Project..." : project?.title || "Project Details"}
+              </h1>
               
-              {user?.isAdmin && (
-                <Button
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate("/dashboard/projects")}
+                  className="gap-2"
                 >
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Adaugă Task
+                  <FileArrowUp className="h-4 w-4" />
+                  Back to Projects
                 </Button>
-              )}
+                
+                <Button 
+                  onClick={handleChatNav}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Project Chat
+                </Button>
+              </div>
             </div>
             
-            <ProjectDetailsPanel project={project} loading={loading} isAdmin={user?.isAdmin} />
-            
-            <Tabs defaultValue="tasks" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="tasks">Sarcini</TabsTrigger>
-                {user?.isAdmin && (
-                  <TabsTrigger value="notes">Note Private</TabsTrigger>
-                )}
-              </TabsList>
-              
-              <TabsContent value="tasks">
-                <ProjectTasksPanel
-                  projectId={id || ""}
-                  tasks={tasks}
-                  loading={loading}
-                />
-              </TabsContent>
-              
-              {user?.isAdmin && (
-                <TabsContent value="notes">
-                  <ProjectNotesPanel projectId={id || ""} />
-                </TabsContent>
-              )}
-            </Tabs>
+            {error ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+                <p className="font-medium">Error</p>
+                <p>{error}</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-2" 
+                  onClick={() => window.location.reload()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                  <ProjectDetailsPanel 
+                    project={project} 
+                    loading={loading} 
+                    onProjectUpdate={handleProjectUpdate}
+                  />
+                  
+                  <ProjectTasksPanel 
+                    projectId={id || ''} 
+                    tasks={tasks} 
+                    loading={loading} 
+                  />
+                </div>
+                
+                <div className="space-y-8">
+                  <ProjectNotesPanel projectId={id || ''} />
+                </div>
+              </div>
+            )}
           </div>
-        </PageTransition>
-      </main>
+        </div>
+      </PageTransition>
     </div>
   );
 };

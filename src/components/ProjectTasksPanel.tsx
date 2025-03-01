@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { supabase, fetchProjectTasks } from "@/integrations/supabase/client";
+import { supabase, fetchProjectTasks, addProjectTask } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectTask, mapProjectTask } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 import { CheckCircle2, Circle, Clock, Plus, Trash2 } from "lucide-react";
 
 interface ProjectTasksPanelProps {
@@ -31,33 +32,37 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
   useEffect(() => {
     if (initialTasks) {
       setTasks(initialTasks);
+    } else if (projectId && !initialLoading) {
+      // If tasks weren't provided but we have a projectId, load them
+      loadTasks();
     }
-  }, [initialTasks]);
+  }, [initialTasks, projectId, initialLoading]);
+  
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      const loadedTasks = await fetchProjectTasks(projectId);
+      setTasks(loadedTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-au putut încărca sarcinile. Încearcă din nou.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const addTask = async () => {
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || !user?.id) return;
     
     try {
       setIsSubmitting(true);
       
-      const newTask = {
-        project_id: projectId,
-        title: newTaskTitle,
-        is_completed: false,
-        created_by: user?.id || '',
-      };
-      
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .insert(newTask)
-        .select('*')
-        .single();
-        
-      if (error) throw error;
-      
-      // Use the mapper function to convert the snake_case response to camelCase
-      const mappedTask = mapProjectTask(data);
-      setTasks(prev => prev ? [mappedTask, ...prev] : [mappedTask]);
+      const newTask = await addProjectTask(projectId, newTaskTitle, user.id);
+      setTasks(prev => prev ? [newTask, ...prev] : [newTask]);
       setNewTaskTitle("");
       
       toast({
@@ -129,12 +134,7 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
       console.error('Error deleting task:', error);
       
       // Refetch tasks if there was an error
-      try {
-        const tasks = await fetchProjectTasks(projectId);
-        setTasks(tasks);
-      } catch (fetchError) {
-        console.error('Error refetching tasks:', fetchError);
-      }
+      loadTasks();
       
       toast({
         variant: "destructive",

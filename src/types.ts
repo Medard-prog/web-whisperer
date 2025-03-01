@@ -73,6 +73,7 @@ export interface ProjectFile {
   uploadedBy?: string;
   uploadedAt: string;
   isAdminOnly: boolean;
+  url?: string; // Added URL field for direct access
 }
 
 export interface AdminNote {
