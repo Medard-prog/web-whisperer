@@ -50,6 +50,62 @@ export async function fetchProjects(userId?: string): Promise<Project[]> {
   }
 }
 
+// New function to fetch project requests for a user
+export async function fetchProjectRequests(userId?: string): Promise<Project[]> {
+  try {
+    console.log("Fetching project requests for user:", userId);
+    
+    // Check connection
+    const { data: testData, error: testError } = await supabase
+      .from('project_requests')
+      .select('count')
+      .limit(1);
+    
+    if (testError) {
+      console.error("Error testing connection to project_requests:", testError);
+      throw testError;
+    }
+    
+    // Fetch project requests
+    const query = supabase.from('project_requests').select('*');
+    
+    if (userId) {
+      query.eq('user_id', userId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching project requests:", error);
+      throw error;
+    }
+    
+    console.log("Project requests fetched:", data);
+    
+    // Map project requests to Project type for display
+    return (data || []).map(request => ({
+      id: request.id,
+      title: request.project_name,
+      description: request.description || '',
+      status: request.status === 'new' ? 'pending' : request.status as any,
+      createdAt: request.created_at,
+      price: request.price || 0,
+      userId: request.user_id,
+      hasEcommerce: request.has_ecommerce || false,
+      hasCMS: request.has_cms || false,
+      hasSEO: request.has_seo || false,
+      hasMaintenance: request.has_maintenance || false,
+      websiteType: request.project_type,
+      pageCount: request.page_count,
+      designComplexity: request.design_complexity,
+      additionalInfo: request.business_goal
+    }));
+  } catch (error) {
+    console.error("Error in fetchProjectRequests:", error);
+    throw error;
+  }
+}
+
 export async function fetchUsers(): Promise<User[]> {
   const { data, error } = await supabase
     .from('profiles')

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects } from "@/integrations/supabase/client";
+import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import PageTransition from "@/components/PageTransition";
@@ -18,13 +18,15 @@ const statusTranslations: Record<string, { label: string; color: string }> = {
   pending: { label: "În așteptare", color: "bg-yellow-100 text-yellow-800" },
   in_progress: { label: "În lucru", color: "bg-blue-100 text-blue-800" },
   completed: { label: "Finalizat", color: "bg-green-100 text-green-800" },
-  cancelled: { label: "Anulat", color: "bg-red-100 text-red-800" }
+  cancelled: { label: "Anulat", color: "bg-red-100 text-red-800" },
+  new: { label: "Nou", color: "bg-purple-100 text-purple-800" }
 };
 
 const Projects = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -33,11 +35,43 @@ const Projects = () => {
       try {
         console.log("Fetching projects for user:", user.id);
         setIsLoading(true);
-        const projects = await fetchProjects(user.id);
-        console.log("Projects fetched:", projects);
-        setProjects(projects);
+        setError(null);
+        
+        // Try to fetch from both tables
+        let combinedProjects: Project[] = [];
+        
+        try {
+          const requests = await fetchProjectRequests(user.id);
+          console.log("Project requests fetched:", requests);
+          combinedProjects = [...combinedProjects, ...requests];
+        } catch (requestsError) {
+          console.error("Error fetching project requests:", requestsError);
+        }
+        
+        try {
+          const regularProjects = await fetchProjects(user.id);
+          console.log("Regular projects fetched:", regularProjects);
+          combinedProjects = [...combinedProjects, ...regularProjects];
+        } catch (projectsError) {
+          console.error("Error fetching regular projects:", projectsError);
+        }
+        
+        // Sort all projects by creation date
+        combinedProjects.sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA; // Descending order
+        });
+        
+        console.log("Combined projects:", combinedProjects);
+        setProjects(combinedProjects);
+        
+        if (combinedProjects.length === 0) {
+          console.log("No projects found");
+        }
       } catch (error) {
-        console.error("Error fetching projects:", error);
+        console.error("Error in loadProjects:", error);
+        setError("Nu s-au putut încărca proiectele");
         toast.error("Nu s-au putut încărca proiectele", {
           description: "Te rugăm să reîncerci mai târziu."
         });
@@ -74,6 +108,13 @@ const Projects = () => {
             <div className="flex justify-center py-12">
               <p>Se încarcă proiectele...</p>
             </div>
+          ) : error ? (
+            <Card className="border-dashed border-2 bg-red-50 border-red-200">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()}>Încearcă din nou</Button>
+              </CardContent>
+            </Card>
           ) : projects.length === 0 ? (
             <Card className="border-dashed border-2 bg-gray-50">
               <CardContent className="flex flex-col items-center justify-center py-12">

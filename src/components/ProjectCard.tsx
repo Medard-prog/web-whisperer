@@ -15,14 +15,16 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
     pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
     in_progress: "bg-blue-100 text-blue-800 hover:bg-blue-200",
     completed: "bg-green-100 text-green-800 hover:bg-green-200",
-    cancelled: "bg-red-100 text-red-800 hover:bg-red-200"
+    cancelled: "bg-red-100 text-red-800 hover:bg-red-200",
+    new: "bg-purple-100 text-purple-800 hover:bg-purple-200"
   };
 
   const statusLabels = {
     pending: "În așteptare",
     in_progress: "În lucru",
     completed: "Finalizat",
-    cancelled: "Anulat"
+    cancelled: "Anulat",
+    new: "Nou"
   };
 
   return (
@@ -33,8 +35,8 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="line-clamp-1 text-lg">{project.title}</CardTitle>
-          <Badge className={statusColors[project.status]}>
-            {statusLabels[project.status]}
+          <Badge className={statusColors[project.status as keyof typeof statusColors] || "bg-gray-100"}>
+            {statusLabels[project.status as keyof typeof statusLabels] || project.status}
           </Badge>
         </div>
       </CardHeader>

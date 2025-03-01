@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase, fetchProjects } from "@/integrations/supabase/client";
+import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectCard from "@/components/ProjectCard";
 import { Button } from "@/components/ui/button";
@@ -32,13 +31,37 @@ const Dashboard = () => {
       setLoading(true);
       if (!user) return;
       
-      console.log("Fetching projects for user:", user.id);
-      const projects = await fetchProjects(user.id);
-      console.log("Projects fetched:", projects);
-      setProjects(projects);
+      console.log("Loading projects in Dashboard for user:", user.id);
+      
+      // Collect projects from both sources
+      let combinedProjects: Project[] = [];
+      
+      try {
+        const requests = await fetchProjectRequests(user.id);
+        console.log("Project requests fetched in Dashboard:", requests);
+        combinedProjects = [...combinedProjects, ...requests];
+      } catch (requestsError) {
+        console.error("Error fetching project requests in Dashboard:", requestsError);
+      }
+      
+      try {
+        const regularProjects = await fetchProjects(user.id);
+        console.log("Regular projects fetched in Dashboard:", regularProjects);
+        combinedProjects = [...combinedProjects, ...regularProjects];
+      } catch (projectsError) {
+        console.error("Error fetching regular projects in Dashboard:", projectsError);
+      }
+      
+      // Sort by creation date (newest first)
+      combinedProjects.sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      
+      console.log("Combined projects in Dashboard:", combinedProjects);
+      setProjects(combinedProjects);
       
     } catch (error) {
-      console.error("Error loading projects:", error);
+      console.error("Error loading projects in Dashboard:", error);
       toast.error("Eroare la încărcarea proiectelor", {
         description: "Vă rugăm să reîncercați mai târziu."
       });
@@ -52,7 +75,7 @@ const Dashboard = () => {
   };
   
   // Calculate stats from projects
-  const activeProjects = projects.filter(p => p.status === "in_progress").length;
+  const activeProjects = projects.filter(p => p.status === "in_progress" || p.status === "new").length;
   const pendingProjects = projects.filter(p => p.status === "pending").length;
   const completedProjects = projects.filter(p => p.status === "completed").length;
   const totalProjects = projects.length;
