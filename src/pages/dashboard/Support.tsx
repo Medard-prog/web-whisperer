@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { fetchSupportMessages, sendSupportMessage } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -126,7 +127,7 @@ const Support = () => {
                       <div className="flex items-start gap-4">
                         <Avatar>
                           <AvatarImage 
-                            src={user?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'User'}`} 
+                            src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}`} 
                             alt="Profile picture" 
                           />
                           <AvatarFallback>{message.is_from_user ? user?.email?.charAt(0).toUpperCase() || 'U' : 'S'}</AvatarFallback>
