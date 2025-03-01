@@ -120,9 +120,9 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       1: ["projectName", "projectType"],
       2: ["description", "budget"],
       3: ["terms"]
-    }[currentStep as 0 | 1 | 2 | 3] as string[];
+    }[currentStep as 0 | 1 | 2 | 3];
     
-    const isValid = await trigger(fieldsToValidate);
+    const isValid = await trigger(fieldsToValidate as any);
     
     if (isValid) {
       if (currentStep < 3) {
@@ -330,7 +330,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       </Card>
       
       {/* Authentication Dialog */}
-      <Dialog open={loginDialogOpen} onOpenChange={(open) => setLoginDialogOpen(open)}>
+      <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{authMode === 'login' ? 'Conectare cont' : 'Creează un cont nou'}</DialogTitle>
