@@ -435,7 +435,6 @@ export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[
     
     if (!bucketExists) {
       console.error('Storage bucket "project_files" does not exist');
-      // Create the bucket if it doesn't exist
       try {
         console.log('Creating project_files bucket');
         const { error } = await supabase.storage.createBucket('project_files', {
@@ -506,7 +505,8 @@ export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[
         fileSize: file.metadata?.size || 0,
         uploadedBy: '',
         uploadedAt: file.created_at || new Date().toISOString(),
-        isAdminOnly: false
+        isAdminOnly: false,
+        url: publicUrlData.publicUrl
       };
       
       result.push(projectFile);
