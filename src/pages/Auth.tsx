@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+
+import { useState, useEffect } from 'react';
+import { Navigate, Link, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -36,7 +37,9 @@ const registerSchema = z.object({
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const { user, signIn, signUp, loading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const location = useLocation();
   
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -55,30 +58,50 @@ export default function Auth() {
     },
   });
 
+  // Reset forms when switching between login and register
+  useEffect(() => {
+    loginForm.reset();
+    registerForm.reset();
+    setShowPassword(false);
+  }, [isLogin]);
+
   const onSubmitLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
+      setIsSubmitting(true);
       await signIn(values.email, values.password);
+      
+      // The redirect will be handled by AuthContext
     } catch (error) {
       console.error('Login error:', error);
       // Error is already handled in the Auth context with toast
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const onSubmitRegister = async (values: z.infer<typeof registerSchema>) => {
     try {
+      setIsSubmitting(true);
       await signUp(values.email, values.password, values.name);
+      // Switch to login after registration
+      setIsLogin(true);
       toast.success('Cont creat cu succes!', {
         description: 'Te rugăm să verifici emailul pentru a confirma contul.',
       });
     } catch (error) {
       console.error('Register error:', error);
       // Error is already handled in the Auth context with toast
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // Get the path we should redirect to after login
+  const from = location.state?.from?.pathname || '/dashboard';
+
   // Redirect if user is already logged in
-  if (user && !loading) {
-    return <Navigate to="/dashboard" />;
+  if (user && !authLoading) {
+    return <Navigate to={from} />;
   }
 
   return (
@@ -188,10 +211,10 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={isSubmitting || authLoading}
                   className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                 >
-                  {loading ? 'Se procesează...' : 'Intră în cont'}
+                  {(isSubmitting || authLoading) ? 'Se procesează...' : 'Intră în cont'}
                 </Button>
               </form>
             </Form>
@@ -282,10 +305,10 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={isSubmitting || authLoading}
                   className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                 >
-                  {loading ? 'Se procesează...' : 'Creează cont'}
+                  {(isSubmitting || authLoading) ? 'Se procesează...' : 'Creează cont'}
                 </Button>
               </form>
             </Form>

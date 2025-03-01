@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -164,6 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Sign in with email and password
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -181,12 +183,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Error in signIn:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
   
   // Sign up with email and password
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -211,6 +216,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Error in signUp:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -250,6 +257,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Sign out the user
   const signOut = async () => {
     try {
+      setLoading(true);
       await supabase.auth.signOut();
       setUser(null);
       navigate('/auth');
@@ -257,6 +265,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Error signing out:', error);
       toast.error('Eroare la deconectare');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -267,6 +277,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
+      setLoading(true);
       // Update profile in database
       const { error } = await supabase
         .from('profiles')
@@ -291,6 +302,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error updating profile:', error);
       toast.error('Nu s-a putut actualiza profilul');
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
   
