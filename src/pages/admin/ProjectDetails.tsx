@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -63,11 +62,9 @@ const AdminProjectDetails = () => {
       try {
         setLoading(true);
         
-        // Try to fetch from both regular projects and project requests
         const regularProjects = await fetchProjects();
         const projectRequests = await fetchProjectRequests();
         
-        // Combine and look for the project with matching ID
         const allProjects = [...regularProjects, ...projectRequests];
         const foundProject = allProjects.find(p => p.id === id);
         
@@ -79,18 +76,16 @@ const AdminProjectDetails = () => {
         
         setProject(foundProject);
         
-        // Fetch related data for the project
         if (foundProject) {
           const projectTasks = await fetchProjectTasks(id);
           const projectNotes = await fetchProjectNotes(id);
           const projectMessages = await fetchProjectMessages(id);
           
-          // These would be implemented in supabase client
           try {
             const adminProjectNotes = await fetchAdminNotes(id);
             setAdminNotes(adminProjectNotes);
             
-            const files = await fetchProjectFiles(id, true); // true = admin only files
+            const files = await fetchProjectFiles(id, true);
             setProjectFiles(files);
           } catch (error) {
             console.error("Error fetching admin data:", error);
@@ -117,7 +112,6 @@ const AdminProjectDetails = () => {
     try {
       await addAdminNote(id, newAdminNote, user.id);
       
-      // Refresh admin notes
       const refreshedNotes = await fetchAdminNotes(id);
       setAdminNotes(refreshedNotes);
       
@@ -135,7 +129,6 @@ const AdminProjectDetails = () => {
     try {
       await sendProjectMessage(id, newMessage, user.id, true);
       
-      // Refresh messages
       const refreshedMessages = await fetchProjectMessages(id);
       setMessages(refreshedMessages);
       
@@ -154,9 +147,8 @@ const AdminProjectDetails = () => {
     
     try {
       setUploadingFile(true);
-      await uploadProjectFile(id, file, user.id, true); // true = admin only
+      await uploadProjectFile(id, file, user.id, true);
       
-      // Refresh files
       const refreshedFiles = await fetchProjectFiles(id, true);
       setProjectFiles(refreshedFiles);
       
@@ -166,7 +158,6 @@ const AdminProjectDetails = () => {
       toast.error("Eroare la încărcarea fișierului");
     } finally {
       setUploadingFile(false);
-      // Clear the file input
       event.target.value = "";
     }
   };
@@ -282,7 +273,7 @@ const AdminProjectDetails = () => {
             <TabsContent value="details">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
-                  <ProjectDetailsPanel project={project} />
+                  <ProjectDetailsPanel project={project} loading={false} isAdmin={true} />
                 </div>
                 
                 <div className="lg:col-span-1">
@@ -310,7 +301,7 @@ const AdminProjectDetails = () => {
             </TabsContent>
             
             <TabsContent value="tasks">
-              <ProjectTasksPanel project={project} tasks={tasks} />
+              <ProjectTasksPanel projectId={project.id} tasks={tasks} loading={false} />
             </TabsContent>
             
             <TabsContent value="messages">
