@@ -40,6 +40,7 @@ export interface ProjectNote {
   content: string;
   createdAt: string;
   createdBy?: string;
+  isAdminOnly?: boolean;  // Added this field to support admin-only notes
 }
 
 export interface User {
@@ -126,6 +127,7 @@ export function mapProjectNote(data: any): ProjectNote {
     content: data.content,
     createdAt: data.created_at,
     createdBy: data.created_by,
+    isAdminOnly: data.is_admin_only,
   };
 }
 

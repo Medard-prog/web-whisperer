@@ -236,9 +236,13 @@ export async function uploadFile(file: File, folder: string = 'messages'): Promi
 // Fetch admin notes for a project
 export async function fetchAdminNotes(projectId: string): Promise<AdminNote[]> {
   try {
-    // Use raw query to work around type issues since this table might not be in the types yet
+    // Use direct query to project_notes table with admin-only filter
     const { data, error } = await supabase
-      .rpc('get_admin_notes', { project_id_param: projectId });
+      .from('project_notes')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('is_admin_only', true)  // Admin-only notes
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error("Error fetching admin notes:", error);
@@ -261,12 +265,14 @@ export async function fetchAdminNotes(projectId: string): Promise<AdminNote[]> {
 // Add an admin note to a project
 export async function addAdminNote(projectId: string, content: string, userId: string) {
   try {
-    // Use raw query to work around type issues
+    // Insert directly into project_notes table with admin flag
     const { data, error } = await supabase
-      .rpc('add_admin_note', { 
-        project_id_param: projectId,
-        content_param: content,
-        user_id_param: userId
+      .from('project_notes')
+      .insert({ 
+        project_id: projectId,
+        content: content,
+        created_by: userId,
+        is_admin_only: true
       });
     
     if (error) {
@@ -284,12 +290,18 @@ export async function addAdminNote(projectId: string, content: string, userId: s
 // Fetch project files
 export async function fetchProjectFiles(projectId: string, adminOnly: boolean = false): Promise<ProjectFile[]> {
   try {
-    // Use a stored procedure to get files
-    const { data, error } = await supabase
-      .rpc('get_project_files', { 
-        project_id_param: projectId,
-        admin_only_param: adminOnly
-      });
+    // Query project_files table directly
+    const query = supabase
+      .from('project_files')
+      .select('*')
+      .eq('project_id', projectId);
+    
+    // Apply admin filter if specified
+    if (adminOnly) {
+      query.eq('is_admin_only', true);
+    }
+    
+    const { data, error } = await query.order('uploaded_at', { ascending: false });
     
     if (error) {
       console.error("Error fetching project files:", error);
@@ -333,21 +345,25 @@ export async function uploadProjectFile(
       throw uploadError;
     }
     
-    // Then add the file metadata using a stored procedure
+    // Get the public URL
     const { data: urlData } = supabase.storage
       .from('project_files')
       .getPublicUrl(filePath);
     
+    // Then insert the file metadata directly into the project_files table
     const { data, error } = await supabase
-      .rpc('add_project_file', {
-        project_id_param: projectId,
-        filename_param: file.name,
-        file_path_param: urlData.publicUrl,
-        file_type_param: file.type,
-        file_size_param: file.size,
-        uploaded_by_param: uploadedBy,
-        is_admin_only_param: isAdminOnly
-      });
+      .from('project_files')
+      .insert({
+        project_id: projectId,
+        filename: file.name,
+        file_path: urlData.publicUrl,
+        file_type: file.type,
+        file_size: file.size,
+        uploaded_by: uploadedBy,
+        is_admin_only: isAdminOnly
+      })
+      .select()
+      .single();
     
     if (error) {
       console.error("Error adding project file:", error);
@@ -358,13 +374,13 @@ export async function uploadProjectFile(
     return {
       id: data.id,
       projectId: data.project_id,
-      filename: file.name,
-      filePath: urlData.publicUrl,
-      fileType: file.type,
-      fileSize: file.size,
-      uploadedBy: uploadedBy,
-      uploadedAt: new Date().toISOString(),
-      isAdminOnly: isAdminOnly
+      filename: data.filename,
+      filePath: data.file_path,
+      fileType: data.file_type,
+      fileSize: data.file_size,
+      uploadedBy: data.uploaded_by,
+      uploadedAt: data.uploaded_at,
+      isAdminOnly: data.is_admin_only,
     };
   } catch (error) {
     console.error("Error in uploadProjectFile:", error);

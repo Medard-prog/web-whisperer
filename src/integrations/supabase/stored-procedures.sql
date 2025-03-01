@@ -2,6 +2,10 @@
 -- This file contains stored procedures for the Supabase database
 -- They should be executed in the SQL Editor to be available for use
 
+-- Note: Instead of using stored procedures, we're now using direct table queries
+-- This file is kept for reference and possible future use
+
+/*
 -- Get admin notes for a project
 CREATE OR REPLACE FUNCTION get_admin_notes(project_id_param UUID)
 RETURNS TABLE (
@@ -57,7 +61,7 @@ BEGIN
   SELECT pf.id, pf.project_id, pf.filename, pf.file_path, 
          pf.file_type, pf.file_size, pf.uploaded_by, pf.uploaded_at, 
          pf.is_admin_only
-  FROM project_notes pf
+  FROM project_files pf
   WHERE pf.project_id = project_id_param
   AND (NOT admin_only_param OR pf.is_admin_only = admin_only_param)
   ORDER BY pf.uploaded_at DESC;
@@ -80,19 +84,28 @@ CREATE OR REPLACE FUNCTION add_project_file(
 DECLARE
   file_id UUID;
 BEGIN
-  INSERT INTO project_notes (
+  INSERT INTO project_files (
     project_id, 
-    content,
-    created_by
+    filename,
+    file_path,
+    file_type,
+    file_size,
+    uploaded_by,
+    is_admin_only
   )
   VALUES (
     project_id_param, 
-    'File uploaded: ' || filename_param,
-    uploaded_by_param
+    filename_param,
+    file_path_param,
+    file_type_param,
+    file_size_param,
+    uploaded_by_param,
+    is_admin_only_param
   )
-  RETURNING id INTO file_id;
+  RETURNING id, project_id INTO file_id, project_id_param;
   
   RETURN QUERY
   SELECT file_id, project_id_param;
 END;
 $$ LANGUAGE plpgsql;
+*/
