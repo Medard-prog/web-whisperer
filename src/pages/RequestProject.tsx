@@ -140,9 +140,6 @@ const RequestProject = () => {
     }
   };
   
-  // Add console.log to help with debugging
-  console.log("RequestProject rendering with user:", user, "initialValues:", initialValues);
-  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

@@ -12,8 +12,6 @@ import PricingCalculator from "@/components/PricingCalculator";
 import TestimonialCard from "@/components/TestimonialCard";
 
 const Index = () => {
-  console.log("Rendering Index page");
-  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

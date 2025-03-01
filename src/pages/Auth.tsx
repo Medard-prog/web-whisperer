@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { z } from 'zod';
@@ -56,7 +55,6 @@ export default function Auth() {
 
   const onSubmitLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
-      console.log("Attempting login with:", values.email);
       await signIn(values.email, values.password);
     } catch (error) {
       console.error('Login error:', error);
@@ -65,7 +63,6 @@ export default function Auth() {
 
   const onSubmitRegister = async (values: z.infer<typeof registerSchema>) => {
     try {
-      console.log("Attempting registration with:", values.email);
       await signUp(values.email, values.password, values.name);
       toast.success('Cont creat cu succes!', {
         description: 'Te rugăm să verifici emailul pentru a confirma contul.',
@@ -76,7 +73,6 @@ export default function Auth() {
   };
 
   if (user && !loading) {
-    console.log("User authenticated, redirecting to dashboard");
     return <Navigate to="/dashboard" />;
   }
 

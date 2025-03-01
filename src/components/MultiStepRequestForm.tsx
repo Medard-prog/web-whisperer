@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm, FormProvider, SubmitHandler } from "react-hook-form";
@@ -102,11 +103,10 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   // Update form with user data when authenticated
   useEffect(() => {
     if (user && !loading) {
-      console.log("Updating form with user data:", user);
-      setValue("name", user.name || getValues("name") || "");
-      setValue("email", user.email || getValues("email") || "");
-      setValue("phone", user.phone || getValues("phone") || "");
-      setValue("company", user.company || getValues("company") || "");
+      setValue("name", user.name || getValues("name"));
+      setValue("email", user.email || getValues("email"));
+      setValue("phone", user.phone || getValues("phone"));
+      setValue("company", user.company || getValues("company"));
     }
   }, [user, loading, setValue, getValues]);
   
@@ -203,11 +203,9 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   };
   
   const handleFormSubmit = () => {
-    console.log("Form submission initiated with form data:", getValues());
     handleSubmit(async (data) => {
       try {
         setIsSubmitting(true);
-        console.log("Submitting form with validated data:", data);
         await onSubmit(data);
       } catch (error: any) {
         console.error("Error submitting form:", error);

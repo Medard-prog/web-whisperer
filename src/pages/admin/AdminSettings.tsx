@@ -1,23 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export default function AdminSettings() {
   const { user, updateProfile } = useAuth();
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [company, setCompany] = useState('');
+  const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [company, setCompany] = useState(user?.company || '');
   const [loading, setLoading] = useState(false);
-  
-  // Initialize form fields with user data when it becomes available
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setPhone(user.phone || '');
-      setCompany(user.company || '');
-    }
-  }, [user]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,16 +25,6 @@ export default function AdminSettings() {
     }
   };
   
-  if (!user) {
-    return (
-      <div className="container mx-auto p-4 max-w-xl">
-        <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-center">
-          <p>Loading admin data...</p>
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div className="container mx-auto p-4 max-w-xl">
       <h1 className="text-2xl font-bold mb-6">Admin Settings</h1>
@@ -57,7 +38,7 @@ export default function AdminSettings() {
             <input
               type="email"
               id="email"
-              value={user.email || ''}
+              value={user?.email || ''}
               disabled
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
             />

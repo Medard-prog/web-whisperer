@@ -11,8 +11,6 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ adminRequired = false }) => {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
   const location = useLocation();
 
-  console.log("RequireAuth check:", { isAuthenticated, isAdmin, isLoading, path: location.pathname });
-
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -22,16 +20,13 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ adminRequired = false }) => {
   }
 
   if (!isAuthenticated) {
-    console.log("Not authenticated, redirecting to /auth");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   if (adminRequired && !isAdmin) {
-    console.log("Admin required but user is not admin, redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 
-  console.log("Authentication passed, rendering outlet");
   return <Outlet />;
 };
 
