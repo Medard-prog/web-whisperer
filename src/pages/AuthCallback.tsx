@@ -10,17 +10,21 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log("Processing auth callback");
         // Process the OAuth callback or email confirmation
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error("Auth callback error:", error);
           throw error;
         }
 
         if (data?.session) {
+          console.log("Session found, redirecting to dashboard");
           toast.success('Autentificare reușită');
           navigate('/dashboard');
         } else {
+          console.log("No session found, redirecting to auth");
           navigate('/auth');
         }
       } catch (error) {

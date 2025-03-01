@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import Index from '@/pages/Index';
@@ -30,48 +30,46 @@ import { Toaster } from '@/components/ui/toaster';
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider defaultTheme="light">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/request-project" element={<RequestProject />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/auth/reset-password-confirmation" element={<ResetPasswordConfirmation />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/logout" element={<Logout />} />
-            
-            {/* Protected routes */}
-            <Route element={<RequireAuth />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/projects" element={<ProjectsPage />} />
-              <Route path="/dashboard/messages" element={<MessagesPage />} />
-              <Route path="/dashboard/support" element={<SupportPage />} />
-              <Route path="/project/:id" element={<ProjectDetails />} />
-              <Route path="/project/:id/chat" element={<ProjectChat />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-            
-            {/* Admin routes */}
-            <Route element={<RequireAuth adminRequired={true} />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/projects" element={<AdminProjects />} />
-              <Route path="/admin/project/:id" element={<AdminProjectDetails />} />
-              <Route path="/admin/clients" element={<AdminClients />} />
-              <Route path="/admin/messages" element={<AdminMessages />} />
-              <Route path="/admin/reports" element={<AdminReports />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-            </Route>
-            
-            {/* Fallback route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster />
-        </ThemeProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <ThemeProvider defaultTheme="light">
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/request-project" element={<RequestProject />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/reset-password-confirmation" element={<ResetPasswordConfirmation />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/logout" element={<Logout />} />
+          
+          {/* Protected routes */}
+          <Route element={<RequireAuth />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/projects" element={<ProjectsPage />} />
+            <Route path="/dashboard/messages" element={<MessagesPage />} />
+            <Route path="/dashboard/support" element={<SupportPage />} />
+            <Route path="/project/:id" element={<ProjectDetails />} />
+            <Route path="/project/:id/chat" element={<ProjectChat />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+          
+          {/* Admin routes */}
+          <Route element={<RequireAuth adminRequired={true} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/projects" element={<AdminProjects />} />
+            <Route path="/admin/project/:id" element={<AdminProjectDetails />} />
+            <Route path="/admin/clients" element={<AdminClients />} />
+            <Route path="/admin/messages" element={<AdminMessages />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
+          </Route>
+          
+          {/* Fallback route */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
