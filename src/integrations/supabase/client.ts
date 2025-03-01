@@ -84,12 +84,12 @@ export async function fetchProjectRequests(userId?: string) {
     
     console.log("Project requests fetched:", data);
     
-    // Map project_request fields to Project type
+    // Map project_request fields to Project type with correct PaymentStatus type
     return data.map(item => ({
       id: item.id,
       title: item.project_name,
       description: item.description,
-      status: item.status,
+      status: item.status as ProjectStatus,
       createdAt: item.created_at,
       price: item.price || 0,
       userId: item.user_id,
@@ -102,7 +102,7 @@ export async function fetchProjectRequests(userId?: string) {
       designComplexity: item.design_complexity,
       additionalInfo: item.business_goal,
       amountPaid: 0,
-      paymentStatus: 'pending'
+      paymentStatus: 'pending' as PaymentStatus // Cast to the enum type
     }));
   } catch (error) {
     console.error("Error in fetchProjectRequests:", error);
@@ -110,6 +110,7 @@ export async function fetchProjectRequests(userId?: string) {
   }
 }
 
+// Also fix the fetchProjectById for the same reason
 export async function fetchProjectById(id: string): Promise<Project> {
   console.log("Fetching project details for:", id);
   
@@ -137,12 +138,12 @@ export async function fetchProjectById(id: string): Promise<Project> {
       
       console.log("Project found in project_requests:", requestData);
       
-      // Map project_request fields to Project type
+      // Map project_request fields to Project type with correct PaymentStatus type
       return {
         id: requestData.id,
         title: requestData.project_name,
         description: requestData.description,
-        status: requestData.status,
+        status: requestData.status as ProjectStatus,
         createdAt: requestData.created_at,
         price: requestData.price || 0,
         userId: requestData.user_id,
@@ -155,7 +156,7 @@ export async function fetchProjectById(id: string): Promise<Project> {
         designComplexity: requestData.design_complexity,
         additionalInfo: requestData.business_goal,
         amountPaid: 0,
-        paymentStatus: 'pending'
+        paymentStatus: 'pending' as PaymentStatus // Cast to PaymentStatus enum
       };
     }
     

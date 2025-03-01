@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { supabase, fetchProjectTasks, addProjectTask } from "@/integrations/supabase/client";
+import { supabase, fetchProjectTasks, addProjectTask, createProjectTask } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectTask, mapProjectTask } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +61,7 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
     try {
       setIsSubmitting(true);
       
+      // Using the correct function name from our exports
       const newTask = await addProjectTask(projectId, newTaskTitle, user.id);
       setTasks(prev => prev ? [newTask, ...prev] : [newTask]);
       setNewTaskTitle("");
