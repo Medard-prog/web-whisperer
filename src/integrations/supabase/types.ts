@@ -248,6 +248,7 @@ export type Database = {
       projects: {
         Row: {
           additional_info: string | null
+          amount_paid: number | null
           created_at: string | null
           description: string | null
           design_complexity: string | null
@@ -259,6 +260,7 @@ export type Database = {
           has_seo: boolean | null
           id: string
           page_count: number | null
+          payment_status: string | null
           price: number | null
           status: string | null
           title: string
@@ -267,6 +269,7 @@ export type Database = {
         }
         Insert: {
           additional_info?: string | null
+          amount_paid?: number | null
           created_at?: string | null
           description?: string | null
           design_complexity?: string | null
@@ -278,6 +281,7 @@ export type Database = {
           has_seo?: boolean | null
           id?: string
           page_count?: number | null
+          payment_status?: string | null
           price?: number | null
           status?: string | null
           title: string
@@ -286,6 +290,7 @@ export type Database = {
         }
         Update: {
           additional_info?: string | null
+          amount_paid?: number | null
           created_at?: string | null
           description?: string | null
           design_complexity?: string | null
@@ -297,6 +302,7 @@ export type Database = {
           has_seo?: boolean | null
           id?: string
           page_count?: number | null
+          payment_status?: string | null
           price?: number | null
           status?: string | null
           title?: string
@@ -310,6 +316,51 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      count_projects_with_cms: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      count_projects_with_ecommerce: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      count_projects_with_maintenance: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      count_projects_with_seo: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_monthly_revenue: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          month_year: string
+          total_revenue: number
+          total_collected: number
+        }[]
+      }
+      get_payment_status_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          payment_status: string
+          count: number
+        }[]
+      }
+      get_project_request_status_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          status: string
+          count: number
+        }[]
+      }
+      get_project_status_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          status: string
+          count: number
+        }[]
+      }
       is_admin: {
         Args: {
           user_id: string

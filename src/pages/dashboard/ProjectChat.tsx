@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,7 +37,9 @@ export default function ProjectChat() {
       const subscription = setupMessageSubscription();
       
       return () => {
-        subscription?.unsubscribe();
+        if (subscription) {
+          subscription.unsubscribe();
+        }
       };
     }
   }, [id, user]);

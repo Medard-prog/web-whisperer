@@ -735,7 +735,7 @@ export async function updateProject(projectId: string, projectData: Partial<Proj
 // Get chart data for admin reports
 export async function getProjectStatusChartData(): Promise<any[]> {
   try {
-    // For projects, use a raw SQL query instead of .group() which is not available in the JS client
+    // For projects, use the stored procedure we created
     const { data: projectsData, error: projectsError } = await supabase
       .rpc('get_project_status_counts');
     
@@ -757,16 +757,20 @@ export async function getProjectStatusChartData(): Promise<any[]> {
     const statusCounts: Record<string, number> = {};
     
     // Process projects
-    projectsData?.forEach((item: any) => {
-      const status = item.status || 'unknown';
-      statusCounts[status] = (statusCounts[status] || 0) + Number(item.count);
-    });
+    if (projectsData) {
+      projectsData.forEach((item: any) => {
+        const status = item.status || 'unknown';
+        statusCounts[status] = (statusCounts[status] || 0) + Number(item.count);
+      });
+    }
     
     // Process project requests
-    requestsData?.forEach((item: any) => {
-      const status = item.status === 'new' ? 'pending' : (item.status || 'unknown');
-      statusCounts[status] = (statusCounts[status] || 0) + Number(item.count);
-    });
+    if (requestsData) {
+      requestsData.forEach((item: any) => {
+        const status = item.status === 'new' ? 'pending' : (item.status || 'unknown');
+        statusCounts[status] = (statusCounts[status] || 0) + Number(item.count);
+      });
+    }
     
     // Format data for chart
     return Object.entries(statusCounts).map(([name, value]) => ({
@@ -781,7 +785,7 @@ export async function getProjectStatusChartData(): Promise<any[]> {
 
 export async function getProjectsByPaymentStatus(): Promise<any[]> {
   try {
-    // Use a raw SQL query instead of .group() which is not available in the JS client
+    // Use the stored procedure we created
     const { data, error } = await supabase
       .rpc('get_payment_status_counts');
     
@@ -791,12 +795,14 @@ export async function getProjectsByPaymentStatus(): Promise<any[]> {
     }
     
     // Format data for chart
-    const result = (data || []).map((item: any) => ({
-      name: item.payment_status || 'unknown',
-      value: Number(item.count)
-    }));
+    if (data) {
+      return data.map((item: any) => ({
+        name: item.payment_status || 'unknown',
+        value: Number(item.count)
+      }));
+    }
     
-    return result;
+    return [];
   } catch (error) {
     console.error("Error in getProjectsByPaymentStatus:", error);
     return [];
@@ -805,7 +811,7 @@ export async function getProjectsByPaymentStatus(): Promise<any[]> {
 
 export async function getTotalRevenueData(period?: string): Promise<any[]> {
   try {
-    // Use raw SQL to aggregate data by month and year
+    // Use the stored procedure we created
     const { data, error } = await supabase
       .rpc('get_monthly_revenue');
     
@@ -815,11 +821,15 @@ export async function getTotalRevenueData(period?: string): Promise<any[]> {
     }
     
     // Process data to format for charts
-    return (data || []).map((item: any) => ({
-      month: item.month_year,
-      total: Number(item.total_revenue || 0),
-      collected: Number(item.total_collected || 0)
-    }));
+    if (data) {
+      return data.map((item: any) => ({
+        month: item.month_year,
+        total: Number(item.total_revenue || 0),
+        collected: Number(item.total_collected || 0)
+      }));
+    }
+    
+    return [];
   } catch (error) {
     console.error("Error in getTotalRevenueData:", error);
     return [];
@@ -828,29 +838,24 @@ export async function getTotalRevenueData(period?: string): Promise<any[]> {
 
 export async function getPopularFeaturesData(): Promise<any[]> {
   try {
-    // Use individual queries for each feature instead of .group()
-    const { data: ecommerceData, error: ecommerceError } = await supabase
-      .rpc('count_projects_with_ecommerce');
+    // Use the stored procedures we created
+    const [ecommerceResult, cmsResult, seoResult, maintenanceResult] = await Promise.all([
+      supabase.rpc('count_projects_with_ecommerce'),
+      supabase.rpc('count_projects_with_cms'),
+      supabase.rpc('count_projects_with_seo'),
+      supabase.rpc('count_projects_with_maintenance')
+    ]);
     
-    const { data: cmsData, error: cmsError } = await supabase
-      .rpc('count_projects_with_cms');
-    
-    const { data: seoData, error: seoError } = await supabase
-      .rpc('count_projects_with_seo');
-    
-    const { data: maintenanceData, error: maintenanceError } = await supabase
-      .rpc('count_projects_with_maintenance');
-    
-    if (ecommerceError || cmsError || seoError || maintenanceError) {
+    if (ecommerceResult.error || cmsResult.error || seoResult.error || maintenanceResult.error) {
       console.error("Error fetching features data");
-      throw ecommerceError || cmsError || seoError || maintenanceError;
+      throw ecommerceResult.error || cmsResult.error || seoResult.error || maintenanceResult.error;
     }
     
     return [
-      { name: 'E-commerce', value: Number(ecommerceData || 0) },
-      { name: 'CMS', value: Number(cmsData || 0) },
-      { name: 'SEO', value: Number(seoData || 0) },
-      { name: 'Maintenance', value: Number(maintenanceData || 0) }
+      { name: 'E-commerce', value: Number(ecommerceResult.data || 0) },
+      { name: 'CMS', value: Number(cmsResult.data || 0) },
+      { name: 'SEO', value: Number(seoResult.data || 0) },
+      { name: 'Maintenance', value: Number(maintenanceResult.data || 0) }
     ];
   } catch (error) {
     console.error("Error in getPopularFeaturesData:", error);
@@ -883,7 +888,7 @@ export async function fetchProjectsForReports(): Promise<any[]> {
     }
     
     // Format project data
-    const projects = projectsData.map(project => ({
+    const projects = (projectsData || []).map(project => ({
       id: project.id,
       title: project.title,
       status: project.status,
@@ -897,8 +902,8 @@ export async function fetchProjectsForReports(): Promise<any[]> {
       amount_paid: project.amount_paid || 0
     }));
     
-    // Format project request data
-    const requests = requestsData.map(request => ({
+    // Format project request data 
+    const requests = (requestsData || []).map(request => ({
       id: `request_${request.id}`,
       title: request.project_name,
       status: request.status === 'new' ? 'pending' : request.status,
