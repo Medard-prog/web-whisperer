@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile } from '@/types';
+import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProjectFile } from '@/types';
 
 // Provide fallback values for development if environment variables are missing
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://development-url.supabase.co';
@@ -319,7 +319,7 @@ export const fetchProjectFiles = async (projectId: string) => {
   }
 };
 
-export const uploadFile = async (projectId: string, file: File, userId: string) => {
+export const uploadFile = async (file: File, projectId: string, userId: string) => {
   try {
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `projects/${projectId}/${fileName}`;
@@ -336,16 +336,18 @@ export const uploadFile = async (projectId: string, file: File, userId: string) 
       
     const publicUrl = urlData.publicUrl;
     
-    // Mock return - in a real implementation this would insert into a files table
+    // Create a properly formatted ProjectFile object
     return {
       id: Math.random().toString(36).substring(2, 9),
-      name: file.name,
-      url: publicUrl,
-      size: file.size,
-      type: file.type,
-      projectId,
+      projectId: projectId,
+      filename: file.name,
+      filePath: filePath,
+      fileType: file.type,
+      fileSize: file.size,
       uploadedBy: userId,
-      createdAt: new Date().toISOString()
+      uploadedAt: new Date().toISOString(),
+      isAdminOnly: false,
+      url: publicUrl
     } as ProjectFile;
   } catch (error: any) {
     toast.error(`Failed to upload file: ${error.message}`);

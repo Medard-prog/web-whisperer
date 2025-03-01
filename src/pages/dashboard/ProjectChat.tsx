@@ -128,7 +128,7 @@ const ProjectChat = () => {
       let attachmentUrl = '';
       
       if (selectedFile) {
-        const fileData = await uploadFile(selectedFile, id, user.id);
+        const fileData = await uploadFile(selectedFile, id!, user.id);
         if (fileData) {
           attachmentUrl = fileData.url || '';
         }
