@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,8 +86,14 @@ const AdminProjectDetails = () => {
             const adminProjectNotes = await fetchAdminNotes(id);
             setAdminNotes(adminProjectNotes);
             
-            const files = await fetchProjectFiles(id, true);
-            setProjectFiles(files);
+            // Try to fetch project files, but handle gracefully if the table doesn't exist
+            try {
+              const files = await fetchProjectFiles(id, true);
+              setProjectFiles(files);
+            } catch (fileError) {
+              console.warn("Project files functionality might not be available:", fileError);
+              setProjectFiles([]);
+            }
           } catch (error) {
             console.error("Error fetching admin data:", error);
           }
@@ -147,15 +154,24 @@ const AdminProjectDetails = () => {
     
     try {
       setUploadingFile(true);
-      await uploadProjectFile(id, file, user.id, true);
       
-      const refreshedFiles = await fetchProjectFiles(id, true);
-      setProjectFiles(refreshedFiles);
-      
-      toast.success("Fișier încărcat cu succes");
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error("Eroare la încărcarea fișierului");
+      // Try to upload the file, but handle gracefully if the table doesn't exist
+      try {
+        await uploadProjectFile(id, file, user.id, true);
+        
+        // Try to refresh the file list
+        try {
+          const refreshedFiles = await fetchProjectFiles(id, true);
+          setProjectFiles(refreshedFiles);
+        } catch (refreshError) {
+          console.warn("Could not refresh project files:", refreshError);
+        }
+        
+        toast.success("Fișier încărcat cu succes");
+      } catch (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        toast.error("Eroare la încărcarea fișierului");
+      }
     } finally {
       setUploadingFile(false);
       event.target.value = "";

@@ -1,4 +1,3 @@
-
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 
@@ -164,8 +163,8 @@ export function mapProjectFile(data: any): ProjectFile {
     fileType: data.file_type,
     fileSize: data.file_size,
     uploadedBy: data.uploaded_by,
-    uploadedAt: data.uploaded_at,
-    isAdminOnly: data.is_admin_only,
+    uploadedAt: data.uploaded_at || data.created_at,
+    isAdminOnly: data.is_admin_only || false
   };
 }
 
