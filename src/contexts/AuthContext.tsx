@@ -9,6 +9,8 @@ export interface UserDetails {
   email: string;
   name?: string;
   isAdmin: boolean;
+  phone?: string;
+  company?: string;
 }
 
 export interface AuthContextType {
@@ -58,7 +60,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            isAdmin: session.user.user_metadata?.isAdmin || false
+            isAdmin: session.user.user_metadata?.isAdmin || false,
+            phone: session.user.user_metadata?.phone || '',
+            company: session.user.user_metadata?.company || ''
           });
           
           try {
@@ -105,7 +109,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   id: newSession.user.id,
                   email: newSession.user.email || '',
                   name: newSession.user.user_metadata?.name || newSession.user.email?.split('@')[0] || 'User',
-                  isAdmin: newSession.user.user_metadata?.isAdmin || false
+                  isAdmin: newSession.user.user_metadata?.isAdmin || false,
+                  phone: newSession.user.user_metadata?.phone || '',
+                  company: newSession.user.user_metadata?.company || ''
                 });
                 
                 try {

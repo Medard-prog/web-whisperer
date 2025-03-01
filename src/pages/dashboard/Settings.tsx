@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 export default function Settings() {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [company, setCompany] = useState(user?.company || '');
   const [loading, setLoading] = useState(false);
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -13,7 +15,7 @@ export default function Settings() {
     
     try {
       setLoading(true);
-      await updateProfile({ name });
+      await updateProfile({ name, phone, company });
       toast.success('Settings updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -43,7 +45,7 @@ export default function Settings() {
             <p className="mt-1 text-sm text-gray-500">Email cannot be changed</p>
           </div>
           
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Name
             </label>
@@ -52,6 +54,32 @@ export default function Settings() {
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="text"
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+              Company
+            </label>
+            <input
+              type="text"
+              id="company"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
