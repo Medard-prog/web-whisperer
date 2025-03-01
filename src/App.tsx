@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -25,7 +26,7 @@ import AdminMessages from '@/pages/admin/AdminMessages';
 import AdminReports from '@/pages/admin/AdminReports';
 import AdminSettings from '@/pages/admin/AdminSettings';
 import NotFound from '@/pages/NotFound';
-import Toaster from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/toaster';
 
 function App() {
   return (
@@ -54,7 +55,7 @@ function App() {
             </Route>
             
             {/* Admin routes */}
-            <Route element={<RequireAuth adminRequired />}>
+            <Route element={<RequireAuth adminRequired={true} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/projects" element={<AdminProjects />} />
               <Route path="/admin/project/:id" element={<AdminProjectDetails />} />
