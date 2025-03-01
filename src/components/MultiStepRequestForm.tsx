@@ -119,9 +119,9 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       1: ["projectName", "projectType"],
       2: ["description", "budget"],
       3: ["terms"]
-    }[currentStep as 0 | 1 | 2 | 3];
+    }[currentStep as 0 | 1 | 2 | 3] as string[];
     
-    const isValid = await trigger(fieldsToValidate as any);
+    const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
       if (currentStep < 3) {
@@ -152,10 +152,11 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   const handleLogin = async () => {
     try {
       setIsSubmitting(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error: loginError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
+      
       
       if (error) throw error;
       
@@ -177,7 +178,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   const handleSignup = async () => {
     try {
       setIsSubmitting(true);
-      const { error } = await supabase.auth.signUp({
+      const { error: signupError } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: {
