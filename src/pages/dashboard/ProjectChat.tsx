@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +10,8 @@ import {
   fetchProjectById, 
   fetchProjectMessages, 
   sendProjectMessage, 
-  uploadFile 
+  uploadFile,
+  supabase 
 } from '@/integrations/supabase/client';
 import { Project, Message } from '@/types';
 import { toast } from 'sonner';

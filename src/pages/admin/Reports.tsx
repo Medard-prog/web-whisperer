@@ -154,7 +154,7 @@ export default function Reports() {
           <Label>Date Range</Label>
           <DateRangePicker 
             value={dateRange}
-            onChange={(range: DateRange) => setDateRange(range)}
+            onChange={(range) => setDateRange(range)}
           />
         </div>
         
