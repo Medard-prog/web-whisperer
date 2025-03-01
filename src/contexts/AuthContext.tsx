@@ -19,6 +19,8 @@ export interface AuthContextType {
   user: UserDetails | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   updateProfile: (data: Partial<UserDetails>) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -160,6 +162,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
   }, [navigate]);
   
+  // Sign in with email and password
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Error signing in:', error);
+        toast.error('Eroare la autentificare', {
+          description: error.message
+        });
+        throw error;
+      }
+
+      toast.success('Autentificare reușită');
+    } catch (error) {
+      console.error('Error in signIn:', error);
+      throw error;
+    }
+  };
+  
+  // Sign up with email and password
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('Error signing up:', error);
+        toast.error('Eroare la înregistrare', {
+          description: error.message
+        });
+        throw error;
+      }
+      
+      toast.success('Înregistrare reușită', {
+        description: 'Verifică-ți email-ul pentru a confirma contul'
+      });
+    } catch (error) {
+      console.error('Error in signUp:', error);
+      throw error;
+    }
+  };
+  
   // Refresh the user's profile data
   const refreshUser = async () => {
     if (session?.user) {
@@ -245,6 +300,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       session, 
       user, 
       loading, 
+      signIn,
+      signUp,
       signOut, 
       updateProfile,
       refreshUser 
