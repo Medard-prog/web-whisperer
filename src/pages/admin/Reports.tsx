@@ -1,7 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProjectStatusChartData, getProjectsByPaymentStatus, getTotalRevenueData, getPopularFeaturesData, fetchProjectsForReports } from "@/integrations/supabase/client";
+import { 
+  getProjectStatusChartData, 
+  getProjectsByPaymentStatus, 
+  getTotalRevenueData, 
+  getPopularFeaturesData, 
+  fetchProjectsForReports 
+} from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import PageTransition from "@/components/PageTransition";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +21,7 @@ import { toast } from "sonner";
 import { BarChart, PieChart, LineChart, ResponsiveContainer, Bar, Pie, Line, XAxis, YAxis, Legend, Tooltip, CartesianGrid, Cell } from "recharts";
 import { BarChart2, FileText, DollarSign, TrendingUp, Download, CalendarRange, Filter } from "lucide-react";
 import { Project } from "@/types";
+import { DateRange } from "react-day-picker";
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#a4de6c', '#228B22', '#8A2BE2'];
 
@@ -26,7 +33,7 @@ const Reports = () => {
   const [popularFeaturesData, setPopularFeaturesData] = useState<{ name: string; value: any; }[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date; }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
