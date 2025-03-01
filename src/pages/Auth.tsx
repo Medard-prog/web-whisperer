@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { z } from 'zod';
@@ -21,13 +20,11 @@ import { toast } from 'sonner';
 import WavyBackground from '@/components/WavyBackground';
 import { AtSign, Eye, EyeOff, Lock, User } from 'lucide-react';
 
-// Login form schema
 const loginSchema = z.object({
   email: z.string().email('Email invalid'),
   password: z.string().min(6, 'Parola trebuie să aibă minim 6 caractere'),
 });
 
-// Register form schema 
 const registerSchema = z.object({
   name: z.string().min(2, 'Numele trebuie să aibă minim 2 caractere'),
   email: z.string().email('Email invalid'),
@@ -75,7 +72,6 @@ export default function Auth() {
     }
   };
 
-  // Redirect if user is already logged in
   if (user && !loading) {
     return <Navigate to="/dashboard" />;
   }
@@ -178,7 +174,7 @@ export default function Auth() {
 
                 <div className="flex justify-end">
                   <Link
-                    to="/auth/reset-password"
+                    to="/forgot-password"
                     className="text-sm text-purple-600 hover:text-purple-800"
                   >
                     Ai uitat parola?
