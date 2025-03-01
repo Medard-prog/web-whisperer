@@ -24,6 +24,7 @@ import AdminMessages from "@/pages/admin/Messages";
 import AdminReports from "@/pages/admin/Reports";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminProjectDetails from "@/pages/admin/ProjectDetails";
+import AdminProjectChat from "@/pages/admin/ProjectChat";
 import { lazy, Suspense, Component, ReactNode } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 
@@ -96,6 +97,7 @@ const AppRoutes = () => {
         <Route path="/dashboard/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/dashboard/help" element={<RequireAuth><Support /></RequireAuth>} />
         <Route path="/project/:id" element={<RequireAuth><ProjectDetails /></RequireAuth>} />
+        <Route path="/project/:id/chat" element={<RequireAuth><ProjectChat /></RequireAuth>} />
         
         {/* Admin routes */}
         <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
@@ -105,6 +107,7 @@ const AppRoutes = () => {
         <Route path="/admin/reports" element={<RequireAuth adminOnly={true}><AdminReports /></RequireAuth>} />
         <Route path="/admin/settings" element={<RequireAuth adminOnly={true}><AdminSettings /></RequireAuth>} />
         <Route path="/admin/project/:id" element={<RequireAuth adminOnly={true}><AdminProjectDetails /></RequireAuth>} />
+        <Route path="/admin/project/:id/chat" element={<RequireAuth adminOnly={true}><AdminProjectChat /></RequireAuth>} />
         
         {/* Fallback routes */}
         <Route path="/404" element={<NotFound />} />

@@ -50,6 +50,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
   const [expandDescription, setExpandDescription] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editedProject, setEditedProject] = useState<Project | null>(null);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   
   if (loading) {
@@ -88,7 +89,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
   
   const handleMessageClick = () => {
     if (isAdmin) {
-      navigate(`/admin/project/${project.id}`);
+      navigate(`/admin/project/${project.id}/chat`);
     } else {
       navigate(`/dashboard/project/${project.id}/chat`);
     }
@@ -103,10 +104,14 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
     if (!editedProject) return;
     
     try {
-      const { error } = await supabase
-        .from('projects')
+      setSaving(true);
+      
+      console.log("Saving project updates:", editedProject);
+      
+      let { error } = await supabase
+        .from('project_requests')
         .update({
-          title: editedProject.title,
+          project_name: editedProject.title,
           description: editedProject.description,
           status: editedProject.status,
           price: editedProject.price,
@@ -116,8 +121,28 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
           has_maintenance: editedProject.hasMaintenance
         })
         .eq('id', editedProject.id);
-      
-      if (error) throw error;
+        
+      // If we get an error, maybe it's in the projects table instead
+      if (error) {
+        console.log("Not found in project_requests, trying projects table...");
+        const { error: projectsError } = await supabase
+          .from('projects')
+          .update({
+            title: editedProject.title,
+            description: editedProject.description,
+            status: editedProject.status,
+            price: editedProject.price,
+            has_ecommerce: editedProject.hasEcommerce,
+            has_cms: editedProject.hasCMS,
+            has_seo: editedProject.hasSEO,
+            has_maintenance: editedProject.hasMaintenance
+          })
+          .eq('id', editedProject.id);
+          
+        if (projectsError) {
+          throw projectsError;
+        }
+      }
       
       if (onProjectUpdate) {
         onProjectUpdate(editedProject);
@@ -128,6 +153,8 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
     } catch (error) {
       console.error("Error updating project:", error);
       toast.error("Eroare la actualizarea proiectului");
+    } finally {
+      setSaving(false);
     }
   };
   
@@ -368,8 +395,12 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Anulează
             </Button>
-            <Button onClick={handleSaveChanges} className="bg-gradient-to-r from-purple-600 to-indigo-600">
-              Salvează Modificările
+            <Button 
+              onClick={handleSaveChanges} 
+              className="bg-gradient-to-r from-purple-600 to-indigo-600"
+              disabled={saving}
+            >
+              {saving ? "Se salvează..." : "Salvează Modificările"}
             </Button>
           </DialogFooter>
         </DialogContent>

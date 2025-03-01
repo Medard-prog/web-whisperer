@@ -20,7 +20,7 @@ import { FileIcon, PaperclipIcon, SendIcon, ArrowLeft } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import DashboardSidebar from '@/components/DashboardSidebar';
 
-export default function ProjectChat() {
+export default function AdminProjectChat() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -55,15 +55,15 @@ export default function ProjectChat() {
     try {
       setLoading(true);
       
-      console.log("Fetching project details for:", id);
+      console.log("Admin: Fetching project details for:", id);
       // Get project details
       const projectData = await fetchProjectById(id!);
       setProject(projectData);
       
-      console.log("Fetching messages for project:", id);
+      console.log("Admin: Fetching messages for project:", id);
       // Get project messages
       const projectMessages = await fetchProjectMessages(id!);
-      console.log("Messages fetched:", projectMessages);
+      console.log("Admin: Messages fetched:", projectMessages);
       setMessages(projectMessages);
     } catch (error) {
       console.error('Error loading project chat data:', error);
@@ -74,16 +74,16 @@ export default function ProjectChat() {
   };
   
   const setupMessageSubscription = () => {
-    console.log("Setting up realtime subscription for project messages");
+    console.log("Admin: Setting up realtime subscription for project messages");
     const subscription = supabase
-      .channel(`messages-${id}`)
+      .channel(`admin-messages-${id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'messages',
         filter: `project_id=eq.${id}` 
       }, payload => {
-        console.log('Real-time message received:', payload);
+        console.log('Admin: Real-time message received:', payload);
         
         // Add the new message to the chat
         const newMessage = payload.new as any;
@@ -103,7 +103,7 @@ export default function ProjectChat() {
         setMessages(prev => [...prev, formattedMessage]);
       })
       .subscribe((status) => {
-        console.log(`Subscription status:`, status);
+        console.log(`Admin: Subscription status:`, status);
       });
       
     return subscription;
@@ -122,7 +122,7 @@ export default function ProjectChat() {
     
     try {
       setSending(true);
-      console.log("Sending message for project:", id);
+      console.log("Admin: Sending message for project:", id);
       
       let attachmentUrl = '';
       
@@ -134,7 +134,7 @@ export default function ProjectChat() {
         id!,
         newMessage.trim() || 'Shared a file',
         user.id,
-        false, // Not admin
+        true, // Admin
         attachmentUrl,
         selectedFile?.type
       );
@@ -156,7 +156,7 @@ export default function ProjectChat() {
   
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <DashboardSidebar />
+      <DashboardSidebar isAdmin={true} />
       <PageTransition>
         <div className="flex-1 p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
@@ -164,7 +164,7 @@ export default function ProjectChat() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(`/project/${id}`)}
+                onClick={() => navigate(`/admin/project/${id}`)}
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -177,7 +177,7 @@ export default function ProjectChat() {
             
             <Card className="mb-6">
               <CardHeader className="pb-3">
-                <CardTitle>Mesaje Proiect</CardTitle>
+                <CardTitle>Mesaje Proiect (Admin)</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col h-[65vh]">
@@ -195,11 +195,11 @@ export default function ProjectChat() {
                         messages.map((message) => (
                           <div 
                             key={message.id} 
-                            className={`flex ${message.userId === user?.id ? 'justify-end' : 'justify-start'}`}
+                            className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'}`}
                           >
                             <div 
                               className={`max-w-[80%] p-3 rounded-lg ${
-                                message.userId === user?.id 
+                                message.isAdmin 
                                   ? 'bg-primary/10 text-primary-foreground' 
                                   : 'bg-muted'
                               }`}
@@ -211,7 +211,7 @@ export default function ProjectChat() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="text-xs font-medium">
-                                  {message.isAdmin ? 'Admin' : 'You'}
+                                  {message.isAdmin ? 'Admin' : 'Client'}
                                 </span>
                               </div>
                               
