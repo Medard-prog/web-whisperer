@@ -207,9 +207,9 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       try {
         setIsSubmitting(true);
         await onSubmit(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error submitting form:", error);
-        toast.error("Eroare la trimiterea cererii", { description: "Vă rugăm să încercați din nou" });
+        toast.error("Eroare la trimiterea cererii", { description: error.message || "Vă rugăm să încercați din nou" });
       } finally {
         setIsSubmitting(false);
       }

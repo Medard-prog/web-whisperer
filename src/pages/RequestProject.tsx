@@ -97,18 +97,18 @@ const RequestProject = () => {
         project_type: formData.projectType,
         description: formData.description,
         budget: formData.budget || "medium",
-        timeline: "2-3 months", // Default timeline
+        timeline: formData.deadline ? "custom" : "2-3 months", // Set default or use custom timeline
         communication_preference: "email", // Default communication preference
         user_id: user?.id,
         status: 'new',
-        // Map additional fields if they exist
-        has_ecommerce: formData.hasEcommerce || false,
+        // Map the additional fields that were just added to the database
+        design_complexity: formData.designComplexity || "standard",
         has_cms: formData.hasCms || false,
+        has_ecommerce: formData.hasEcommerce || false,
         has_seo: formData.hasSeo || false,
         has_maintenance: formData.hasMaintenance || false,
         page_count: formData.pageCount || 5,
-        design_complexity: formData.designComplexity || "standard",
-        custom_budget: formData.price ? formData.price.toString() : undefined
+        price: formData.price || 0
       };
       
       console.log("Prepared request data:", requestData);

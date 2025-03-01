@@ -120,14 +120,21 @@ export type Database = {
           custom_communication: string | null
           custom_timeline: string | null
           description: string
+          design_complexity: string | null
           email: string
           file_description: string | null
           file_urls: string[] | null
+          has_cms: boolean | null
+          has_ecommerce: boolean | null
           has_files: boolean | null
+          has_maintenance: boolean | null
+          has_seo: boolean | null
           id: string
           name: string
           newsletter_consent: boolean | null
+          page_count: number | null
           phone: string | null
+          price: number | null
           project_name: string
           project_type: string
           specific_type: string | null
@@ -146,14 +153,21 @@ export type Database = {
           custom_communication?: string | null
           custom_timeline?: string | null
           description: string
+          design_complexity?: string | null
           email: string
           file_description?: string | null
           file_urls?: string[] | null
+          has_cms?: boolean | null
+          has_ecommerce?: boolean | null
           has_files?: boolean | null
+          has_maintenance?: boolean | null
+          has_seo?: boolean | null
           id?: string
           name: string
           newsletter_consent?: boolean | null
+          page_count?: number | null
           phone?: string | null
+          price?: number | null
           project_name: string
           project_type: string
           specific_type?: string | null
@@ -172,14 +186,21 @@ export type Database = {
           custom_communication?: string | null
           custom_timeline?: string | null
           description?: string
+          design_complexity?: string | null
           email?: string
           file_description?: string | null
           file_urls?: string[] | null
+          has_cms?: boolean | null
+          has_ecommerce?: boolean | null
           has_files?: boolean | null
+          has_maintenance?: boolean | null
+          has_seo?: boolean | null
           id?: string
           name?: string
           newsletter_consent?: boolean | null
+          page_count?: number | null
           phone?: string | null
+          price?: number | null
           project_name?: string
           project_type?: string
           specific_type?: string | null
