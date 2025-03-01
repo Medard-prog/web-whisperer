@@ -6,21 +6,29 @@ import { toast } from 'sonner';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  
+  console.log("AuthCallback component rendering");
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log("Processing auth callback");
         // Process the OAuth callback or email confirmation
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error("Auth callback error:", error);
           throw error;
         }
 
+        console.log("Auth callback session data:", data);
+
         if (data?.session) {
           toast.success('Autentificare reușită');
+          console.log("Authentication successful, navigating to dashboard");
           navigate('/dashboard');
         } else {
+          console.log("No session found, navigating to auth page");
           navigate('/auth');
         }
       } catch (error) {

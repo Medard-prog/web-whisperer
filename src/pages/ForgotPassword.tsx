@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
@@ -25,6 +24,8 @@ const resetPasswordSchema = z.object({
 });
 
 export default function ForgotPassword() {
+  console.log("ForgotPassword component rendering");
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -37,6 +38,7 @@ export default function ForgotPassword() {
 
   const onSubmitResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
     try {
+      console.log("Attempting to reset password for:", values.email);
       setIsSubmitting(true);
       
       const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
@@ -44,9 +46,11 @@ export default function ForgotPassword() {
       });
       
       if (error) {
+        console.error("Password reset error:", error);
         throw error;
       }
       
+      console.log("Password reset email sent successfully");
       setIsSuccess(true);
       toast.success('Email trimis cu succes!', {
         description: 'Verifică căsuța de email pentru instrucțiuni de resetare a parolei.',

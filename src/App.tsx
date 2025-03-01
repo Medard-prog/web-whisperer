@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+import { BrowserRouter } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import Index from '@/pages/Index';
@@ -28,6 +30,8 @@ import NotFound from '@/pages/NotFound';
 import Toaster from '@/components/ui/toaster';
 
 function App() {
+  console.log("App component rendering");
+  
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -54,7 +58,7 @@ function App() {
             </Route>
             
             {/* Admin routes */}
-            <Route element={<RequireAuth adminRequired />}>
+            <Route element={<RequireAuth adminRequired={true} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/projects" element={<AdminProjects />} />
               <Route path="/admin/project/:id" element={<AdminProjectDetails />} />
