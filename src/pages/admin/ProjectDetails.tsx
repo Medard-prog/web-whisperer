@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +12,8 @@ import {
   fetchProjectFiles,
   sendProjectMessage,
   addAdminNote,
-  uploadProjectFile
+  uploadProjectFile,
+  supabase
 } from "@/integrations/supabase/client";
 import { Project, ProjectTask, ProjectNote, Message, ProjectFile, AdminNote } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
@@ -25,6 +27,9 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
   ArrowLeft,
@@ -34,7 +39,8 @@ import {
   Settings,
   StickyNote,
   FilePlus,
-  Paperclip
+  Paperclip,
+  Pencil
 } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import { format } from "date-fns";
@@ -54,6 +60,9 @@ const AdminProjectDetails = () => {
   const [newAdminNote, setNewAdminNote] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [newTask, setNewTask] = useState({ title: "", description: "" });
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editedProject, setEditedProject] = useState<Project | null>(null);
   
   useEffect(() => {
     const loadProjectData = async () => {
@@ -110,6 +119,37 @@ const AdminProjectDetails = () => {
     };
     
     loadProjectData();
+    
+    // Set up real-time subscription for messages
+    if (id) {
+      const channel = supabase
+        .channel('project_messages')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `project_id=eq.${id}`
+        }, (payload) => {
+          console.log('New message received:', payload);
+          const newMessage = {
+            id: payload.new.id,
+            projectId: payload.new.project_id,
+            content: payload.new.content,
+            createdAt: payload.new.created_at,
+            isAdmin: payload.new.is_admin,
+            userId: payload.new.user_id,
+            attachmentUrl: payload.new.attachment_url,
+            attachmentType: payload.new.attachment_type
+          };
+          
+          setMessages(prevMessages => [...prevMessages, newMessage]);
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [id, navigate]);
   
   const handleAddAdminNote = async () => {
@@ -154,26 +194,104 @@ const AdminProjectDetails = () => {
     try {
       setUploadingFile(true);
       
-      // Try to upload the file, but handle gracefully if the table doesn't exist
-      try {
-        await uploadProjectFile(id, file);
-        
-        // Try to refresh the file list
-        try {
-          const refreshedFiles = await fetchProjectFiles(id);
-          setProjectFiles(refreshedFiles);
-        } catch (refreshError) {
-          console.warn("Could not refresh project files:", refreshError);
-        }
-        
-        toast.success("Fișier încărcat cu succes");
-      } catch (uploadError) {
-        console.error("Error uploading file:", uploadError);
-        toast.error("Eroare la încărcarea fișierului");
-      }
+      // Upload file
+      await uploadProjectFile(id, file);
+      
+      // Refresh file list
+      const refreshedFiles = await fetchProjectFiles(id);
+      setProjectFiles(refreshedFiles);
+      
+      toast.success("Fișier încărcat cu succes");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("Eroare la încărcarea fișierului");
     } finally {
       setUploadingFile(false);
       event.target.value = "";
+    }
+  };
+  
+  const handleAddTask = async () => {
+    if (!id || !newTask.title.trim()) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .insert({
+          project_id: id,
+          title: newTask.title,
+          description: newTask.description || null,
+          is_completed: false,
+          created_by: user?.id
+        });
+      
+      if (error) throw error;
+      
+      const refreshedTasks = await fetchProjectTasks(id);
+      setTasks(refreshedTasks);
+      
+      setNewTask({ title: "", description: "" });
+      toast.success("Sarcină adăugată cu succes");
+    } catch (error) {
+      console.error("Error adding task:", error);
+      toast.error("Eroare la adăugarea sarcinii");
+    }
+  };
+  
+  const handleToggleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({ is_completed: !isCompleted })
+        .eq('id', taskId);
+      
+      if (error) throw error;
+      
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, isCompleted: !isCompleted } : task
+        )
+      );
+      
+      toast.success("Sarcină actualizată");
+    } catch (error) {
+      console.error("Error toggling task:", error);
+      toast.error("Eroare la actualizarea sarcinii");
+    }
+  };
+  
+  const handleEditProject = () => {
+    if (!project) return;
+    setEditedProject({...project});
+    setShowEditDialog(true);
+  };
+  
+  const handleSaveProjectChanges = async () => {
+    if (!editedProject || !id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          title: editedProject.title,
+          description: editedProject.description,
+          status: editedProject.status,
+          price: editedProject.price,
+          has_ecommerce: editedProject.hasEcommerce,
+          has_cms: editedProject.hasCMS,
+          has_seo: editedProject.hasSEO,
+          has_maintenance: editedProject.hasMaintenance
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setProject(editedProject);
+      setShowEditDialog(false);
+      toast.success("Proiect actualizat cu succes");
+    } catch (error) {
+      console.error("Error updating project:", error);
+      toast.error("Eroare la actualizarea proiectului");
     }
   };
   
@@ -253,7 +371,7 @@ const AdminProjectDetails = () => {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => toast.info("Funcționalitate în dezvoltare")}
+                onClick={handleEditProject}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Editează
@@ -316,7 +434,85 @@ const AdminProjectDetails = () => {
             </TabsContent>
             
             <TabsContent value="tasks">
-              <ProjectTasksPanel projectId={project.id} tasks={tasks} loading={false} />
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold mb-6">Sarcini de Proiect</h3>
+                  
+                  <div className="mb-6">
+                    <div className="flex gap-4 mb-4">
+                      <div className="flex-1">
+                        <Input 
+                          placeholder="Titlu sarcină nouă" 
+                          value={newTask.title}
+                          onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleAddTask}
+                        disabled={!newTask.title.trim()}
+                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      >
+                        Adaugă Sarcină
+                      </Button>
+                    </div>
+                    <Textarea 
+                      placeholder="Descriere sarcină (opțional)" 
+                      value={newTask.description}
+                      onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                      className="h-20"
+                    />
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {tasks.length === 0 ? (
+                      <div className="text-center py-8">
+                        <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">Nu există sarcini încă</p>
+                      </div>
+                    ) : (
+                      tasks.map(task => (
+                        <div 
+                          key={task.id} 
+                          className={`p-4 rounded-lg border ${task.isCompleted ? 'bg-gray-50' : 'bg-white'}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div 
+                              className={`flex-shrink-0 w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center ${
+                                task.isCompleted ? 'bg-green-100 border-green-500 text-green-500' : 'border-gray-300'
+                              }`}
+                              onClick={() => handleToggleTaskCompletion(task.id, task.isCompleted)}
+                            >
+                              {task.isCompleted && (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <h4 className={`text-lg font-medium ${task.isCompleted ? 'line-through text-gray-500' : ''}`}>
+                                {task.title}
+                              </h4>
+                              {task.description && (
+                                <p className={`mt-1 text-gray-600 ${task.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                                  {task.description}
+                                </p>
+                              )}
+                              <div className="mt-2 text-xs text-gray-500">
+                                Creat la {format(new Date(task.createdAt), "dd MMM yyyy")}
+                                {task.dueDate && (
+                                  <span className="ml-4">
+                                    Termen: {format(new Date(task.dueDate), "dd MMM yyyy")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
             
             <TabsContent value="messages">
@@ -510,6 +706,119 @@ const AdminProjectDetails = () => {
           </Tabs>
         </div>
       </PageTransition>
+      
+      {/* Edit Project Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editare Proiect</DialogTitle>
+          </DialogHeader>
+          
+          {editedProject && (
+            <div className="space-y-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Titlu</Label>
+                <Input 
+                  id="title" 
+                  value={editedProject.title}
+                  onChange={e => setEditedProject({...editedProject, title: e.target.value})}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="description">Descriere</Label>
+                <Textarea 
+                  id="description" 
+                  value={editedProject.description || ''}
+                  onChange={e => setEditedProject({...editedProject, description: e.target.value})}
+                  rows={4}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <select 
+                  id="status" 
+                  value={editedProject.status}
+                  onChange={e => setEditedProject({...editedProject, status: e.target.value as any})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="new">Nou</option>
+                  <option value="pending">În așteptare</option>
+                  <option value="in_progress">În progres</option>
+                  <option value="completed">Finalizat</option>
+                  <option value="cancelled">Anulat</option>
+                </select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="price">Preț (RON)</Label>
+                <Input 
+                  id="price" 
+                  type="number"
+                  value={editedProject.price}
+                  onChange={e => setEditedProject({...editedProject, price: Number(e.target.value)})}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasCMS" 
+                    checked={editedProject.hasCMS || false}
+                    onChange={e => setEditedProject({...editedProject, hasCMS: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasCMS">Include CMS</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasEcommerce" 
+                    checked={editedProject.hasEcommerce || false}
+                    onChange={e => setEditedProject({...editedProject, hasEcommerce: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasEcommerce">Include Ecommerce</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasSEO" 
+                    checked={editedProject.hasSEO || false}
+                    onChange={e => setEditedProject({...editedProject, hasSEO: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasSEO">Include SEO</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasMaintenance" 
+                    checked={editedProject.hasMaintenance || false}
+                    onChange={e => setEditedProject({...editedProject, hasMaintenance: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasMaintenance">Include Mentenanță</Label>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Anulează
+            </Button>
+            <Button onClick={handleSaveProjectChanges} className="bg-gradient-to-r from-purple-600 to-indigo-600">
+              Salvează Modificările
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

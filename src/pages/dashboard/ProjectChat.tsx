@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, fetchProjectMessages, sendProjectMessage, uploadFile } from "@/integrations/supabase/client";
-import { Message, Project, mapProject } from "@/types";
+import { Message, Project, mapProject, mapMessage } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -93,6 +93,8 @@ const ProjectChat = () => {
         table: 'messages',
         filter: `project_id=eq.${projectId}` 
       }, (payload) => {
+        console.log('New message received:', payload);
+        // Convert the payload to a Message object
         const newMessage: Message = {
           id: payload.new.id,
           projectId: payload.new.project_id,
@@ -253,7 +255,7 @@ const ProjectChat = () => {
             </div>
           </div>
           
-          <Card className="flex-1 flex flex-col overflow-hidden">
+          <Card className="flex-1 flex flex-col overflow-hidden border-none shadow-md">
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ minHeight: "400px" }}>
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">

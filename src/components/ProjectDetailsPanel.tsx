@@ -6,14 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Project } from "@/types";
 import { formatDate } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { Calendar, Clock, DollarSign, Edit, FileText, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 
 interface ProjectDetailsPanelProps {
   project: Project | null;
   loading: boolean;
   isAdmin?: boolean;
+  onProjectUpdate?: (updatedProject: Project) => void;
 }
 
 const statusMap = {
@@ -39,8 +46,10 @@ const statusMap = {
   },
 };
 
-const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetailsPanelProps) => {
+const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdate }: ProjectDetailsPanelProps) => {
   const [expandDescription, setExpandDescription] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editedProject, setEditedProject] = useState<Project | null>(null);
   const navigate = useNavigate();
   
   if (loading) {
@@ -79,9 +88,46 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetai
   
   const handleMessageClick = () => {
     if (isAdmin) {
-      navigate(`/admin/project/${project.id}/chat`);
+      navigate(`/admin/project/${project.id}`);
     } else {
       navigate(`/dashboard/project/${project.id}/chat`);
+    }
+  };
+  
+  const handleEditClick = () => {
+    setEditedProject({...project});
+    setShowEditDialog(true);
+  };
+  
+  const handleSaveChanges = async () => {
+    if (!editedProject) return;
+    
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          title: editedProject.title,
+          description: editedProject.description,
+          status: editedProject.status,
+          price: editedProject.price,
+          has_ecommerce: editedProject.hasEcommerce,
+          has_cms: editedProject.hasCMS,
+          has_seo: editedProject.hasSEO,
+          has_maintenance: editedProject.hasMaintenance
+        })
+        .eq('id', editedProject.id);
+      
+      if (error) throw error;
+      
+      if (onProjectUpdate) {
+        onProjectUpdate(editedProject);
+      }
+      
+      setShowEditDialog(false);
+      toast.success("Proiect actualizat cu succes");
+    } catch (error) {
+      console.error("Error updating project:", error);
+      toast.error("Eroare la actualizarea proiectului");
     }
   };
   
@@ -104,7 +150,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetai
           </div>
           {isAdmin && (
             <div className="mt-4 md:mt-0">
-              <Button variant="outline" size="sm" className="mr-2">
+              <Button variant="outline" size="sm" onClick={handleEditClick}>
                 <Edit className="h-4 w-4 mr-2" />
                 Editează
               </Button>
@@ -215,6 +261,119 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetai
           </div>
         </CardContent>
       </Card>
+      
+      {/* Edit Project Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editare Proiect</DialogTitle>
+          </DialogHeader>
+          
+          {editedProject && (
+            <div className="space-y-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Titlu</Label>
+                <Input 
+                  id="title" 
+                  value={editedProject.title}
+                  onChange={e => setEditedProject({...editedProject, title: e.target.value})}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="description">Descriere</Label>
+                <Textarea 
+                  id="description" 
+                  value={editedProject.description || ''}
+                  onChange={e => setEditedProject({...editedProject, description: e.target.value})}
+                  rows={4}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <select 
+                  id="status" 
+                  value={editedProject.status}
+                  onChange={e => setEditedProject({...editedProject, status: e.target.value as any})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="new">Nou</option>
+                  <option value="pending">În așteptare</option>
+                  <option value="in_progress">În progres</option>
+                  <option value="completed">Finalizat</option>
+                  <option value="cancelled">Anulat</option>
+                </select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="price">Preț (RON)</Label>
+                <Input 
+                  id="price" 
+                  type="number"
+                  value={editedProject.price}
+                  onChange={e => setEditedProject({...editedProject, price: Number(e.target.value)})}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasCMS" 
+                    checked={editedProject.hasCMS || false}
+                    onChange={e => setEditedProject({...editedProject, hasCMS: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasCMS">Include CMS</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasEcommerce" 
+                    checked={editedProject.hasEcommerce || false}
+                    onChange={e => setEditedProject({...editedProject, hasEcommerce: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasEcommerce">Include Ecommerce</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasSEO" 
+                    checked={editedProject.hasSEO || false}
+                    onChange={e => setEditedProject({...editedProject, hasSEO: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasSEO">Include SEO</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="hasMaintenance" 
+                    checked={editedProject.hasMaintenance || false}
+                    onChange={e => setEditedProject({...editedProject, hasMaintenance: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hasMaintenance">Include Mentenanță</Label>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Anulează
+            </Button>
+            <Button onClick={handleSaveChanges} className="bg-gradient-to-r from-purple-600 to-indigo-600">
+              Salvează Modificările
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };

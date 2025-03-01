@@ -1,41 +1,18 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase, fetchSupportMessages, sendSupportMessage, uploadFile } from "@/integrations/supabase/client";
+import { fetchSupportMessages, sendSupportMessage, uploadFile } from "@/integrations/supabase/client";
 import { Message } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Send, HelpCircle, Image, FileText, Paperclip, X, File } from "lucide-react";
+import { Send, Image, Paperclip, File, X, Clock, ArrowRight, LifeBuoy, Headphones } from "lucide-react";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import PageTransition from "@/components/PageTransition";
-
-const faqs = [
-  {
-    question: "Cum pot solicita un proiect nou?",
-    answer: "Poți solicita un proiect nou direct din dashboard-ul tău făcând click pe butonul 'Solicită Proiect Nou' sau navigând la secțiunea 'Proiecte' și accesând butonul de acolo."
-  },
-  {
-    question: "Cât durează realizarea unui website?",
-    answer: "Timpul de realizare depinde de complexitatea proiectului tău. Un website simplu poate fi gata în 2-3 săptămâni, în timp ce proiectele mai complexe pot dura 1-3 luni. Vei primi o estimare detaliată după evaluarea cerințelor tale."
-  },
-  {
-    question: "Ce informații trebuie să furnizez pentru proiectul meu?",
-    answer: "Este util să ne oferi o descriere a afacerii tale, publicul țintă, exemple de site-uri care îți plac, preferințele de design și conținutul pe care dorești să-l incluzi (texte, imagini). Cu cât mai multe detalii, cu atât mai bine putem să realizăm viziunea ta."
-  },
-  {
-    question: "Cum pot face modificări la proiectul meu existent?",
-    answer: "Pentru a solicita modificări, navighează la pagina proiectului tău din dashboard și folosește secțiunea de mesaje pentru a comunica direct cu echipa noastră de suport. Poți atașa imagini sau fișiere pentru a explica mai bine modificările dorite."
-  },
-  {
-    question: "Oferiți servicii de mentenanță după finalizarea proiectului?",
-    answer: "Da, oferim pachete de mentenanță care includ actualizări de securitate, backup-uri, modificări minore și suport tehnic. Poți selecta opțiunea de mentenanță în formularul de solicitare sau o poți adăuga ulterior contactând echipa noastră."
-  }
-];
 
 const Support = () => {
   const { user } = useAuth();
@@ -67,34 +44,6 @@ const Support = () => {
     };
     
     fetchMessages();
-    
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('support_messages')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'messages',
-        filter: `user_id=eq.${user.id}` 
-      }, (payload) => {
-        if (payload.new.project_id) return; // Ignore project messages
-        
-        const newMessage: Message = {
-          id: payload.new.id,
-          content: payload.new.content,
-          createdAt: payload.new.created_at,
-          isAdmin: payload.new.is_admin,
-          userId: payload.new.user_id,
-          attachmentUrl: payload.new.attachment_url,
-          attachmentType: payload.new.attachment_type
-        };
-        setMessages(prev => [...prev, newMessage]);
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [user]);
 
   useEffect(() => {
@@ -129,7 +78,7 @@ const Support = () => {
         }, 200);
         
         try {
-          attachmentUrl = await uploadFile(selectedFile, 'support');
+          attachmentUrl = await uploadFile(selectedFile);
           clearInterval(progressInterval);
           setUploadProgress(100);
         } catch (error) {
@@ -140,16 +89,22 @@ const Support = () => {
       }
       
       await sendSupportMessage(
-        newMessage || (selectedFile ? `A trimis un fișier: ${selectedFile.name}` : ""), 
+        newMessage || (selectedFile ? `Am trimis un fișier: ${selectedFile.name}` : ""), 
         user.id, 
         false,
         attachmentUrl,
         attachmentType
       );
       
+      // Refresh messages
+      const refreshedMessages = await fetchSupportMessages(user.id);
+      setMessages(refreshedMessages);
+      
       setNewMessage("");
       setSelectedFile(null);
       setUploadProgress(0);
+      
+      toast.success("Mesaj trimis cu succes");
     } catch (error: any) {
       console.error("Error sending message:", error);
       toast.error("Nu s-a putut trimite mesajul", {
@@ -220,187 +175,216 @@ const Support = () => {
       <DashboardSidebar />
       <PageTransition>
         <div className="flex-1 p-6 lg:p-10">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold">Ajutor & Suport</h1>
-            <p className="text-gray-600">
-              Obține asistență și răspunsuri la întrebările tale
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold mb-6">Suport Tehnic</h1>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <HelpCircle className="mr-2 h-5 w-5 text-purple-500" />
-                    Întrebări Frecvente
-                  </CardTitle>
-                  <CardDescription>
-                    Găsește răspunsuri rapide la cele mai comune întrebări
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Accordion type="single" collapsible className="w-full">
-                    {faqs.map((faq, index) => (
-                      <AccordionItem key={index} value={`item-${index}`}>
-                        <AccordionTrigger className="text-left">
-                          {faq.question}
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {faq.answer}
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Contactează-ne</CardTitle>
-                  <CardDescription>
-                    Alte modalități de a ne contacta
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-purple-100 p-2 rounded-full">
-                      <FileText className="h-5 w-5 text-purple-600" />
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="md:col-span-2">
+              <Card className="border-none shadow-md overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                  <div className="flex items-center">
+                    <Headphones className="h-6 w-6 mr-2" />
                     <div>
-                      <h3 className="font-medium">Email</h3>
-                      <p className="text-sm text-gray-500">support@webwhisperer.com</p>
-                      <p className="text-sm text-gray-500">Timp de răspuns: 24-48 ore</p>
+                      <CardTitle>Asistență și Suport</CardTitle>
+                      <CardDescription className="text-purple-100">
+                        Suntem aici să te ajutăm cu orice întrebare sau problemă
+                      </CardDescription>
                     </div>
                   </div>
-                  
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-indigo-100 p-2 rounded-full">
-                      <HelpCircle className="h-5 w-5 text-indigo-600" />
+                </CardHeader>
+                
+                <CardContent className="p-0">
+                  <div className="h-[500px] flex flex-col">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                      {isLoading ? (
+                        <div className="flex items-center justify-center h-full">
+                          <p>Se încarcă mesajele...</p>
+                        </div>
+                      ) : messages.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-center">
+                          <div>
+                            <LifeBuoy className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500 mb-2">Nu există mesaje încă</p>
+                            <p className="text-gray-400 text-sm">
+                              Trimite primul tău mesaj pentru a începe o conversație cu echipa noastră de suport
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {messages.map(message => (
+                            <div 
+                              key={message.id} 
+                              className={`flex ${message.isAdmin ? 'justify-start' : 'justify-end'}`}
+                            >
+                              <div 
+                                className={`max-w-[80%] p-3 rounded-lg ${
+                                  message.isAdmin 
+                                    ? 'bg-gray-200 text-gray-800' 
+                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarFallback className={message.isAdmin ? 'bg-gray-500 text-white' : 'bg-purple-300 text-purple-700'}>
+                                      {message.isAdmin ? 'S' : user?.name?.[0] || 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs font-medium">
+                                    {message.isAdmin ? 'Echipa Suport' : 'Tu'}
+                                  </span>
+                                </div>
+                                <div className="text-sm">{message.content}</div>
+                                {renderAttachment(message)}
+                                <div className={`text-xs mt-1 ${message.isAdmin ? 'text-gray-500' : 'text-purple-100'}`}>
+                                  {format(new Date(message.createdAt), 'dd MMM yyyy, HH:mm', { locale: ro })}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <div ref={messagesEndRef} />
+                        </>
+                      )}
                     </div>
-                    <div>
-                      <h3 className="font-medium">Telefon</h3>
-                      <p className="text-sm text-gray-500">+40 722 123 456</p>
-                      <p className="text-sm text-gray-500">Program: Luni-Vineri, 9:00 - 17:00</p>
+                    
+                    <div className="p-4 border-t mt-auto bg-white">
+                      {selectedFile && (
+                        <div className="mb-2 p-2 bg-gray-100 rounded-md flex items-center justify-between">
+                          <div className="flex items-center">
+                            {getFileIcon(selectedFile.type)}
+                            <span className="ml-2 text-sm truncate">{selectedFile.name}</span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => setSelectedFile(null)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {uploadProgress > 0 && uploadProgress < 100 && (
+                        <div className="mb-2">
+                          <div className="h-1 bg-gray-200 rounded">
+                            <div 
+                              className="h-1 bg-purple-600 rounded" 
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Se încarcă... {uploadProgress}%</p>
+                        </div>
+                      )}
+                      
+                      <form onSubmit={sendMessage} className="flex gap-2">
+                        <input 
+                          type="file" 
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                        <Button 
+                          type="button" 
+                          size="icon" 
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isSending}
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </Button>
+                        <Textarea
+                          placeholder="Scrie un mesaj..."
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          disabled={isSending}
+                          className="flex-1 min-h-[60px] max-h-[120px]"
+                        />
+                        <Button 
+                          type="submit" 
+                          size="icon" 
+                          disabled={isSending || (!newMessage.trim() && !selectedFile)}
+                          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </form>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
             
-            <div className="lg:col-span-1">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Chat Suport</CardTitle>
-                  <CardDescription>
-                    Discută direct cu echipa noastră de suport
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  <div className="flex-1 overflow-y-auto mb-4 space-y-4 min-h-[300px] max-h-[500px]">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center h-full">
-                        <p>Se încarcă mesajele...</p>
+            <div>
+              <div className="space-y-6">
+                <Card className="border-none shadow-md">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg">Program Suport</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Luni - Vineri</span>
+                        <span>09:00 - 18:00</span>
                       </div>
-                    ) : messages.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-center">
-                        <div>
-                          <p className="text-gray-500 mb-2">Nu există mesaje încă</p>
-                          <p className="text-sm text-gray-400">
-                            Trimite primul tău mesaj pentru a începe o conversație cu echipa noastră
-                          </p>
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sâmbătă</span>
+                        <span>10:00 - 15:00</span>
                       </div>
-                    ) : (
-                      <>
-                        {messages.map(message => (
-                          <div 
-                            key={message.id} 
-                            className={`flex ${message.isAdmin ? 'justify-start' : 'justify-end'}`}
-                          >
-                            <div 
-                              className={`max-w-[80%] p-3 rounded-lg ${
-                                message.isAdmin 
-                                  ? 'bg-gray-200 text-gray-800' 
-                                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                              }`}
-                            >
-                              <div className="text-sm">{message.content}</div>
-                              {renderAttachment(message)}
-                              <div className={`text-xs mt-1 ${message.isAdmin ? 'text-gray-500' : 'text-purple-100'}`}>
-                                {format(new Date(message.createdAt), 'dd MMM yyyy, HH:mm', { locale: ro })}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                      </>
-                    )}
-                  </div>
-                  
-                  {selectedFile && (
-                    <div className="mb-2 p-2 bg-gray-100 rounded-md flex items-center justify-between">
-                      <div className="flex items-center">
-                        {getFileIcon(selectedFile.type)}
-                        <span className="ml-2 text-sm truncate">{selectedFile.name}</span>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Duminică</span>
+                        <span>Închis</span>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6" 
-                        onClick={() => setSelectedFile(null)}
-                      >
-                        <X className="h-4 w-4" />
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex items-center text-sm">
+                        <Clock className="h-4 w-4 text-gray-500 mr-2" />
+                        <span>Timp mediu de răspuns: 2-4 ore</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-none shadow-md">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg">Documentație</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-500 text-sm mb-4">
+                      Explorează ghidurile și tutorialele noastre pentru a afla mai multe despre cum să folosești serviciile noastre.
+                    </p>
+                    <div className="space-y-3">
+                      <a href="#" className="flex items-center justify-between text-sm hover:text-purple-600 transition-colors">
+                        <span>Ghid de utilizare</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                      <a href="#" className="flex items-center justify-between text-sm hover:text-purple-600 transition-colors">
+                        <span>Întrebări frecvente</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                      <a href="#" className="flex items-center justify-between text-sm hover:text-purple-600 transition-colors">
+                        <span>Tutoriale video</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-none shadow-md bg-gradient-to-r from-purple-50 to-indigo-50">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col items-center text-center">
+                      <LifeBuoy className="h-12 w-12 text-purple-500 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Ai nevoie de ajutor urgent?</h3>
+                      <p className="text-gray-500 text-sm mb-4">
+                        Contactează-ne direct pentru asistență imediată
+                      </p>
+                      <Button variant="outline" className="w-full border-purple-200">
+                        +40 770 123 456
                       </Button>
                     </div>
-                  )}
-                  
-                  {uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="mb-2">
-                      <div className="h-1 bg-gray-200 rounded">
-                        <div 
-                          className="h-1 bg-purple-600 rounded" 
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Se încarcă... {uploadProgress}%</p>
-                    </div>
-                  )}
-                  
-                  <form onSubmit={sendMessage} className="flex gap-2 mt-auto">
-                    <input 
-                      type="file" 
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <Button 
-                      type="button" 
-                      size="icon" 
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isSending}
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      placeholder="Scrie un mesaj..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      disabled={isSending}
-                      className="flex-1"
-                    />
-                    <Button 
-                      type="submit" 
-                      size="icon" 
-                      disabled={isSending || (!newMessage.trim() && !selectedFile)}
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
