@@ -22,6 +22,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && !authLoading) {
       loadProjects();
+    } else if (!authLoading && !loading) {
+      setLoading(false);
     }
   }, [user, authLoading]);
   
@@ -30,12 +32,16 @@ const Dashboard = () => {
       setLoading(true);
       if (!user) return;
       
+      console.log("Fetching projects for user:", user.id);
       const projects = await fetchProjects(user.id);
+      console.log("Projects fetched:", projects);
       setProjects(projects);
       
     } catch (error) {
       console.error("Error loading projects:", error);
-      toast.error("Eroare la încărcarea proiectelor");
+      toast.error("Eroare la încărcarea proiectelor", {
+        description: "Vă rugăm să reîncercați mai târziu."
+      });
     } finally {
       setLoading(false);
     }
@@ -45,28 +51,34 @@ const Dashboard = () => {
     navigate("/request");
   };
   
+  // Calculate stats from projects
+  const activeProjects = projects.filter(p => p.status === "in_progress").length;
+  const pendingProjects = projects.filter(p => p.status === "pending").length;
+  const completedProjects = projects.filter(p => p.status === "completed").length;
+  const totalProjects = projects.length;
+  
   const statsCards = [
     {
       title: "Proiecte active",
-      value: projects.filter(p => p.status === "in_progress").length,
+      value: activeProjects,
       icon: Clock,
       color: "bg-blue-100 text-blue-700"
     },
     {
       title: "Proiecte în așteptare",
-      value: projects.filter(p => p.status === "pending").length,
+      value: pendingProjects,
       icon: FileText,
       color: "bg-yellow-100 text-yellow-700"
     },
     {
       title: "Proiecte finalizate",
-      value: projects.filter(p => p.status === "completed").length,
+      value: completedProjects,
       icon: CheckCircle,
       color: "bg-green-100 text-green-700" 
     },
     {
       title: "Proiecte totale",
-      value: projects.length,
+      value: totalProjects,
       icon: BarChart,
       color: "bg-purple-100 text-purple-700"
     }

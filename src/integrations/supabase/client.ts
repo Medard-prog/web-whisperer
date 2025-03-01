@@ -14,19 +14,25 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 
 // Helper functions to get properly typed data
 export async function fetchProjects(userId?: string): Promise<Project[]> {
-  const query = supabase.from('projects').select('*');
-  
-  if (userId) {
-    query.eq('user_id', userId);
-  }
-  
-  const { data, error } = await query.order('created_at', { ascending: false });
-  
-  if (error) {
+  try {
+    const query = supabase.from('projects').select('*');
+    
+    if (userId) {
+      query.eq('user_id', userId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching projects:", error);
+      throw error;
+    }
+    
+    return (data || []).map(mapProject);
+  } catch (error) {
+    console.error("Error in fetchProjects:", error);
     throw error;
   }
-  
-  return (data || []).map(mapProject);
 }
 
 export async function fetchUsers(): Promise<User[]> {

@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { mapProject, Project } from "@/types";
+import { fetchProjects } from "@/integrations/supabase/client";
+import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
@@ -27,19 +27,15 @@ const Projects = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProjects = async () => {
+    const loadProjects = async () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
-        setProjects(data.map(mapProject) || []);
+        console.log("Fetching projects for user:", user.id);
+        setIsLoading(true);
+        const projects = await fetchProjects(user.id);
+        console.log("Projects fetched:", projects);
+        setProjects(projects);
       } catch (error) {
         console.error("Error fetching projects:", error);
         toast.error("Nu s-au putut încărca proiectele", {
@@ -50,7 +46,7 @@ const Projects = () => {
       }
     };
     
-    fetchProjects();
+    loadProjects();
   }, [user]);
 
   return (
