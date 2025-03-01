@@ -8,29 +8,44 @@ import { useState, useEffect } from "react";
 
 // Country codes for phone numbers
 const countryCodes = [
-  { country: "Romania", code: "+40", flag: "🇷🇴" },
-  { country: "United States", code: "+1", flag: "🇺🇸" },
-  { country: "United Kingdom", code: "+44", flag: "🇬🇧" },
-  { country: "Germany", code: "+49", flag: "🇩🇪" },
-  { country: "France", code: "+33", flag: "🇫🇷" },
-  { country: "Italy", code: "+39", flag: "🇮🇹" },
-  { country: "Spain", code: "+34", flag: "🇪🇸" },
+  { country: "România", code: "+40", flag: "🇷🇴" },
+  { country: "Statele Unite", code: "+1", flag: "🇺🇸" },
+  { country: "Marea Britanie", code: "+44", flag: "🇬🇧" },
+  { country: "Germania", code: "+49", flag: "🇩🇪" },
+  { country: "Franța", code: "+33", flag: "🇫🇷" },
+  { country: "Italia", code: "+39", flag: "🇮🇹" },
+  { country: "Spania", code: "+34", flag: "🇪🇸" },
   { country: "Moldova", code: "+373", flag: "🇲🇩" },
-  { country: "Ukraine", code: "+380", flag: "🇺🇦" },
+  { country: "Ucraina", code: "+380", flag: "🇺🇦" },
   { country: "Bulgaria", code: "+359", flag: "🇧🇬" },
-  { country: "Hungary", code: "+36", flag: "🇭🇺" },
+  { country: "Ungaria", code: "+36", flag: "🇭🇺" },
+  { country: "Austria", code: "+43", flag: "🇦🇹" },
+  { country: "Belgia", code: "+32", flag: "🇧🇪" },
+  { country: "Cehia", code: "+420", flag: "🇨🇿" },
+  { country: "Croația", code: "+385", flag: "🇭🇷" },
+  { country: "Danemarca", code: "+45", flag: "🇩🇰" },
+  { country: "Elveția", code: "+41", flag: "🇨🇭" },
+  { country: "Finlanda", code: "+358", flag: "🇫🇮" },
+  { country: "Grecia", code: "+30", flag: "🇬🇷" },
+  { country: "Irlanda", code: "+353", flag: "🇮🇪" },
+  { country: "Norvegia", code: "+47", flag: "🇳🇴" },
+  { country: "Olanda", code: "+31", flag: "🇳🇱" },
+  { country: "Polonia", code: "+48", flag: "🇵🇱" },
+  { country: "Portugalia", code: "+351", flag: "🇵🇹" },
+  { country: "Slovacia", code: "+421", flag: "🇸🇰" },
+  { country: "Slovenia", code: "+386", flag: "🇸🇮" },
+  { country: "Suedia", code: "+46", flag: "🇸🇪" },
 ].sort((a, b) => a.country.localeCompare(b.country));
 
 const StepOne = () => {
   const { control, setValue, watch } = useFormContext();
   const [selectedCountryCode, setSelectedCountryCode] = useState("+40"); // Default to Romania
-  const [phoneWithoutCode, setPhoneWithoutCode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const phoneValue = watch("phone") || "";
   
-  // Initialize phone without code on component mount or when phoneValue changes
+  // Initialize phone data on component mount or when phoneValue changes from external source
   useEffect(() => {
-    // If phone value exists but doesn't have country code extracted yet
-    if (phoneValue) {
+    if (phoneValue && phoneValue !== selectedCountryCode + phoneNumber) {
       // Check if phone starts with any country code
       const matchedCountry = countryCodes.find(country => 
         phoneValue.startsWith(country.code)
@@ -38,10 +53,10 @@ const StepOne = () => {
       
       if (matchedCountry) {
         setSelectedCountryCode(matchedCountry.code);
-        setPhoneWithoutCode(phoneValue.substring(matchedCountry.code.length));
+        setPhoneNumber(phoneValue.substring(matchedCountry.code.length));
       } else {
         // If no country code is found, assume it's just the number
-        setPhoneWithoutCode(phoneValue);
+        setPhoneNumber(phoneValue);
       }
     }
   }, []);
@@ -50,13 +65,13 @@ const StepOne = () => {
   const handleCountryChange = (code: string) => {
     setSelectedCountryCode(code);
     // Update the full phone number with new country code + existing number
-    setValue("phone", code + phoneWithoutCode);
+    setValue("phone", code + phoneNumber);
   };
 
   // Handle phone input changes
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numberOnly = e.target.value;
-    setPhoneWithoutCode(numberOnly);
+    const numberOnly = e.target.value.replace(/\D/g, '');
+    setPhoneNumber(numberOnly);
     setValue("phone", selectedCountryCode + numberOnly);
   };
   
@@ -105,24 +120,29 @@ const StepOne = () => {
         <FormField
           control={control}
           name="phone"
-          render={({ field }) => (
+          render={() => (
             <FormItem>
               <FormLabel>Telefon</FormLabel>
               <div className="flex gap-2">
                 <div className="w-32">
                   <Select 
+                    value={selectedCountryCode}
                     onValueChange={handleCountryChange}
-                    defaultValue={selectedCountryCode}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Cod" />
+                      <SelectValue placeholder={selectedCountryCode}>
+                        <div className="flex items-center gap-1">
+                          {countryCodes.find(c => c.code === selectedCountryCode)?.flag} {selectedCountryCode}
+                        </div>
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px]">
                       {countryCodes.map((country) => (
                         <SelectItem key={country.code} value={country.code}>
                           <div className="flex items-center gap-2">
                             <span>{country.flag}</span>
                             <span>{country.code}</span>
+                            <span className="text-xs text-gray-500">({country.country})</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -133,9 +153,9 @@ const StepOne = () => {
                   <div className="relative flex-1">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input 
-                      placeholder="Numărul de telefon" 
+                      placeholder="Numărul de telefon (fără prefixul țării)" 
                       className="pl-10" 
-                      value={phoneWithoutCode} 
+                      value={phoneNumber}
                       onChange={handlePhoneChange}
                     />
                   </div>

@@ -85,6 +85,8 @@ const RequestProject = () => {
   
   const handleSubmit = async (formData: RequestFormValues) => {
     try {
+      console.log("Starting submission with data:", formData);
+      
       // Map our form data to match the Supabase project_requests table structure
       const requestData = {
         name: formData.name,
@@ -100,14 +102,16 @@ const RequestProject = () => {
         user_id: user?.id,
         status: 'new',
         // Map additional fields if they exist
-        has_ecommerce: formData.hasEcommerce,
-        has_cms: formData.hasCms,
-        has_seo: formData.hasSeo,
-        has_maintenance: formData.hasMaintenance,
-        page_count: formData.pageCount,
-        design_complexity: formData.designComplexity,
+        has_ecommerce: formData.hasEcommerce || false,
+        has_cms: formData.hasCms || false,
+        has_seo: formData.hasSeo || false,
+        has_maintenance: formData.hasMaintenance || false,
+        page_count: formData.pageCount || 5,
+        design_complexity: formData.designComplexity || "standard",
         custom_budget: formData.price ? formData.price.toString() : undefined
       };
+      
+      console.log("Prepared request data:", requestData);
       
       const { data, error } = await supabase
         .from('project_requests')

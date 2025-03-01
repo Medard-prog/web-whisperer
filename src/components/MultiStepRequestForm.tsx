@@ -11,7 +11,6 @@ import { ChevronLeft, ChevronRight, Check, UserPlus, LogIn } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import StepOne from "./request-form/StepOne";
 import StepTwo from "./request-form/StepTwo";
 import StepThree from "./request-form/StepThree";
@@ -72,7 +71,6 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const { user, loading, refreshUser } = useAuth();
-  const navigate = useNavigate();
   
   // Form setup
   const methods = useForm<RequestFormValues>({
@@ -137,7 +135,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
           setLoginEmail(formValues.email);
         } else {
           // User is logged in, submit form
-          finalSubmit();
+          handleFormSubmit();
         }
       }
     }
@@ -153,18 +151,18 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   const handleLogin = async () => {
     try {
       setIsSubmitting(true);
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
       
-      if (loginError) throw loginError;
+      if (error) throw error;
       
       await refreshUser();
       setLoginDialogOpen(false);
       toast.success("Ați fost conectat cu succes", { description: "Vă mulțumim pentru conectare." });
       // Submit the form after successful login
-      setTimeout(() => finalSubmit(), 500);
+      setTimeout(() => handleFormSubmit(), 500);
       
     } catch (error: any) {
       console.error("Error during login:", error);
@@ -178,7 +176,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
   const handleSignup = async () => {
     try {
       setIsSubmitting(true);
-      const { error: signupError } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: {
@@ -188,13 +186,13 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
         },
       });
       
-      if (signupError) throw signupError;
+      if (error) throw error;
       
       setLoginDialogOpen(false);
       toast.success("Cont creat cu succes!", { description: "Verificați email-ul pentru a confirma" });
       
       // For development, we'll proceed with the form submission without email verification
-      setTimeout(() => finalSubmit(), 500);
+      setTimeout(() => handleFormSubmit(), 500);
       
     } catch (error: any) {
       console.error("Error during signup:", error);
@@ -204,17 +202,18 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
     }
   };
   
-  const finalSubmit: SubmitHandler<RequestFormValues> = async (data) => {
-    try {
-      setIsSubmitting(true);
-      await onSubmit(data);
-      // Navigate to dashboard is handled by the parent component
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
-      toast.error("Eroare la trimiterea cererii", { description: "Vă rugăm să încercați din nou" });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleFormSubmit = () => {
+    handleSubmit(async (data) => {
+      try {
+        setIsSubmitting(true);
+        await onSubmit(data);
+      } catch (error) {
+        console.error("Error submitting form:", error);
+        toast.error("Eroare la trimiterea cererii", { description: "Vă rugăm să încercați din nou" });
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
   };
   
   // Animation variants
@@ -279,7 +278,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
         </CardHeader>
         
         <CardContent className="pt-6">
-          <form id="request-form" onSubmit={handleSubmit(finalSubmit)}>
+          <form id="request-form" onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }}>
             <AnimatePresence custom={currentStep} mode="wait">
               <motion.div
                 key={currentStep}
