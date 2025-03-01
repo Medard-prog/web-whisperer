@@ -1,28 +1,23 @@
 
-import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronsUpDown, FileText } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { FileText, Globe, Building, ShoppingCart, Search, Palette, HeadsetIcon, Code, FileQuestion } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const projectTypes = [
-  { label: "Website", value: "website" },
-  { label: "Aplicație Web", value: "web_app" },
-  { label: "eCommerce", value: "ecommerce" },
-  { label: "Optimizare SEO", value: "seo" },
-  { label: "Branding & Design", value: "branding" },
-  { label: "Consultanță IT", value: "consulting" },
-  { label: "Integrare API", value: "api_integration" },
-  { label: "Altele", value: "other" },
+  { label: "Website", value: "website", icon: Globe },
+  { label: "Aplicație Web", value: "web_app", icon: Building },
+  { label: "eCommerce", value: "ecommerce", icon: ShoppingCart },
+  { label: "Optimizare SEO", value: "seo", icon: Search },
+  { label: "Branding & Design", value: "branding", icon: Palette },
+  { label: "Consultanță IT", value: "consulting", icon: HeadsetIcon },
+  { label: "Integrare API", value: "api_integration", icon: Code },
+  { label: "Altele", value: "other", icon: FileQuestion },
 ];
 
 const StepTwo = () => {
-  const { control, setValue } = useFormContext();
-  const [open, setOpen] = useState(false);
+  const { control } = useFormContext();
   
   return (
     <div className="space-y-6">
@@ -55,50 +50,28 @@ const StepTwo = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipul Proiectului</FormLabel>
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={open}
-                      className="w-full justify-between border-gray-300 text-left font-normal"
-                      type="button" // Make sure it's a button type
-                    >
-                      {field.value
-                        ? projectTypes.find((type) => type.value === field.value)?.label
-                        : "Selectează tipul proiectului"}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Caută tipul proiectului..." />
-                    <CommandEmpty>Nu a fost găsit niciun tip de proiect.</CommandEmpty>
-                    <CommandGroup>
-                      {projectTypes.map((type) => (
-                        <CommandItem
-                          key={type.value}
-                          value={type.value}
-                          onSelect={(currentValue) => {
-                            setValue("projectType", currentValue);
-                            setOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              field.value === type.value ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {type.label}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selectează tipul proiectului" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectGroup>
+                    {projectTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <div className="flex items-center gap-2">
+                          <type.icon className="h-4 w-4 text-gray-500" />
+                          <span>{type.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
