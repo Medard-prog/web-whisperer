@@ -17,6 +17,9 @@ export interface AuthContextType {
   session: Session | null;
   user: UserDetails | null;
   loading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
   signOut: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
@@ -32,13 +35,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Initialize the auth state with the current session
+  const isAuthenticated = !!session?.user;
+  const isAdmin = !!user?.isAdmin;
+  const isLoading = loading;
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         setLoading(true);
         
-        // Get current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -51,7 +56,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (session?.user) {
           console.log("Session found, user is logged in:", session.user.id);
-          // Basic user info from session
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -59,7 +63,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isAdmin: session.user.user_metadata?.isAdmin || false
           });
           
-          // Try to fetch additional profile data, but don't block on errors
           try {
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
@@ -83,14 +86,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
           } catch (error) {
             console.error('Error fetching profile data:', error);
-            // Continue with basic user info even if profile fetch fails
           }
         } else {
           console.log("No session found, user is not logged in");
           setUser(null);
         }
         
-        // Listen for auth changes
         const { data: { subscription } } = await supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log('Auth state changed:', event);
@@ -100,10 +101,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               if (newSession?.user) {
                 console.log("User signed in:", newSession.user.id);
                 
-                // Navigate to dashboard on successful login
                 navigate('/dashboard');
                 
-                // Basic user info from session
                 setUser({
                   id: newSession.user.id,
                   email: newSession.user.email || '',
@@ -111,7 +110,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   isAdmin: newSession.user.user_metadata?.isAdmin || false
                 });
                 
-                // Try to fetch profile data
                 try {
                   const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
@@ -135,7 +133,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   }
                 } catch (error) {
                   console.error('Error updating user data on auth change:', error);
-                  // Continue with basic user info
                 }
               }
             } else if (event === 'SIGNED_OUT') {
@@ -148,7 +145,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         setLoading(false);
         
-        // Cleanup subscription on unmount
         return () => {
           subscription.unsubscribe();
         };
@@ -161,7 +157,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
   }, [navigate]);
   
-  // Sign in with email and password
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -184,7 +179,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Sign up with email and password
   const signUp = async (email: string, password: string, name: string) => {
     try {
       const { error } = await supabase.auth.signUp({
@@ -214,7 +208,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Refresh the user's profile data
   const refreshUser = async () => {
     if (session?.user) {
       try {
@@ -247,7 +240,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Sign out the user
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -260,14 +252,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Update the user's profile
   const updateProfile = async (userData: Partial<UserDetails>) => {
     if (!user || !session) {
       throw new Error('User not authenticated');
     }
     
     try {
-      // Update profile in database
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -283,7 +273,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      // Update local user state
       setUser({ ...user, ...userData });
       toast.success('Profilul a fost actualizat');
       
@@ -299,6 +288,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       session, 
       user, 
       loading, 
+      isAuthenticated,
+      isAdmin,
+      isLoading,
       signIn,
       signUp,
       signOut, 
