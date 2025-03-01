@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { supabase, fetchProjectTasks, addProjectTask, createProjectTask } from "@/integrations/supabase/client";
+import { supabase, fetchProjectTasks, addProjectTask } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectTask, mapProjectTask } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,7 +32,6 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
     if (initialTasks) {
       setTasks(initialTasks);
     } else if (projectId && !initialLoading) {
-      // If tasks weren't provided but we have a projectId, load them
       loadTasks();
     }
   }, [initialTasks, projectId, initialLoading]);
@@ -61,8 +59,7 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
     try {
       setIsSubmitting(true);
       
-      // Using the correct function name from our exports
-      const newTask = await addProjectTask(projectId, newTaskTitle, user.id);
+      const newTask = await addProjectTask(projectId, newTaskTitle);
       setTasks(prev => prev ? [newTask, ...prev] : [newTask]);
       setNewTaskTitle("");
       
@@ -84,7 +81,6 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
   
   const toggleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
     try {
-      // Optimistically update the UI
       setTasks(prev => 
         prev ? prev.map(task => 
           task.id === taskId ? { ...task, isCompleted: !isCompleted } : task
@@ -100,7 +96,6 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
     } catch (error) {
       console.error('Error toggling task:', error);
       
-      // Revert the change if there was an error
       setTasks(prev => 
         prev ? prev.map(task => 
           task.id === taskId ? { ...task, isCompleted: isCompleted } : task
@@ -117,7 +112,6 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
   
   const deleteTask = async (taskId: string) => {
     try {
-      // Optimistically update the UI
       setTasks(prev => prev ? prev.filter(task => task.id !== taskId) : null);
       
       const { error } = await supabase
@@ -134,7 +128,6 @@ const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoa
     } catch (error) {
       console.error('Error deleting task:', error);
       
-      // Refetch tasks if there was an error
       loadTasks();
       
       toast({

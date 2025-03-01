@@ -1,6 +1,7 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { ProjectTask, Project, Message } from '@/types';
+import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile } from '@/types';
 
 // Provide fallback values for development if environment variables are missing
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://development-url.supabase.co';
@@ -30,6 +31,26 @@ export const fetchUserData = async (userId: string) => {
   }
 };
 
+export const fetchUsers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching users:", error);
+      toast.error(`Failed to fetch users: ${error.message}`);
+      return [];
+    }
+
+    return data as User[];
+  } catch (error: any) {
+    toast.error(`Failed to fetch users: ${error.message}`);
+    return [];
+  }
+};
+
 export const fetchProjectRequests = async (userId: string) => {
   try {
     const { data, error } = await supabase
@@ -47,6 +68,32 @@ export const fetchProjectRequests = async (userId: string) => {
     return data || [];
   } catch (error: any) {
     toast.error(`Failed to fetch project requests: ${error.message}`);
+    return [];
+  }
+};
+
+export const fetchProjects = async (userId?: string) => {
+  try {
+    let query = supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Error fetching projects:", error);
+      toast.error(`Failed to fetch projects: ${error.message}`);
+      return [];
+    }
+
+    return data as Project[];
+  } catch (error: any) {
+    toast.error(`Failed to fetch projects: ${error.message}`);
     return [];
   }
 };
@@ -72,7 +119,7 @@ export const fetchProjectById = async (projectId: string) => {
   }
 };
 
-export const updateProjectStatus = async (projectId: string, status: ProjectStatus) => {
+export const updateProjectStatus = async (projectId: string, status: string) => {
   try {
     const { data, error } = await supabase
       .from('projects')
@@ -94,7 +141,7 @@ export const updateProjectStatus = async (projectId: string, status: ProjectStat
   }
 };
 
-export const updatePaymentStatus = async (projectId: string, status: PaymentStatus) => {
+export const updatePaymentStatus = async (projectId: string, status: string) => {
   try {
     const { data, error } = await supabase
       .from('projects')
@@ -163,18 +210,127 @@ export const sendProjectMessage = async (projectId: string, userId: string, mess
 };
 
 // Add missing functions referenced in the codebase
-export const addProjectTask = async (projectId: string, task: Partial<ProjectTask>) => {
+export const fetchProjectTasks = async (projectId: string) => {
   try {
     const { data, error } = await supabase
       .from('project_tasks')
-      .insert([{ ...task, project_id: projectId }])
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    return data.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      isCompleted: task.is_completed,
+      dueDate: task.due_date,
+      createdAt: task.created_at,
+      projectId: task.project_id,
+      createdBy: task.created_by
+    })) as ProjectTask[];
+  } catch (error: any) {
+    toast.error(`Failed to fetch project tasks: ${error.message}`);
+    return [];
+  }
+};
+
+export const addProjectTask = async (projectId: string, title: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .insert([{ 
+        project_id: projectId, 
+        title: title,
+        is_completed: false
+      }])
       .select('*')
       .single();
       
     if (error) throw error;
-    return data;
+    
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      isCompleted: data.is_completed,
+      dueDate: data.due_date,
+      createdAt: data.created_at,
+      projectId: data.project_id,
+      createdBy: data.created_by
+    } as ProjectTask;
   } catch (error: any) {
     toast.error(`Failed to add task: ${error.message}`);
+    return null;
+  }
+};
+
+export const fetchProjectNotes = async (projectId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('project_notes')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    return data.map(note => ({
+      id: note.id,
+      content: note.content,
+      isAdminOnly: note.is_admin_only,
+      createdAt: note.created_at,
+      projectId: note.project_id,
+      createdBy: note.created_by
+    })) as ProjectNote[];
+  } catch (error: any) {
+    toast.error(`Failed to fetch project notes: ${error.message}`);
+    return [];
+  }
+};
+
+export const fetchProjectFiles = async (projectId: string) => {
+  try {
+    // For now, return an empty array
+    // In real implementation, this would fetch files from storage
+    return [] as ProjectFile[];
+  } catch (error: any) {
+    toast.error(`Failed to fetch project files: ${error.message}`);
+    return [];
+  }
+};
+
+export const uploadFile = async (projectId: string, file: File, userId: string) => {
+  try {
+    const fileName = `${Date.now()}_${file.name}`;
+    const filePath = `projects/${projectId}/${fileName}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('project_files')
+      .upload(filePath, file);
+      
+    if (uploadError) throw uploadError;
+    
+    const { data: urlData } = supabase.storage
+      .from('project_files')
+      .getPublicUrl(filePath);
+      
+    const publicUrl = urlData.publicUrl;
+    
+    // Mock return - in a real implementation this would insert into a files table
+    return {
+      id: Math.random().toString(36).substring(2, 9),
+      name: file.name,
+      url: publicUrl,
+      size: file.size,
+      type: file.type,
+      projectId,
+      uploadedBy: userId,
+      createdAt: new Date().toISOString()
+    } as ProjectFile;
+  } catch (error: any) {
+    toast.error(`Failed to upload file: ${error.message}`);
     return null;
   }
 };
@@ -291,17 +447,3 @@ export const sendSupportMessage = async (userId: string, message: string) => {
     return null;
   }
 };
-
-// Define missing types
-export enum ProjectStatus {
-  NEW = 'new',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
-}
-
-export enum PaymentStatus {
-  UNPAID = 'unpaid',
-  PARTIAL = 'partial',
-  PAID = 'paid'
-}

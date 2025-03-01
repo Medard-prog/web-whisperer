@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +19,7 @@ import { FileIcon, PaperclipIcon, SendIcon, ArrowLeft } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import DashboardSidebar from '@/components/DashboardSidebar';
 
-export default function ProjectChat() {
+const ProjectChat = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -30,6 +29,8 @@ export default function ProjectChat() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -151,6 +152,42 @@ export default function ProjectChat() {
       toast.error('Failed to send message');
     } finally {
       setSending(false);
+    }
+  };
+  
+  const handleFileUpload = async (file: File) => {
+    if (!file || !project?.id || !user?.id) return;
+    
+    try {
+      setUploading(true);
+      setUploadProgress(30);
+      
+      // Use correct parameter count for uploadFile
+      const fileDoc = await uploadFile(project.id, file, user.id);
+      
+      setUploadProgress(90);
+      
+      if (fileDoc) {
+        // Add the new message to the UI immediately without waiting for realtime
+        const sentMessage = await sendProjectMessage(
+          id!,
+          'Shared a file',
+          user.id,
+          false, // Not admin
+          fileDoc.url,
+          fileDoc.type
+        );
+        
+        if (sentMessage) {
+          setMessages(prev => [...prev, sentMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
     }
   };
   
@@ -286,4 +323,6 @@ export default function ProjectChat() {
       </PageTransition>
     </div>
   );
-}
+};
+
+export default ProjectChat;

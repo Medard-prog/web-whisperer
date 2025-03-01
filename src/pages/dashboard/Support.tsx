@@ -126,7 +126,8 @@ const Support = () => {
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
                         <Avatar>
-                          <AvatarImage src={message.is_from_user ? user?.profile?.avatar_url || undefined : '/placeholder.svg'} />
+                          {/* Replace profile with user's avatar url directly */}
+                          <AvatarImage src={message.is_from_user ? user?.avatar_url || undefined : '/placeholder.svg'} />
                           <AvatarFallback>{message.is_from_user ? user?.email?.charAt(0).toUpperCase() || 'U' : 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
