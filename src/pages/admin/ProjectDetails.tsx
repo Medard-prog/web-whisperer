@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +12,7 @@ import {
   sendProjectMessage,
   addAdminNote,
   uploadProjectFile,
+  updateProject,
   supabase
 } from "@/integrations/supabase/client";
 import { Project, ProjectTask, ProjectNote, Message, ProjectFile, AdminNote } from "@/types";
@@ -94,7 +94,6 @@ const AdminProjectDetails = () => {
             const adminProjectNotes = await fetchAdminNotes(id);
             setAdminNotes(adminProjectNotes);
             
-            // Try to fetch project files, but handle gracefully if the table doesn't exist
             try {
               const files = await fetchProjectFiles(id);
               setProjectFiles(files);
@@ -120,7 +119,6 @@ const AdminProjectDetails = () => {
     
     loadProjectData();
     
-    // Set up real-time subscription for messages
     if (id) {
       const channel = supabase
         .channel('project_messages')
@@ -194,10 +192,8 @@ const AdminProjectDetails = () => {
     try {
       setUploadingFile(true);
       
-      // Upload file
       await uploadProjectFile(id, file);
       
-      // Refresh file list
       const refreshedFiles = await fetchProjectFiles(id);
       setProjectFiles(refreshedFiles);
       
@@ -270,21 +266,7 @@ const AdminProjectDetails = () => {
     if (!editedProject || !id) return;
     
     try {
-      const { error } = await supabase
-        .from('projects')
-        .update({
-          title: editedProject.title,
-          description: editedProject.description,
-          status: editedProject.status,
-          price: editedProject.price,
-          has_ecommerce: editedProject.hasEcommerce,
-          has_cms: editedProject.hasCMS,
-          has_seo: editedProject.hasSEO,
-          has_maintenance: editedProject.hasMaintenance
-        })
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateProject(id, editedProject);
       
       setProject(editedProject);
       setShowEditDialog(false);
@@ -624,7 +606,7 @@ const AdminProjectDetails = () => {
                       <Button 
                         onClick={handleAddAdminNote}
                         disabled={!newAdminNote.trim()}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                        className="bg-gradient-to-r from-purple-600 to-indigo-600"
                       >
                         Adaugă Notă
                       </Button>
@@ -707,7 +689,6 @@ const AdminProjectDetails = () => {
         </div>
       </PageTransition>
       
-      {/* Edit Project Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

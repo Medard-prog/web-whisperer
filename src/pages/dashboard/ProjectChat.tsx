@@ -156,6 +156,7 @@ const ProjectChat = () => {
         }
       }
       
+      // Send message with explicit user ID to satisfy RLS policy
       await sendProjectMessage(
         projectId, 
         newMessage || (selectedFile ? `A trimis un fișier: ${selectedFile.name}` : ""), 
