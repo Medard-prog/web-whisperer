@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { z } from 'zod';
@@ -20,11 +21,13 @@ import { toast } from 'sonner';
 import WavyBackground from '@/components/WavyBackground';
 import { AtSign, Eye, EyeOff, Lock, User } from 'lucide-react';
 
+// Login form schema
 const loginSchema = z.object({
   email: z.string().email('Email invalid'),
   password: z.string().min(6, 'Parola trebuie să aibă minim 6 caractere'),
 });
 
+// Register form schema 
 const registerSchema = z.object({
   name: z.string().min(2, 'Numele trebuie să aibă minim 2 caractere'),
   email: z.string().email('Email invalid'),
@@ -32,13 +35,9 @@ const registerSchema = z.object({
 });
 
 export default function Auth() {
-  console.log("Auth component rendering");
-  
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const { user, signIn, signUp, loading } = useAuth();
-  
-  console.log("Auth state:", { userExists: !!user, isLoading: loading });
   
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -59,7 +58,6 @@ export default function Auth() {
 
   const onSubmitLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
-      console.log("Attempting login with:", values.email);
       await signIn(values.email, values.password);
     } catch (error) {
       console.error('Login error:', error);
@@ -68,7 +66,6 @@ export default function Auth() {
 
   const onSubmitRegister = async (values: z.infer<typeof registerSchema>) => {
     try {
-      console.log("Attempting registration with:", values.email);
       await signUp(values.email, values.password, values.name);
       toast.success('Cont creat cu succes!', {
         description: 'Te rugăm să verifici emailul pentru a confirma contul.',
@@ -78,8 +75,8 @@ export default function Auth() {
     }
   };
 
+  // Redirect if user is already logged in
   if (user && !loading) {
-    console.log("User is authenticated, redirecting to dashboard");
     return <Navigate to="/dashboard" />;
   }
 
@@ -181,7 +178,7 @@ export default function Auth() {
 
                 <div className="flex justify-end">
                   <Link
-                    to="/forgot-password"
+                    to="/auth/reset-password"
                     className="text-sm text-purple-600 hover:text-purple-800"
                   >
                     Ai uitat parola?

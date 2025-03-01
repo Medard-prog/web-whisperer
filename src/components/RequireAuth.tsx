@@ -1,28 +1,19 @@
 
-import { Navigate, useLocation, Outlet } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingScreen from "@/components/LoadingScreen";
 
 interface RequireAuthProps {
-  children?: React.ReactNode;
-  adminRequired?: boolean;
+  children: React.ReactNode;
+  adminOnly?: boolean;
 }
 
-const RequireAuth = ({ children, adminRequired = false }: RequireAuthProps) => {
+const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const { user, loading, session } = useAuth();
   const location = useLocation();
-  
-  console.log("RequireAuth rendering:", { 
-    location: location.pathname,
-    userExists: !!user,
-    isLoading: loading,
-    sessionExists: !!session,
-    adminRequired
-  });
 
   // Show loading screen while checking auth state
   if (loading) {
-    console.log("Auth is loading, showing LoadingScreen");
     return <LoadingScreen />;
   }
 
@@ -34,15 +25,13 @@ const RequireAuth = ({ children, adminRequired = false }: RequireAuthProps) => {
   }
 
   // If admin access is required but user is not an admin
-  if (adminRequired && !user.isAdmin) {
+  if (adminOnly && !user.isAdmin) {
     console.log("User is not admin, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 
   console.log("User is authenticated, rendering protected content");
-  
-  // If using React Router v6's Outlet for nested routes
-  return children ? <>{children}</> : <Outlet />;
+  return <>{children}</>;
 };
 
 export default RequireAuth;

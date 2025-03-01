@@ -1,67 +1,139 @@
 
-import { BrowserRouter } from 'react-router-dom';
-import { Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import Index from '@/pages/Index';
-import RequestProject from '@/pages/RequestProject';
-import Auth from '@/pages/Auth';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPasswordConfirmation from '@/pages/ResetPasswordConfirmation';
-import AuthCallback from '@/pages/AuthCallback';
-import VerifyEmail from '@/pages/VerifyEmail';
-import Logout from '@/pages/Logout';
-import RequireAuth from '@/components/RequireAuth';
-import NotFound from '@/pages/NotFound';
-import { Toaster } from '@/components/ui/toaster';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
+import { AuthProvider } from "@/contexts/AuthContext";
+import RequireAuth from "@/components/RequireAuth";
+import VerifyEmail from "@/pages/VerifyEmail";
+import Index from "@/pages/Index";
+import Auth from "@/pages/Auth";
+import AuthCallback from "@/pages/AuthCallback";
+import Dashboard from "@/pages/Dashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
+import NotFound from "@/pages/NotFound";
+import RequestProject from "@/pages/RequestProject";
+import ProjectDetails from "@/pages/ProjectDetails";
+import Projects from "@/pages/dashboard/Projects";
+import Settings from "@/pages/Settings";
+import Messages from "@/pages/dashboard/Messages";
+import Support from "@/pages/dashboard/Support";
+import ProjectChat from "@/pages/dashboard/ProjectChat";
+import AdminProjects from "@/pages/admin/Projects";
+import AdminClients from "@/pages/admin/Clients";
+import AdminMessages from "@/pages/admin/Messages";
+import AdminReports from "@/pages/admin/Reports";
+import AdminSettings from "@/pages/admin/Settings";
+import AdminProjectDetails from "@/pages/admin/ProjectDetails";
+import { lazy, Suspense, Component, ReactNode } from "react";
+import LoadingScreen from "@/components/LoadingScreen";
 
-function App() {
-  console.log("App component rendering");
-  
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider defaultTheme="light">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/request-project" element={<RequestProject />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/auth/reset-password-confirmation" element={<ResetPasswordConfirmation />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/logout" element={<Logout />} />
-            
-            {/* Protected routes */}
-            <Route element={<RequireAuth />}>
-              <Route path="/dashboard" element={<div>Dashboard (Coming Soon)</div>} />
-              <Route path="/dashboard/projects" element={<div>Projects (Coming Soon)</div>} />
-              <Route path="/dashboard/messages" element={<div>Messages (Coming Soon)</div>} />
-              <Route path="/dashboard/support" element={<div>Support (Coming Soon)</div>} />
-              <Route path="/project/:id" element={<div>Project Details (Coming Soon)</div>} />
-              <Route path="/project/:id/chat" element={<div>Project Chat (Coming Soon)</div>} />
-              <Route path="/settings" element={<div>Settings (Coming Soon)</div>} />
-            </Route>
-            
-            {/* Admin routes */}
-            <Route element={<RequireAuth adminRequired={true} />}>
-              <Route path="/admin" element={<div>Admin Dashboard (Coming Soon)</div>} />
-              <Route path="/admin/projects" element={<div>Admin Projects (Coming Soon)</div>} />
-              <Route path="/admin/project/:id" element={<div>Admin Project Details (Coming Soon)</div>} />
-              <Route path="/admin/clients" element={<div>Admin Clients (Coming Soon)</div>} />
-              <Route path="/admin/messages" element={<div>Admin Messages (Coming Soon)</div>} />
-              <Route path="/admin/reports" element={<div>Admin Reports (Coming Soon)</div>} />
-              <Route path="/admin/settings" element={<div>Admin Settings (Coming Soon)</div>} />
-            </Route>
-            
-            {/* Fallback route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster />
-        </ThemeProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  );
+// Add error boundary with proper type definitions
+interface ErrorBoundaryProps {
+  children: ReactNode;
 }
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error("Error caught by error boundary:", error, errorInfo);
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">We're sorry, but an error occurred while rendering the application.</p>
+            <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto mb-4">
+              {this.state.error?.toString()}
+            </pre>
+            <button
+              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+              onClick={() => window.location.href = '/'}
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Move the Router outside of the App component to be used in main.tsx
+const AppRoutes = () => {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/request" element={<RequestProject />} />
+        
+        {/* Protected user routes */}
+        <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+        <Route path="/dashboard/projects" element={<RequireAuth><Projects /></RequireAuth>} />
+        <Route path="/dashboard/messages" element={<RequireAuth><Messages /></RequireAuth>} />
+        <Route path="/dashboard/project/:id/chat" element={<RequireAuth><ProjectChat /></RequireAuth>} />
+        <Route path="/dashboard/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+        <Route path="/dashboard/help" element={<RequireAuth><Support /></RequireAuth>} />
+        <Route path="/project/:id" element={<RequireAuth><ProjectDetails /></RequireAuth>} />
+        
+        {/* Admin routes */}
+        <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
+        <Route path="/admin/projects" element={<RequireAuth adminOnly={true}><AdminProjects /></RequireAuth>} />
+        <Route path="/admin/clients" element={<RequireAuth adminOnly={true}><AdminClients /></RequireAuth>} />
+        <Route path="/admin/messages" element={<RequireAuth adminOnly={true}><AdminMessages /></RequireAuth>} />
+        <Route path="/admin/reports" element={<RequireAuth adminOnly={true}><AdminReports /></RequireAuth>} />
+        <Route path="/admin/settings" element={<RequireAuth adminOnly={true}><AdminSettings /></RequireAuth>} />
+        <Route path="/admin/project/:id" element={<RequireAuth adminOnly={true}><AdminProjectDetails /></RequireAuth>} />
+        
+        {/* Fallback routes */}
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
+      </Routes>
+      
+      <Toaster />
+      <SonnerToaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            background: "white",
+            border: "1px solid #E2E8F0",
+            borderRadius: "0.5rem"
+          }
+        }}
+      />
+    </Suspense>
+  );
+};
+
+const App = () => {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;
