@@ -279,7 +279,7 @@ export async function addAdminNote(projectId: string, content: string, userId: s
 }
 
 // Simplified function to fetch project files to avoid type recursion issues
-export async function fetchProjectFiles(projectId: string): Promise<any[]> {
+export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[]> {
   try {
     // First, check if the project_files bucket exists
     const { data: buckets } = await supabase.storage.listBuckets();
@@ -310,11 +310,12 @@ export async function fetchProjectFiles(projectId: string): Promise<any[]> {
         id: file.id || `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         projectId,
         filename: file.name,
-        path: `projects/${projectId}/${file.name}`,
-        size: file.metadata?.size || 0,
-        type: file.metadata?.mimetype || '',
-        publicUrl,
-        createdAt: file.created_at || new Date().toISOString()
+        filePath: `projects/${projectId}/${file.name}`,
+        fileType: file.metadata?.mimetype || '',
+        fileSize: file.metadata?.size || 0,
+        uploadedBy: '',
+        uploadedAt: file.created_at || new Date().toISOString(),
+        isAdminOnly: false
       };
     });
     
@@ -328,7 +329,7 @@ export async function fetchProjectFiles(projectId: string): Promise<any[]> {
 export async function uploadProjectFile(
   projectId: string, 
   file: File
-): Promise<any> {
+): Promise<ProjectFile> {
   try {
     // Check if the bucket exists
     const { data: buckets } = await supabase.storage.listBuckets();
@@ -375,11 +376,12 @@ export async function uploadProjectFile(
       id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       projectId,
       filename: file.name,
-      path: filePath,
-      size: file.size,
-      type: file.type,
-      publicUrl,
-      createdAt: new Date().toISOString()
+      filePath,
+      fileType: file.type,
+      fileSize: file.size,
+      uploadedBy: '',
+      uploadedAt: new Date().toISOString(),
+      isAdminOnly: false
     };
     
   } catch (error) {

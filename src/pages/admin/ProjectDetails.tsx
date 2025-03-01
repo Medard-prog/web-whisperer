@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,7 +87,7 @@ const AdminProjectDetails = () => {
             
             // Try to fetch project files, but handle gracefully if the table doesn't exist
             try {
-              const files = await fetchProjectFiles(id, true);
+              const files = await fetchProjectFiles(id);
               setProjectFiles(files);
             } catch (fileError) {
               console.warn("Project files functionality might not be available:", fileError);
@@ -157,11 +156,11 @@ const AdminProjectDetails = () => {
       
       // Try to upload the file, but handle gracefully if the table doesn't exist
       try {
-        await uploadProjectFile(id, file, user.id, true);
+        await uploadProjectFile(id, file);
         
         // Try to refresh the file list
         try {
-          const refreshedFiles = await fetchProjectFiles(id, true);
+          const refreshedFiles = await fetchProjectFiles(id);
           setProjectFiles(refreshedFiles);
         } catch (refreshError) {
           console.warn("Could not refresh project files:", refreshError);
