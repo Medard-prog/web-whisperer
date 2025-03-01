@@ -309,10 +309,11 @@ export async function fetchProjectFiles(projectId: string, adminOnly: boolean = 
       return [];
     }
     
-    // Map files to ProjectFile objects
-    const projectFiles: ProjectFile[] = [];
+    // Map files to ProjectFile objects - simplify to avoid deep recursion
+    const projectFiles = [];
     
     for (const file of files || []) {
+      // Get public URL without using mapProjectFile to avoid recursion
       const { data: urlData } = supabase.storage
         .from('project_files')
         .getPublicUrl(`projects/${projectId}/${file.name}`);
@@ -336,7 +337,7 @@ export async function fetchProjectFiles(projectId: string, adminOnly: boolean = 
   }
 }
 
-// Simplified function to upload project file to avoid type recursion issues
+// Simplified function to upload project file - simplify to avoid deep recursion
 export async function uploadProjectFile(
   projectId: string, 
   file: File, 
@@ -381,12 +382,12 @@ export async function uploadProjectFile(
       throw uploadError;
     }
     
-    // Get public URL
+    // Get public URL - simplify to avoid recursion
     const { data: urlData } = supabase.storage
       .from('project_files')
       .getPublicUrl(filePath);
     
-    // Create ProjectFile object
+    // Create ProjectFile object directly
     return {
       id: `file-${Math.random().toString(36).substring(2)}`,
       projectId,
