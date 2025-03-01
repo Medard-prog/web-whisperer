@@ -167,7 +167,8 @@ export function mapProjectFile(data: any): ProjectFile {
     fileSize: data.fileSize || data.file_size || 0,
     uploadedBy: data.uploadedBy || data.uploaded_by || '',
     uploadedAt: data.uploadedAt || data.uploaded_at || data.created_at || '',
-    isAdminOnly: data.isAdminOnly || data.is_admin_only || false
+    isAdminOnly: data.isAdminOnly || data.is_admin_only || false,
+    url: data.url || ''
   };
 }
 

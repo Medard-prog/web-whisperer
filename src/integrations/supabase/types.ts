@@ -34,15 +34,7 @@ export type Database = {
           project_id?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "messages_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -83,6 +75,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          is_admin_only: boolean | null
           project_id: string | null
         }
         Insert: {
@@ -90,6 +83,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          is_admin_only?: boolean | null
           project_id?: string | null
         }
         Update: {
@@ -97,6 +91,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          is_admin_only?: boolean | null
           project_id?: string | null
         }
         Relationships: [
@@ -242,15 +237,7 @@ export type Database = {
           project_id?: string | null
           title?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "project_tasks_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       projects: {
         Row: {

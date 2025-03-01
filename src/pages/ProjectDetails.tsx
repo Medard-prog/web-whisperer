@@ -16,7 +16,7 @@ import ProjectNotesPanel from "@/components/ProjectNotesPanel";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { FileArrowUp, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -116,7 +116,7 @@ const ProjectDetails = () => {
                   onClick={() => navigate("/dashboard/projects")}
                   className="gap-2"
                 >
-                  <FileArrowUp className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" />
                   Back to Projects
                 </Button>
                 
