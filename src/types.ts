@@ -1,3 +1,4 @@
+
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 
@@ -48,6 +49,37 @@ export interface User {
   phone?: string;
   company?: string;
   isAdmin?: boolean;
+}
+
+export interface Message {
+  id: string;
+  projectId?: string;
+  content: string;
+  createdAt: string;
+  isAdmin: boolean;
+  userId: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+}
+
+export interface ProjectFile {
+  id: string;
+  projectId: string;
+  filename: string;
+  filePath: string;
+  fileType?: string;
+  fileSize?: number;
+  uploadedBy?: string;
+  uploadedAt: string;
+  isAdminOnly: boolean;
+}
+
+export interface AdminNote {
+  id: string;
+  projectId: string;
+  content: string;
+  createdBy?: string;
+  createdAt: string;
 }
 
 // Mapper functions to convert snake_case from database to camelCase
@@ -105,5 +137,42 @@ export function mapUser(data: any): User {
     phone: data.phone,
     company: data.company,
     isAdmin: data.is_admin,
+  };
+}
+
+export function mapMessage(data: any): Message {
+  return {
+    id: data.id,
+    projectId: data.project_id,
+    content: data.content,
+    createdAt: data.created_at,
+    isAdmin: data.is_admin || false,
+    userId: data.user_id,
+    attachmentUrl: data.attachment_url,
+    attachmentType: data.attachment_type,
+  };
+}
+
+export function mapProjectFile(data: any): ProjectFile {
+  return {
+    id: data.id,
+    projectId: data.project_id,
+    filename: data.filename,
+    filePath: data.file_path,
+    fileType: data.file_type,
+    fileSize: data.file_size,
+    uploadedBy: data.uploaded_by,
+    uploadedAt: data.uploaded_at,
+    isAdminOnly: data.is_admin_only,
+  };
+}
+
+export function mapAdminNote(data: any): AdminNote {
+  return {
+    id: data.id,
+    projectId: data.project_id,
+    content: data.content,
+    createdBy: data.created_by,
+    createdAt: data.created_at,
   };
 }

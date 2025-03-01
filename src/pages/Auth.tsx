@@ -1,353 +1,311 @@
 
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
-import PageTransition from '@/components/PageTransition';
-import { toast } from 'sonner';
-import { Mail, Lock, ArrowRight, UserRound, Building, Eye, EyeOff } from 'lucide-react';
+import { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import WavyBackground from "@/components/WavyBackground";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Email invalid" }),
+  password: z.string().min(6, { message: "Parola trebuie să aibă minim 6 caractere" }),
+});
+
+const registerSchema = z.object({
+  name: z.string().min(2, { message: "Numele trebuie să aibă minim 2 caractere" }),
+  email: z.string().email({ message: "Email invalid" }),
+  password: z.string().min(6, { message: "Parola trebuie să aibă minim 6 caractere" }),
+  confirmPassword: z.string().min(6, { message: "Confirmarea parolei trebuie să aibă minim 6 caractere" }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Parolele nu corespund",
+  path: ["confirmPassword"],
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Auth = () => {
-  const { session, loading } = useAuth();
+  const { signIn, signUp } = useAuth();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<string>("login");
   
-  // Login form fields
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  
-  // Register form fields
-  const [registerEmail, setRegisterEmail] = useState('');
-  const [registerPassword, setRegisterPassword] = useState('');
-  const [registerName, setRegisterName] = useState('');
-  const [registerCompany, setRegisterCompany] = useState('');
-  
-  useEffect(() => {
-    // If user is already logged in, redirect to dashboard
-    if (session && !loading) {
-      navigate('/dashboard');
-    }
-  }, [session, loading, navigate]);
-  
-  // Handle login form submission
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!loginEmail || !loginPassword) {
-      toast.error('Completați toate câmpurile obligatorii');
-      return;
-    }
-    
+  const from = location.state?.from?.pathname || "/dashboard";
+
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onLoginSubmit = async (values: LoginFormValues) => {
     try {
-      setIsSubmitting(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
+      setLoading(true);
+      const { error } = await signIn(values.email, values.password);
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      toast.success("Autentificare reușită", {
+        description: "Bine ai revenit!",
+      });
+      
+      // The navigation happens in AuthContext after successful login
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error("Autentificare eșuată", {
+        description: error.message || "Verifică email-ul și parola",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRegisterSubmit = async (values: RegisterFormValues) => {
+    try {
+      setLoading(true);
+      const { error } = await signUp(values.email, values.password, {
+        name: values.name,
       });
       
       if (error) {
-        throw error;
+        throw new Error(error.message);
       }
       
-      if (data.user) {
-        toast.success('Autentificare reușită');
-        // Navigation will be handled by the auth state change listener
-      }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      
-      let errorMessage = 'Eroare la autentificare';
-      if (error.message.includes('Invalid login credentials')) {
-        errorMessage = 'Email sau parolă incorectă';
-      } else if (error.message.includes('Email not confirmed')) {
-        errorMessage = 'Adresa de email nu a fost confirmată';
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  // Handle register form submission
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!registerEmail || !registerPassword || !registerName) {
-      toast.error('Completați toate câmpurile obligatorii');
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
-      const { data, error } = await supabase.auth.signUp({
-        email: registerEmail,
-        password: registerPassword,
-        options: {
-          data: {
-            name: registerName,
-            company: registerCompany || undefined,
-          },
-        },
+      toast.success("Înregistrare reușită", {
+        description: "Un email de confirmare a fost trimis.",
       });
       
-      if (error) {
-        throw error;
-      }
-      
-      if (data.user) {
-        toast.success('Cont creat cu succes', {
-          description: 'Verificați email-ul pentru a confirma contul.'
-        });
-        setActiveTab('login');
-      }
+      navigate("/verify-email", { state: { email: values.email } });
     } catch (error: any) {
-      console.error('Register error:', error);
-      
-      let errorMessage = 'Eroare la crearea contului';
-      if (error.message.includes('already registered')) {
-        errorMessage = 'Acest email este deja înregistrat';
-      } else if (error.message.includes('password')) {
-        errorMessage = 'Parola trebuie să aibă minim 6 caractere';
-      }
-      
-      toast.error(errorMessage);
+      console.error("Registration error:", error);
+      toast.error("Înregistrare eșuată", {
+        description: error.message || "Încearcă din nou",
+      });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
-  
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-  
+
   return (
-    <PageTransition>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white h-16 w-16 rounded-xl flex items-center justify-center mx-auto mb-6">
-              <span className="font-bold text-2xl">W</span>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {activeTab === 'login' ? 'Bine ai venit înapoi' : 'Creează un cont nou'}
-            </h1>
-            <p className="text-gray-600">
-              {activeTab === 'login' 
-                ? 'Conectează-te pentru a-ți gestiona proiectele' 
-                : 'Completează detaliile pentru a crea un cont nou'}
-            </p>
-          </div>
-          
-          <Card className="border-none shadow-lg">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')}>
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="login">Conectare</TabsTrigger>
-                <TabsTrigger value="register">Înregistrare</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <form onSubmit={handleLogin}>
-                  <CardContent className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="login-email"
-                          type="email"
-                          placeholder="exemplu@email.com"
-                          value={loginEmail}
-                          onChange={(e) => setLoginEmail(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="login-password">Parolă</Label>
-                        <button 
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-xs text-purple-600 hover:text-purple-800"
-                        >
-                          {showPassword ? 'Ascunde' : 'Arată'}
-                        </button>
-                      </div>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="login-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Parola ta"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                  
-                  <CardFooter className="flex flex-col">
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? 'Se procesează...' : 'Conectare'}
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+      <WavyBackground className="absolute inset-0 z-0" />
+      
+      <div className="container relative z-10 max-w-md">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="border-none shadow-lg backdrop-blur-sm bg-white/90">
+            <CardHeader className="space-y-1 text-center">
+              <Link to="/" className="flex justify-center mb-4">
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white h-10 w-10 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-xl">W</span>
+                </div>
+              </Link>
+              <CardTitle className="text-2xl font-bold">WebWhisperer</CardTitle>
+              <CardDescription>
+                Autentifică-te sau creează un cont nou
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="login">Autentificare</TabsTrigger>
+                  <TabsTrigger value="register">Înregistrare</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="login">
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="exemplu@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Parolă</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Se procesează...
+                          </>
+                        ) : (
+                          "Autentificare"
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+                
+                <TabsContent value="register">
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nume complet</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Nume Prenume" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="exemplu@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Parolă</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirmă parola</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Se procesează...
+                          </>
+                        ) : (
+                          "Înregistrare"
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <div className="text-sm text-center text-gray-500">
+                {activeTab === "login" ? (
+                  <>
+                    Nu ai un cont?{" "}
+                    <Button variant="link" className="p-0 h-auto" onClick={() => setActiveTab("register")}>
+                      Înregistrează-te
                     </Button>
-                  </CardFooter>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="register">
-                <form onSubmit={handleRegister}>
-                  <CardContent className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-name">Nume complet *</Label>
-                      <div className="relative">
-                        <UserRound className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="register-name"
-                          type="text"
-                          placeholder="Numele tău complet"
-                          value={registerName}
-                          onChange={(e) => setRegisterName(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email">Email *</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="register-email"
-                          type="email"
-                          placeholder="exemplu@email.com"
-                          value={registerEmail}
-                          onChange={(e) => setRegisterEmail(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="register-password">Parolă *</Label>
-                        <button 
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-xs text-purple-600 hover:text-purple-800"
-                        >
-                          {showPassword ? 'Ascunde' : 'Arată'}
-                        </button>
-                      </div>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="register-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Minim 6 caractere"
-                          value={registerPassword}
-                          onChange={(e) => setRegisterPassword(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="register-company">Companie (opțional)</Label>
-                      <div className="relative">
-                        <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="register-company"
-                          type="text"
-                          placeholder="Numele companiei"
-                          value={registerCompany}
-                          onChange={(e) => setRegisterCompany(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                  
-                  <CardFooter className="flex flex-col">
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? 'Se procesează...' : 'Creează cont'}
+                  </>
+                ) : (
+                  <>
+                    Ai deja un cont?{" "}
+                    <Button variant="link" className="p-0 h-auto" onClick={() => setActiveTab("login")}>
+                      Autentifică-te
                     </Button>
-                    
-                    <p className="text-xs text-gray-500 mt-4 text-center">
-                      Prin crearea unui cont, ești de acord cu 
-                      <a href="#" className="text-purple-600 hover:text-purple-800 mx-1">Termenii și Condițiile</a>
-                      și
-                      <a href="#" className="text-purple-600 hover:text-purple-800 ml-1">Politica de Confidențialitate</a>.
-                    </p>
-                  </CardFooter>
-                </form>
-              </TabsContent>
-            </Tabs>
+                  </>
+                )}
+              </div>
+              <div className="text-xs text-center text-gray-500">
+                Prin continuare, ești de acord cu{" "}
+                <Link to="/terms" className="underline underline-offset-2">
+                  Termenii și Condițiile
+                </Link>{" "}
+                și{" "}
+                <Link to="/privacy" className="underline underline-offset-2">
+                  Politica de Confidențialitate
+                </Link>
+              </div>
+            </CardFooter>
           </Card>
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Ai nevoie de ajutor? Contactează-ne la{' '}
-              <a
-                href="mailto:support@example.com"
-                className="font-medium text-purple-600 hover:text-purple-500"
-              >
-                support@example.com
-              </a>
-            </p>
-          </div>
-        </div>
+        </motion.div>
       </div>
-    </PageTransition>
+    </div>
   );
 };
 

@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ const statusMap = {
 
 const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetailsPanelProps) => {
   const [expandDescription, setExpandDescription] = useState(false);
+  const navigate = useNavigate();
   
   if (loading) {
     return (
@@ -74,6 +76,14 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetai
   }
 
   const status = statusMap[project.status as keyof typeof statusMap] || statusMap.pending;
+  
+  const handleMessageClick = () => {
+    if (isAdmin) {
+      navigate(`/admin/project/${project.id}/chat`);
+    } else {
+      navigate(`/dashboard/project/${project.id}/chat`);
+    }
+  };
   
   return (
     <motion.div
@@ -190,12 +200,15 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetai
           </Card>
           
           <div className="flex justify-between">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleMessageClick}>
               <MessageSquare className="h-4 w-4" />
               <span>Mesaje</span>
             </Button>
             {!isAdmin && (
-              <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+              <Button 
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                onClick={handleMessageClick}
+              >
                 Solicită modificări
               </Button>
             )}
