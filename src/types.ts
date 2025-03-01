@@ -1,3 +1,4 @@
+
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 
@@ -155,16 +156,17 @@ export function mapMessage(data: any): Message {
 }
 
 export function mapProjectFile(data: any): ProjectFile {
+  // Handle case where data might come from storage API or custom object
   return {
-    id: data.id,
-    projectId: data.project_id,
-    filename: data.filename,
-    filePath: data.file_path,
-    fileType: data.file_type,
-    fileSize: data.file_size,
-    uploadedBy: data.uploaded_by,
-    uploadedAt: data.uploaded_at || data.created_at,
-    isAdminOnly: data.is_admin_only || false
+    id: data.id || '',
+    projectId: data.projectId || data.project_id || '',
+    filename: data.filename || data.name || '',
+    filePath: data.filePath || data.file_path || '',
+    fileType: data.fileType || data.file_type || '',
+    fileSize: data.fileSize || data.file_size || 0,
+    uploadedBy: data.uploadedBy || data.uploaded_by || '',
+    uploadedAt: data.uploadedAt || data.uploaded_at || data.created_at || '',
+    isAdminOnly: data.isAdminOnly || data.is_admin_only || false
   };
 }
 
