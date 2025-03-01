@@ -1,311 +1,257 @@
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchProjectById, fetchProjectMessages, sendProjectMessage, supabase, uploadFile } from '@/integrations/supabase/client';
-import { Message, Project } from '@/types';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PaperclipIcon, SendIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
-import { AlertCircle, FileImage, FileMusic, FilePdf, FileText, FileVideo } from 'lucide-react';
-import LoadingScreen from '@/components/LoadingScreen';
+import { 
+  fetchProjectById, 
+  fetchProjectMessages, 
+  sendProjectMessage, 
+  uploadFile 
+} from '@/integrations/supabase/client';
+import { Project, Message } from '@/types';
+import { toast } from 'sonner';
+import { FileIcon, PaperclipIcon, SendIcon } from 'lucide-react';
 
-const ProjectChat = () => {
+export default function ProjectChat() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const [loading, setLoading] = useState<boolean>(true);
-  const [sending, setSending] = useState<boolean>(false);
   const [project, setProject] = useState<Project | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState<string>('');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadingFile, setUploadingFile] = useState<boolean>(false);
-  
+  const [loading, setLoading] = useState(true);
+  const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Scroll to bottom whenever messages change
+  
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (id && user) {
+      loadProjectData();
+      
+      // Set up real-time subscription for new messages
+      const subscription = setupMessageSubscription();
+      
+      return () => {
+        subscription?.unsubscribe();
+      };
+    }
+  }, [id, user]);
+  
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]);
-
-  // Fetch project and messages
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        if (!id || !user) return;
-
-        // Fetch project details
-        const projectData = await fetchProjectById(id);
-        setProject(projectData);
-        
-        // Fetch messages
-        const messagesData = await fetchProjectMessages(id);
-        setMessages(messagesData);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching project chat data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load project chat data. Please try again.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [id, user, toast]);
-
-  // Set up real-time subscription for new messages
-  useEffect(() => {
-    if (!id) return;
-    
-    // Subscribe to real-time updates for messages
-    const channel = supabase
-      .channel('project-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `project_id=eq.${id}`
-        },
-        (payload) => {
-          console.log('New message received:', payload);
-          // Map the new message to our Message type
-          const newMessage: Message = {
-            id: payload.new.id,
-            projectId: payload.new.project_id,
-            content: payload.new.content,
-            createdAt: payload.new.created_at,
-            isAdmin: payload.new.is_admin || false,
-            userId: payload.new.user_id,
-            attachmentUrl: payload.new.attachment_url,
-            attachmentType: payload.new.attachment_type,
-          };
-          
-          // Update messages state with the new message
-          setMessages(prevMessages => [...prevMessages, newMessage]);
-        }
-      )
-      .subscribe();
-    
-    // Cleanup function to remove the channel when component unmounts
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
-
-  const handleSendMessage = async () => {
+  
+  const loadProjectData = async () => {
     try {
-      if (!id || !user || !message.trim()) return;
+      setLoading(true);
       
+      // Get project details
+      const projectData = await fetchProjectById(id!);
+      setProject(projectData);
+      
+      // Get project messages
+      const projectMessages = await fetchProjectMessages(id!);
+      setMessages(projectMessages);
+    } catch (error) {
+      console.error('Error loading project chat data:', error);
+      toast.error('Failed to load chat data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const setupMessageSubscription = () => {
+    const subscription = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `project_id=eq.${id}` 
+      }, payload => {
+        console.log('Real-time message received:', payload);
+        
+        // Add the new message to the chat
+        const newMessage = payload.new as any;
+        
+        // Create a properly formatted message object
+        const formattedMessage: Message = {
+          id: newMessage.id,
+          projectId: newMessage.project_id,
+          content: newMessage.content,
+          createdAt: newMessage.created_at,
+          isAdmin: newMessage.is_admin,
+          userId: newMessage.user_id,
+          attachmentUrl: newMessage.attachment_url,
+          attachmentType: newMessage.attachment_type
+        };
+        
+        setMessages(prev => [...prev, formattedMessage]);
+      })
+      .subscribe();
+      
+    return subscription;
+  };
+  
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if ((!newMessage.trim() && !selectedFile) || !user?.id) {
+      return;
+    }
+    
+    try {
       setSending(true);
-      let attachmentUrl = '';
-      let attachmentType = '';
       
-      // Handle file upload
-      if (file) {
-        setUploadingFile(true);
-        try {
-          attachmentUrl = await uploadFile(file, `messages/${id}`);
-          attachmentType = file.type;
-          setFile(null);
-          toast({
-            title: 'File uploaded',
-            description: 'Your file has been uploaded successfully.',
-          });
-        } catch (error) {
-          console.error('Error uploading file:', error);
-          toast({
-            title: 'Upload failed',
-            description: 'Failed to upload file. Please try again.',
-            variant: 'destructive',
-          });
-        }
-        setUploadingFile(false);
+      let attachmentUrl = '';
+      
+      if (selectedFile) {
+        attachmentUrl = await uploadFile(selectedFile);
       }
       
-      // Send message
-      await sendProjectMessage(id, message, user.id, user.isAdmin || false, attachmentUrl, attachmentType);
+      await sendProjectMessage(
+        id!,
+        newMessage.trim() || 'Shared a file',
+        user.id,
+        false, // Not admin
+        attachmentUrl,
+        selectedFile?.type
+      );
       
-      // Clear message input
-      setMessage('');
-      setSending(false);
+      setNewMessage('');
+      setSelectedFile(null);
       
-      // No need to fetch messages again as we're using real-time subscription
+      // No need to refresh messages due to real-time subscription
     } catch (error) {
       console.error('Error sending message:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send message. Please try again.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to send message');
+    } finally {
       setSending(false);
     }
   };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
-  };
-
-  const handleTriggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Helper function to display file icon based on file type
-  const getFileIcon = (type: string) => {
-    if (type.includes('image')) return <FileImage className="h-6 w-6" />;
-    if (type.includes('pdf')) return <FilePdf className="h-6 w-6" />;
-    if (type.includes('video')) return <FileVideo className="h-6 w-6" />;
-    if (type.includes('audio')) return <FileMusic className="h-6 w-6" />;
-    return <FileText className="h-6 w-6" />;
-  };
-
+  
   if (loading) {
-    return <LoadingScreen />;
+    return <div className="flex justify-center items-center h-screen">Loading chat...</div>;
   }
-
+  
   if (!project) {
-    return (
-      <div className="flex justify-center items-center min-h-[500px]">
-        <div className="text-center p-6 max-w-md">
-          <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Project Not Found</h3>
-          <p className="text-gray-500">We couldn't find the project you're looking for.</p>
-        </div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen">Project not found</div>;
   }
-
+  
   return (
-    <div className="container mx-auto py-6">
-      <Card className="shadow-md border-0">
-        <CardHeader className="border-b border-border bg-muted/50">
-          <div className="flex flex-col">
-            <h2 className="text-2xl font-bold">{project.title}</h2>
-            <p className="text-muted-foreground">
-              Project Chat
-            </p>
-          </div>
+    <div className="container mx-auto p-4 md:p-6">
+      <Card className="w-full md:max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>
+            Chat for Project: {project.title}
+          </CardTitle>
         </CardHeader>
-        
-        <CardContent className="p-4 h-[60vh] flex flex-col">
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4">
-              {messages.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <div 
-                    key={msg.id}
-                    className={`flex flex-col ${msg.isAdmin ? 'items-start' : 'items-end'}`}
-                  >
-                    <div 
-                      className={`max-w-[75%] rounded-lg p-3 ${
-                        msg.isAdmin 
-                          ? 'bg-muted text-foreground' 
-                          : 'bg-primary text-primary-foreground'
-                      }`}
-                    >
-                      <p className="break-words whitespace-pre-wrap">{msg.content}</p>
-                      
-                      {msg.attachmentUrl && (
-                        <div className="mt-2">
-                          <a 
-                            href={msg.attachmentUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm underline"
-                          >
-                            {msg.attachmentType && getFileIcon(msg.attachmentType)}
-                            <span>Attachment</span>
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(msg.createdAt), 'MMM d, yyyy h:mm a')}
-                    </span>
+        <CardContent>
+          <div className="flex flex-col h-[70vh]">
+            <ScrollArea className="flex-1 p-4 mb-4">
+              <div className="space-y-4">
+                {messages.length === 0 ? (
+                  <div className="text-center text-gray-500 py-4">
+                    No messages yet. Start the conversation!
                   </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-          
-          {file && (
-            <div className="flex items-center gap-2 p-2 mt-4 bg-muted rounded-md">
-              <div className="flex items-center gap-2 flex-1 text-sm">
-                {getFileIcon(file.type)}
-                <span className="truncate">{file.name}</span>
+                ) : (
+                  messages.map((message) => (
+                    <div 
+                      key={message.id} 
+                      className={`flex ${message.userId === user?.id ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div 
+                        className={`max-w-[80%] p-3 rounded-lg ${
+                          message.userId === user?.id 
+                            ? 'bg-primary/10 text-primary-foreground' 
+                            : 'bg-muted'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback>
+                              {message.isAdmin ? 'A' : 'C'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium">
+                            {message.isAdmin ? 'Admin' : 'You'}
+                          </span>
+                        </div>
+                        
+                        <p>{message.content}</p>
+                        
+                        {message.attachmentUrl && (
+                          <a 
+                            href={message.attachmentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center mt-2 text-blue-600 hover:underline"
+                          >
+                            <FileIcon className="h-4 w-4 mr-1" />
+                            View Attachment
+                          </a>
+                        )}
+                        
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(message.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={messagesEndRef} />
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setFile(null)}
-              >
-                Remove
-              </Button>
-            </div>
-          )}
-        </CardContent>
-        
-        <CardFooter className="border-t border-border p-4">
-          <div className="flex w-full gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleTriggerFileInput}
-              disabled={sending || uploadingFile}
-            >
-              <PaperclipIcon className="h-4 w-4" />
-            </Button>
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="flex-1 min-h-[40px] max-h-[120px]"
-              placeholder="Type your message here..."
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-            />
-            <Button 
-              onClick={handleSendMessage}
-              disabled={!message.trim() || sending || uploadingFile}
-            >
-              <SendIcon className="h-4 w-4 mr-2" />
-              Send
-            </Button>
+            </ScrollArea>
+            
+            <form onSubmit={handleSendMessage} className="mt-auto">
+              <div className="flex items-start gap-2">
+                <div className="flex-1">
+                  <Textarea
+                    placeholder="Type your message here..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                  
+                  {selectedFile && (
+                    <div className="mt-2 text-sm text-gray-600 flex items-center">
+                      <FileIcon className="h-4 w-4 mr-1" />
+                      <span className="truncate">{selectedFile.name}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <label className="cursor-pointer p-2 border rounded hover:bg-gray-100">
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    />
+                    <PaperclipIcon className="h-5 w-5" />
+                  </label>
+                  
+                  <Button 
+                    type="submit" 
+                    size="icon"
+                    disabled={sending || (!newMessage.trim() && !selectedFile)}
+                  >
+                    <SendIcon className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </form>
           </div>
-        </CardFooter>
+        </CardContent>
       </Card>
     </div>
   );
-};
-
-export default ProjectChat;
+}

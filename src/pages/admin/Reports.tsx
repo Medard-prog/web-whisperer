@@ -1,490 +1,403 @@
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { 
-  BarChart, 
-  LineChart, 
-  PieChart, 
-  ResponsiveContainer, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend,
-  Line,
-  Pie,
-  Cell
-} from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
-import { Project, ProjectStatus } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
-import { Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, BarChart, Bar } from 'recharts';
+import { getProjectStatusChartData, getProjectsByPaymentStatus, getTotalRevenueData, getPopularFeaturesData, fetchProjectsForReports } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { addDays, format, subDays, subMonths, differenceInDays, addMonths } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import LoadingScreen from '@/components/LoadingScreen';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
-interface ProjectsByStatusData {
-  name: string;
-  value: number;
-}
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#FF6B6B'];
 
-interface ProjectsByMonthData {
-  month: string;
-  count: number;
-}
-
-interface RevenueData {
-  month: string;
-  revenue: number;
-  projected: number;
-}
-
-interface PaymentStatusData {
-  name: string;
-  value: number;
-}
-
-interface MostPopularFeaturesData {
-  name: string;
-  count: number;
-}
-
-interface ProjectsRequest {
-  id: string;
-  project_name: string;
-  status: string;
-  price: number;
-  created_at: string;
-  has_ecommerce: boolean;
-  has_cms: boolean;
-  has_seo: boolean;
-  has_maintenance: boolean;
-  payment_status: string;
-  amount_paid: number;
-}
-
-interface ProjectsData {
-  id: string;
-  title: string;
-  status: string;
-  price: number;
-  created_at: string;
-  has_ecommerce: boolean;
-  has_cms: boolean;
-  has_seo: boolean;
-  has_maintenance: boolean;
-  payment_status: string;
-  amount_paid: number;
-}
-
-interface DateRange {
-  from: Date;
-  to: Date;
-}
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
-const AdminReports = () => {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [projectsByStatus, setProjectsByStatus] = useState<ProjectsByStatusData[]>([]);
-  const [projectsByMonth, setProjectsByMonth] = useState<ProjectsByMonthData[]>([]);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-  const [paymentStatusData, setPaymentStatusData] = useState<PaymentStatusData[]>([]);
-  const [popularFeatures, setPopularFeatures] = useState<MostPopularFeaturesData[]>([]);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: subMonths(new Date(), 6),
+export default function Reports() {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [projectStatusData, setProjectStatusData] = useState<any[]>([]);
+  const [paymentStatusData, setPaymentStatusData] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [featuresData, setFeaturesData] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Filters
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: new Date(new Date().getFullYear(), 0, 1), // Start of current year
     to: new Date()
   });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   
-  // Load report data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Combined projects and project requests
-        let allProjects: Array<any> = [];
-        
-        // Fetch projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('id, title, status, price, created_at, has_ecommerce, has_cms, has_seo, has_maintenance, payment_status, amount_paid');
-          
-        if (projectsError) {
-          console.error('Error fetching projects:', projectsError);
-          throw projectsError;
-        }
-        
-        // Fetch project requests
-        const { data: requestsData, error: requestsError } = await supabase
-          .from('project_requests')
-          .select('id, project_name, status, price, created_at, has_ecommerce, has_cms, has_seo, has_maintenance, payment_status, amount_paid');
-          
-        if (requestsError) {
-          console.error('Error fetching project requests:', requestsError);
-          throw requestsError;
-        }
-        
-        // Map project requests to match project structure
-        const mappedRequests = (requestsData || []).map((request: ProjectsRequest) => ({
-          id: request.id,
-          title: request.project_name,
-          status: request.status === 'new' ? 'pending' : request.status,
-          price: request.price || 0,
-          created_at: request.created_at,
-          has_ecommerce: request.has_ecommerce || false,
-          has_cms: request.has_cms || false,
-          has_seo: request.has_seo || false,
-          has_maintenance: request.has_maintenance || false,
-          payment_status: request.payment_status || 'pending',
-          amount_paid: request.amount_paid || 0
-        }));
-        
-        // Combine both data sources
-        allProjects = [...(projectsData || []), ...mappedRequests];
-        
-        // Filter by date range
-        const fromDate = dateRange.from.toISOString();
-        const toDate = dateRange.to.toISOString();
-        
-        allProjects = allProjects.filter(project => {
-          const projectDate = new Date(project.created_at);
-          return projectDate >= dateRange.from && projectDate <= dateRange.to;
-        });
-        
-        // Process data for different charts
-        processProjectsByStatus(allProjects);
-        processProjectsByMonth(allProjects);
-        processRevenueData(allProjects);
-        processPaymentStatusData(allProjects);
-        processPopularFeatures(allProjects);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading report data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load report data. Please try again.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [toast, dateRange]);
+    loadReportData();
+  }, [dateRange, statusFilter]);
   
-  // Process data for projects by status chart
-  const processProjectsByStatus = (projects: ProjectsData[]) => {
-    const statusCounts: Record<string, number> = {
-      pending: 0,
-      in_progress: 0,
-      completed: 0,
-      cancelled: 0
-    };
-    
-    projects.forEach(project => {
-      const status = project.status as string;
-      if (statusCounts[status] !== undefined) {
-        statusCounts[status]++;
-      } else {
-        statusCounts[status] = 1;
-      }
-    });
-    
-    const chartData: ProjectsByStatusData[] = Object.entries(statusCounts).map(([name, value]) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' '),
-      value
-    }));
-    
-    setProjectsByStatus(chartData);
-  };
-  
-  // Process data for projects by month chart
-  const processProjectsByMonth = (projects: ProjectsData[]) => {
-    const months: Record<string, number> = {};
-    
-    // Initialize months in range
-    let currentDate = new Date(dateRange.from);
-    while (currentDate <= dateRange.to) {
-      const monthKey = format(currentDate, 'MMM yyyy');
-      months[monthKey] = 0;
-      currentDate = addMonths(currentDate, 1);
-    }
-    
-    // Count projects by month
-    projects.forEach(project => {
-      const date = new Date(project.created_at);
-      const monthKey = format(date, 'MMM yyyy');
-      if (months[monthKey] !== undefined) {
-        months[monthKey]++;
-      }
-    });
-    
-    const chartData: ProjectsByMonthData[] = Object.entries(months).map(([month, count]) => ({
-      month,
-      count
-    }));
-    
-    setProjectsByMonth(chartData);
-  };
-  
-  // Process data for revenue chart
-  const processRevenueData = (projects: ProjectsData[]) => {
-    const monthlyRevenue: Record<string, { actual: number; projected: number }> = {};
-    
-    // Initialize months in range
-    let currentDate = new Date(dateRange.from);
-    while (currentDate <= dateRange.to) {
-      const monthKey = format(currentDate, 'MMM yyyy');
-      monthlyRevenue[monthKey] = { actual: 0, projected: 0 };
-      currentDate = addMonths(currentDate, 1);
-    }
-    
-    // Calculate revenue by month
-    projects.forEach(project => {
-      const date = new Date(project.created_at);
-      const monthKey = format(date, 'MMM yyyy');
+  const loadReportData = async () => {
+    try {
+      setLoading(true);
       
-      if (monthlyRevenue[monthKey]) {
-        // Add actual received payments
-        monthlyRevenue[monthKey].actual += (project.amount_paid || 0);
-        
-        // Add total price to projected revenue
-        monthlyRevenue[monthKey].projected += (project.price || 0);
+      // Get chart data
+      const [statusData, paymentData, revData, featData, projectsData] = await Promise.all([
+        getProjectStatusChartData(),
+        getProjectsByPaymentStatus(),
+        getTotalRevenueData(),
+        getPopularFeaturesData(),
+        fetchProjectsForReports()
+      ]);
+      
+      setProjectStatusData(statusData);
+      setPaymentStatusData(paymentData);
+      setRevenueData(revData);
+      setFeaturesData(featData);
+      
+      // Apply filters to projects
+      let filteredProjects = projectsData;
+      
+      // Date filter
+      if (dateRange && dateRange.from) {
+        filteredProjects = filteredProjects.filter(project => {
+          const projectDate = new Date(project.created_at);
+          
+          if (dateRange.from && dateRange.to) {
+            return projectDate >= dateRange.from && projectDate <= dateRange.to;
+          } else if (dateRange.from) {
+            return projectDate >= dateRange.from;
+          }
+          
+          return true;
+        });
       }
-    });
-    
-    const chartData: RevenueData[] = Object.entries(monthlyRevenue).map(([month, data]) => ({
-      month,
-      revenue: data.actual,
-      projected: data.projected
-    }));
-    
-    setRevenueData(chartData);
+      
+      // Status filter
+      if (statusFilter && statusFilter !== 'all') {
+        filteredProjects = filteredProjects.filter(project => project.status === statusFilter);
+      }
+      
+      setProjects(filteredProjects);
+    } catch (error) {
+      console.error('Error loading report data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
   
-  // Process data for payment status chart
-  const processPaymentStatusData = (projects: ProjectsData[]) => {
-    const paymentStatusCounts: Record<string, number> = {
-      pending: 0,
-      partial: 0,
-      paid: 0,
-      overdue: 0
-    };
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value);
+  };
+  
+  const getTotalRevenue = () => {
+    return projects.reduce((sum, project) => sum + Number(project.price || 0), 0);
+  };
+  
+  const getTotalCollected = () => {
+    return projects.reduce((sum, project) => sum + Number(project.amount_paid || 0), 0);
+  };
+  
+  const getProjectsByStatus = () => {
+    const result: Record<string, number> = {};
     
     projects.forEach(project => {
-      const status = project.payment_status || 'pending';
-      if (paymentStatusCounts[status] !== undefined) {
-        paymentStatusCounts[status]++;
-      } else {
-        paymentStatusCounts[status] = 1;
-      }
+      const status = project.status || 'unknown';
+      result[status] = (result[status] || 0) + 1;
     });
     
-    const chartData: PaymentStatusData[] = Object.entries(paymentStatusCounts).map(([name, value]) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      value
-    }));
-    
-    setPaymentStatusData(chartData);
-  };
-  
-  // Process data for popular features chart
-  const processPopularFeatures = (projects: ProjectsData[]) => {
-    const featureCounts = {
-      'E-commerce': 0,
-      'CMS': 0,
-      'SEO': 0,
-      'Maintenance': 0
-    };
-    
-    projects.forEach(project => {
-      if (project.has_ecommerce) featureCounts['E-commerce']++;
-      if (project.has_cms) featureCounts['CMS']++;
-      if (project.has_seo) featureCounts['SEO']++;
-      if (project.has_maintenance) featureCounts['Maintenance']++;
-    });
-    
-    const chartData: MostPopularFeaturesData[] = Object.entries(featureCounts).map(([name, count]) => ({
-      name,
-      count
-    }));
-    
-    setPopularFeatures(chartData);
-  };
-  
-  // Set date range presets
-  const handleDatePreset = (days: number) => {
-    setDateRange({
-      from: subDays(new Date(), days),
-      to: new Date()
-    });
+    return Object.entries(result).map(([name, value]) => ({ name, value }));
   };
   
   if (loading) {
-    return <LoadingScreen />;
+    return <div className="container mx-auto p-8">Loading reports...</div>;
   }
   
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-        <p className="text-muted-foreground">View and analyze your project data</p>
+    <div className="container mx-auto p-8">
+      <h1 className="text-3xl font-bold mb-6">Reports & Analytics</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{projects.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(getTotalRevenue())}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Amount Collected</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(getTotalCollected())}</div>
+            <p className="text-xs text-gray-500">
+              {Math.round((getTotalCollected() / (getTotalRevenue() || 1)) * 100)}% of total revenue
+            </p>
+          </CardContent>
+        </Card>
       </div>
       
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold mb-2">Date Range</h2>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleDatePreset(30)}>Last 30 Days</Button>
-            <Button variant="outline" size="sm" onClick={() => handleDatePreset(90)}>Last 3 Months</Button>
-            <Button variant="outline" size="sm" onClick={() => handleDatePreset(180)}>Last 6 Months</Button>
-            <Button variant="outline" size="sm" onClick={() => handleDatePreset(365)}>Last Year</Button>
-          </div>
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="w-full md:w-1/3">
+          <Label>Date Range</Label>
+          <DateRangePicker 
+            value={dateRange}
+            onChange={(range: DateRange) => setDateRange(range)}
+          />
         </div>
         
-        <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-        />
+        <div className="w-full md:w-1/3">
+          <Label>Status Filter</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by Status</CardTitle>
-            <CardDescription>Distribution of projects by their current status</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={projectsByStatus}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {projectsByStatus.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} projects`, 'Count']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="revenue">Revenue</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
+        </TabsList>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by Month</CardTitle>
-            <CardDescription>Number of new projects created each month</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={projectsByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip formatter={(value) => [`${value} projects`, 'Count']} />
-                  <Legend />
-                  <Bar dataKey="count" name="Projects" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Status Distribution</CardTitle>
+                <CardDescription>
+                  Distribution of projects by their current status
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={getProjectsByStatus()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {getProjectsByStatus().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${value} projects`, 'Count']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Status</CardTitle>
+                <CardDescription>
+                  Distribution of projects by payment status
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={paymentStatusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {paymentStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${value} projects`, 'Count']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Popular Features</CardTitle>
+                <CardDescription>
+                  Most requested features across all projects
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={featuresData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="value" name="Number of Projects" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue</CardTitle>
-            <CardDescription>Actual vs projected revenue by month</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-80">
+        <TabsContent value="revenue" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue Overview</CardTitle>
+              <CardDescription>
+                Monthly revenue and payments collected
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value) => [`$${value}`, '']} />
+                  <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Amount']} />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" name="Actual Revenue" stroke="#8884d8" strokeWidth={2} />
-                  <Line type="monotone" dataKey="projected" name="Projected Revenue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name="Total Revenue"
+                    stroke="#8884d8"
+                    activeDot={{ r: 8 }}
+                  />
+                  <Line type="monotone" dataKey="collected" name="Amount Collected" stroke="#82ca9d" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Status</CardTitle>
-            <CardDescription>Distribution of projects by payment status</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={paymentStatusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {paymentStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue by Project</CardTitle>
+              <CardDescription>
+                Individual project revenue
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2">Project</th>
+                      <th className="text-left py-2">Total</th>
+                      <th className="text-left py-2">Paid</th>
+                      <th className="text-left py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects.map(project => (
+                      <tr key={project.id} className="border-b">
+                        <td className="py-2">{project.title}</td>
+                        <td className="py-2">{formatCurrency(project.price || 0)}</td>
+                        <td className="py-2">{formatCurrency(project.amount_paid || 0)}</td>
+                        <td className="py-2">
+                          <Badge
+                            variant={
+                              project.payment_status === 'paid' ? 'default' : 
+                              project.payment_status === 'partial' ? 'secondary' : 
+                              project.payment_status === 'overdue' ? 'destructive' : 
+                              'outline'
+                            }
+                          >
+                            {project.payment_status || 'pending'}
+                          </Badge>
+                        </td>
+                      </tr>
                     ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} projects`, 'Count']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Most Popular Features</CardTitle>
-            <CardDescription>Features most requested by clients</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={popularFeatures} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" />
-                  <Tooltip formatter={(value) => [`${value} projects`, 'Count']} />
-                  <Legend />
-                  <Bar dataKey="count" name="Count" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="projects" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Project List</CardTitle>
+              <CardDescription>
+                All projects with their details
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[600px]">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2">Project</th>
+                      <th className="text-left py-2">Created</th>
+                      <th className="text-left py-2">Status</th>
+                      <th className="text-left py-2">Revenue</th>
+                      <th className="text-left py-2">Features</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects.map(project => (
+                      <tr key={project.id} className="border-b">
+                        <td className="py-2">{project.title}</td>
+                        <td className="py-2">{format(new Date(project.created_at), 'MMM dd, yyyy')}</td>
+                        <td className="py-2">
+                          <Badge
+                            variant={
+                              project.status === 'completed' ? 'default' : 
+                              project.status === 'in_progress' ? 'secondary' : 
+                              project.status === 'cancelled' ? 'destructive' : 
+                              'outline'
+                            }
+                          >
+                            {project.status}
+                          </Badge>
+                        </td>
+                        <td className="py-2">{formatCurrency(project.price || 0)}</td>
+                        <td className="py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {project.has_ecommerce && <Badge variant="outline">E-commerce</Badge>}
+                            {project.has_cms && <Badge variant="outline">CMS</Badge>}
+                            {project.has_seo && <Badge variant="outline">SEO</Badge>}
+                            {project.has_maintenance && <Badge variant="outline">Maintenance</Badge>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-};
-
-export default AdminReports;
+}

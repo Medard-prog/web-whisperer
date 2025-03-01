@@ -15,7 +15,8 @@ import {
   User, 
   Message, 
   ProjectFile, 
-  AdminNote 
+  AdminNote,
+  PaymentStatus 
 } from '@/types';
 
 const SUPABASE_URL = "https://kadoutdcicucjyqvjihn.supabase.co";
@@ -278,33 +279,9 @@ export async function fetchProjectNotes(projectId: string): Promise<ProjectNote[
       return (data || []).map(mapProjectNote);
     }
     
-    // For project requests, we need to check the request_notes table
-    // Assuming we have a request_notes table, otherwise we'd have to adapt this
-    const { data, error } = await supabase
-      .from('request_notes')
-      .select('*')
-      .eq('request_id', actualId)
-      .eq('is_admin_only', false)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching request notes:", error);
-      // If the table doesn't exist, return empty array rather than failing
-      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
-        return [];
-      }
-      throw error;
-    }
-    
-    // Map request notes to project notes format
-    return (data || []).map(note => ({
-      id: note.id,
-      projectId: `request_${note.request_id}`,
-      content: note.content,
-      createdAt: note.created_at,
-      createdBy: note.created_by,
-      isAdminOnly: note.is_admin_only
-    }));
+    // For project requests, we'll just return an empty array since there's no request_notes table
+    console.log("Project request notes are not implemented yet");
+    return [];
   } catch (error) {
     console.error("Error in fetchProjectNotes:", error);
     return [];
@@ -445,31 +422,9 @@ export async function fetchAdminNotes(projectId: string): Promise<AdminNote[]> {
       return (data || []).map(mapAdminNote);
     }
     
-    // For project requests
-    const { data, error } = await supabase
-      .from('request_notes')
-      .select('*')
-      .eq('request_id', actualId)
-      .eq('is_admin_only', true)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching request admin notes:", error);
-      // If the table doesn't exist, return empty array
-      if (error.code === '42P01') {
-        return [];
-      }
-      throw error;
-    }
-    
-    // Map request notes to admin notes format
-    return (data || []).map(note => ({
-      id: note.id,
-      projectId: `request_${note.request_id}`,
-      content: note.content,
-      createdBy: note.created_by,
-      createdAt: note.created_at
-    }));
+    // For project requests, we'll return an empty array for now
+    console.log("Admin notes for project requests are not implemented yet");
+    return [];
   } catch (error) {
     console.error("Error in fetchAdminNotes:", error);
     return [];
@@ -485,41 +440,22 @@ export async function addAdminNote(projectId: string, content: string, userId: s
     const isProjectRequest = projectId.includes('request_');
     const actualId = isProjectRequest ? projectId.replace('request_', '') : projectId;
     
-    if (!isProjectRequest) {
-      // Insert into project_notes for regular projects
-      const { data, error } = await supabase
-        .from('project_notes')
-        .insert({ 
-          project_id: actualId,
-          content: content,
-          created_by: userId,
-          is_admin_only: true
-        });
-      
-      if (error) {
-        console.error("Error adding admin note:", error);
-        throw error;
-      }
-      
-      return data;
-    } else {
-      // Insert into request_notes for project requests
-      const { data, error } = await supabase
-        .from('request_notes')
-        .insert({
-          request_id: actualId,
-          content: content,
-          created_by: userId,
-          is_admin_only: true
-        });
-      
-      if (error) {
-        console.error("Error adding admin note for request:", error);
-        throw error;
-      }
-      
-      return data;
+    // Only support regular projects for now
+    const { data, error } = await supabase
+      .from('project_notes')
+      .insert({ 
+        project_id: actualId,
+        content: content,
+        created_by: userId,
+        is_admin_only: true
+      });
+    
+    if (error) {
+      console.error("Error adding admin note:", error);
+      throw error;
     }
+    
+    return data;
   } catch (error) {
     console.error("Error in addAdminNote:", error);
     throw error;
@@ -774,9 +710,7 @@ export async function updateProject(projectId: string, projectData: Partial<Proj
           project_type: projectData.websiteType,
           page_count: projectData.pageCount,
           design_complexity: projectData.designComplexity,
-          business_goal: projectData.additionalInfo,
-          amount_paid: projectData.amountPaid,
-          payment_status: projectData.paymentStatus
+          business_goal: projectData.additionalInfo
         })
         .eq('id', actualId);
       
@@ -790,5 +724,220 @@ export async function updateProject(projectId: string, projectData: Partial<Proj
   } catch (error) {
     console.error("Error in updateProject:", error);
     throw error;
+  }
+}
+
+// Get chart data for admin reports
+export async function getProjectStatusChartData(): Promise<any[]> {
+  try {
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .select('status, count')
+      .group('status');
+    
+    if (projectsError) {
+      console.error("Error fetching project status data:", projectsError);
+      throw projectsError;
+    }
+    
+    // Get counts for project requests too
+    const { data: requestsData, error: requestsError } = await supabase
+      .from('project_requests')
+      .select('status, count')
+      .group('status');
+    
+    if (requestsError) {
+      console.error("Error fetching project request status data:", requestsError);
+      throw requestsError;
+    }
+    
+    // Combine the data
+    const statusCounts: Record<string, number> = {};
+    
+    // Process projects
+    projectsData?.forEach(item => {
+      const status = item.status || 'unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + Number(item.count);
+    });
+    
+    // Process project requests
+    requestsData?.forEach(item => {
+      const status = item.status === 'new' ? 'pending' : (item.status || 'unknown');
+      statusCounts[status] = (statusCounts[status] || 0) + Number(item.count);
+    });
+    
+    // Format data for chart
+    return Object.entries(statusCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+  } catch (error) {
+    console.error("Error in getProjectStatusChartData:", error);
+    return [];
+  }
+}
+
+export async function getProjectsByPaymentStatus(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('payment_status, count')
+      .group('payment_status');
+    
+    if (error) {
+      console.error("Error fetching payment status data:", error);
+      throw error;
+    }
+    
+    // Format data for chart
+    const result = (data || []).map(item => ({
+      name: item.payment_status || 'unknown',
+      value: Number(item.count)
+    }));
+    
+    return result;
+  } catch (error) {
+    console.error("Error in getProjectsByPaymentStatus:", error);
+    return [];
+  }
+}
+
+export async function getTotalRevenueData(period?: string): Promise<any[]> {
+  try {
+    // For now, we'll just get all projects
+    const { data, error } = await supabase
+      .from('projects')
+      .select('price, amount_paid, created_at');
+    
+    if (error) {
+      console.error("Error fetching revenue data:", error);
+      throw error;
+    }
+    
+    // Process data to calculate monthly revenue
+    const monthlyData: Record<string, { total: number, collected: number }> = {};
+    
+    (data || []).forEach(project => {
+      const date = new Date(project.created_at);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthlyData[monthYear]) {
+        monthlyData[monthYear] = { total: 0, collected: 0 };
+      }
+      
+      monthlyData[monthYear].total += Number(project.price || 0);
+      monthlyData[monthYear].collected += Number(project.amount_paid || 0);
+    });
+    
+    // Format data for chart
+    return Object.entries(monthlyData)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        collected: data.collected
+      }));
+  } catch (error) {
+    console.error("Error in getTotalRevenueData:", error);
+    return [];
+  }
+}
+
+export async function getPopularFeaturesData(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('has_ecommerce, has_cms, has_seo, has_maintenance, count')
+      .group('has_ecommerce, has_cms, has_seo, has_maintenance');
+    
+    if (error) {
+      console.error("Error fetching features data:", error);
+      throw error;
+    }
+    
+    // Count features
+    let ecommerce = 0;
+    let cms = 0;
+    let seo = 0;
+    let maintenance = 0;
+    
+    (data || []).forEach(group => {
+      const count = Number(group.count || 0);
+      if (group.has_ecommerce) ecommerce += count;
+      if (group.has_cms) cms += count;
+      if (group.has_seo) seo += count;
+      if (group.has_maintenance) maintenance += count;
+    });
+    
+    return [
+      { name: 'E-commerce', value: ecommerce },
+      { name: 'CMS', value: cms },
+      { name: 'SEO', value: seo },
+      { name: 'Maintenance', value: maintenance }
+    ];
+  } catch (error) {
+    console.error("Error in getPopularFeaturesData:", error);
+    return [];
+  }
+}
+
+export async function fetchProjectsForReports(): Promise<any[]> {
+  try {
+    // Get regular projects
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (projectsError) {
+      console.error("Error fetching projects for reports:", projectsError);
+      throw projectsError;
+    }
+    
+    // Get project requests
+    const { data: requestsData, error: requestsError } = await supabase
+      .from('project_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (requestsError) {
+      console.error("Error fetching project requests for reports:", requestsError);
+      throw requestsError;
+    }
+    
+    // Format project data
+    const projects = projectsData.map(project => ({
+      id: project.id,
+      title: project.title,
+      status: project.status,
+      price: project.price,
+      created_at: project.created_at,
+      has_ecommerce: project.has_ecommerce,
+      has_cms: project.has_cms,
+      has_seo: project.has_seo,
+      has_maintenance: project.has_maintenance,
+      payment_status: project.payment_status,
+      amount_paid: project.amount_paid
+    }));
+    
+    // Format project request data
+    const requests = requestsData.map(request => ({
+      id: `request_${request.id}`,
+      title: request.project_name,
+      status: request.status === 'new' ? 'pending' : request.status,
+      price: request.price,
+      created_at: request.created_at,
+      has_ecommerce: request.has_ecommerce,
+      has_cms: request.has_cms,
+      has_seo: request.has_seo,
+      has_maintenance: request.has_maintenance,
+      payment_status: 'pending', // Default for requests
+      amount_paid: 0 // Default for requests
+    }));
+    
+    return [...projects, ...requests];
+  } catch (error) {
+    console.error("Error in fetchProjectsForReports:", error);
+    return [];
   }
 }

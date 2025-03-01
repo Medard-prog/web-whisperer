@@ -1,840 +1,704 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { 
-  fetchProjectById, 
-  fetchProjectNotes, 
-  fetchProjectTasks, 
-  fetchAdminNotes,
-  addAdminNote,
-  updateProject,
-  uploadProjectFile, 
-  fetchProjectFiles 
-} from '@/integrations/supabase/client';
-import { 
-  Project, 
-  ProjectNote, 
-  ProjectTask, 
-  AdminNote, 
-  ProjectFile 
-} from '@/types';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { CalendarIcon, PlusCircleIcon, SendIcon, FileIcon, PaperclipIcon, PresentationIcon } from 'lucide-react';
+import { fetchProjectById, updateProject, sendProjectMessage, uploadFile, addAdminNote, fetchAdminNotes, fetchProjectNotes, fetchProjectTasks, addProjectTask, fetchProjectMessages, fetchProjectFiles, uploadProjectFile } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Project, ProjectStatus, ProjectTask, ProjectNote, Message, AdminNote, ProjectFile, PaymentStatus } from '@/types';
+import { toast } from 'sonner';
+import { projectStatusOptions, paymentStatusOptions } from '@/lib/constants';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { 
-  Calendar, 
-  File, 
-  ListTodo, 
-  MessageSquare, 
-  PencilIcon, 
-  StickyNote, 
-  Upload, 
-  Users, 
-  FileIcon,
-  FileTextIcon,
-  PaperclipIcon,
-  FilePresentationIcon,
-  CreditCard,
-  DollarSign
-} from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import LoadingScreen from '@/components/LoadingScreen';
-import { projectStatusOptions } from '@/lib/constants';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
-const AdminProjectDetails = () => {
+export default function ProjectDetails() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
   
-  const [loading, setLoading] = useState<boolean>(true);
   const [project, setProject] = useState<Project | null>(null);
-  const [projectNotes, setProjectNotes] = useState<ProjectNote[]>([]);
-  const [projectTasks, setProjectTasks] = useState<ProjectTask[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState<AdminNote[]>([]);
-  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
-  
-  const [editMode, setEditMode] = useState<boolean>(false);
-  const [formData, setFormData] = useState<Partial<Project>>({});
-  const [newAdminNote, setNewAdminNote] = useState<string>('');
-  const [savingNote, setSavingNote] = useState<boolean>(false);
-  const [savingChanges, setSavingChanges] = useState<boolean>(false);
+  const [newAdminNote, setNewAdminNote] = useState('');
+  const [tasks, setTasks] = useState<ProjectTask[]>([]);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [clientNotes, setClientNotes] = useState<ProjectNote[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadingFile, setUploadingFile] = useState<boolean>(false);
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('');
-  const [amountPaid, setAmountPaid] = useState<number>(0);
-  const [amountDue, setAmountDue] = useState<number>(0);
+  const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Form state for editing project details
+  const [formState, setFormState] = useState({
+    title: '',
+    description: '',
+    status: 'pending' as ProjectStatus,
+    price: 0,
+    hasCMS: false,
+    hasEcommerce: false,
+    hasSEO: false,
+    hasMaintenance: false,
+    dueDate: '',
+    websiteType: '',
+    designComplexity: '',
+    pageCount: 0,
+    paymentStatus: 'pending' as PaymentStatus,
+    amountPaid: 0
+  });
   
   useEffect(() => {
-    const loadProjectData = async () => {
-      try {
-        setLoading(true);
-        if (!id) return;
-        
-        // Fetch project data
-        const fetchedProject = await fetchProjectById(id);
-        if (!fetchedProject) {
-          toast({
-            title: 'Project not found',
-            description: 'The project you are looking for does not exist or you do not have permission to view it.',
-            variant: 'destructive',
-          });
-          navigate('/admin/projects');
-          return;
-        }
-        
-        setProject(fetchedProject);
-        setFormData(fetchedProject);
-        
-        // Initialize payment values
-        setAmountDue(fetchedProject.price || 0);
-        setAmountPaid(fetchedProject.amountPaid || 0);
-        setSelectedPaymentStatus(fetchedProject.paymentStatus || 'pending');
-        
-        try {
-          // Fetch project notes
-          const notes = await fetchProjectNotes(id);
-          setProjectNotes(notes);
-        } catch (error) {
-          console.error('Error fetching project notes:', error);
-        }
-        
-        try {
-          // Fetch project tasks
-          const tasks = await fetchProjectTasks(id);
-          setProjectTasks(tasks);
-        } catch (error) {
-          console.error('Error fetching project tasks:', error);
-        }
-        
-        try {
-          // Fetch admin notes
-          const adminNotesData = await fetchAdminNotes(id);
-          setAdminNotes(adminNotesData);
-        } catch (error) {
-          console.error('Error fetching admin notes:', error);
-        }
-        
-        try {
-          // Fetch project files
-          const files = await fetchProjectFiles(id);
-          setProjectFiles(files);
-        } catch (error) {
-          console.error('Error fetching project files:', error);
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading project data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load project data. Please try again.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-      }
-    };
-    
-    loadProjectData();
-  }, [id, navigate, toast]);
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-  };
-  
-  const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData({ ...formData, [name]: checked });
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    if (id && user) {
+      loadProjectData();
     }
-  };
+  }, [id, user]);
   
-  const handleSaveChanges = async () => {
+  const loadProjectData = async () => {
     try {
-      if (!id || !project) return;
-      
-      setSavingChanges(true);
-      
-      // Update payment related fields
-      const updatedData = {
-        ...formData,
-        paymentStatus: selectedPaymentStatus,
-        amountPaid: amountPaid,
-        price: amountDue + amountPaid, // Total price is amount due + amount paid
-      };
-      
-      // Update project
-      await updateProject(id, updatedData);
-      
-      // Update local state
-      setProject({ ...project, ...updatedData });
-      setEditMode(false);
-      
-      toast({
-        title: 'Success',
-        description: 'Project details have been updated.',
-      });
-      
-      setSavingChanges(false);
-      
-      // Refresh data
-      const updatedProject = await fetchProjectById(id);
-      if (updatedProject) {
-        setProject(updatedProject);
-        setFormData(updatedProject);
-        setAmountDue(updatedProject.price - (updatedProject.amountPaid || 0));
+      setLoading(true);
+      const projectData = await fetchProjectById(id!);
+      if (projectData) {
+        setProject(projectData);
+        setFormState({
+          title: projectData.title || '',
+          description: projectData.description || '',
+          status: projectData.status as ProjectStatus || 'pending',
+          price: projectData.price || 0,
+          hasCMS: projectData.hasCMS || false,
+          hasEcommerce: projectData.hasEcommerce || false,
+          hasSEO: projectData.hasSEO || false,
+          hasMaintenance: projectData.hasMaintenance || false,
+          dueDate: projectData.dueDate || '',
+          websiteType: projectData.websiteType || '',
+          designComplexity: projectData.designComplexity || '',
+          pageCount: projectData.pageCount || 0,
+          paymentStatus: projectData.paymentStatus as PaymentStatus || 'pending',
+          amountPaid: projectData.amountPaid || 0
+        });
+        
+        // Load tasks, notes, messages, and files
+        const [tasksData, adminNotesData, clientNotesData, messagesData, filesData] = await Promise.all([
+          fetchProjectTasks(id!),
+          fetchAdminNotes(id!),
+          fetchProjectNotes(id!),
+          fetchProjectMessages(id!),
+          fetchProjectFiles(id!)
+        ]);
+        
+        setTasks(tasksData);
+        setAdminNotes(adminNotesData);
+        setClientNotes(clientNotesData);
+        setMessages(messagesData);
+        setFiles(filesData);
+      } else {
+        toast.error('Project not found');
+        navigate('/admin/projects');
       }
     } catch (error) {
-      console.error('Error updating project:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update project details. Please try again.',
-        variant: 'destructive',
-      });
-      setSavingChanges(false);
+      console.error('Error loading project data:', error);
+      toast.error('Failed to load project data');
+    } finally {
+      setLoading(false);
     }
   };
   
-  const handleAddAdminNote = async () => {
+  const handleAdminNoteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminNote.trim() || !user?.id) return;
+    
     try {
-      if (!id || !user || !newAdminNote.trim()) return;
-      
-      setSavingNote(true);
-      
-      // Check if this is a project request
-      const isProjectRequest = id.startsWith('request_');
-      
-      // Add admin note
-      await addAdminNote(id, newAdminNote, user.id);
-      
-      // Clear input and refresh notes
+      await addAdminNote(id!, newAdminNote, user.id);
+      toast.success('Admin note added successfully');
       setNewAdminNote('');
-      const updatedNotes = await fetchAdminNotes(id);
+      // Refresh admin notes
+      const updatedNotes = await fetchAdminNotes(id!);
       setAdminNotes(updatedNotes);
-      
-      toast({
-        title: 'Note added',
-        description: 'Your note has been added to the project.',
-      });
-      
-      setSavingNote(false);
     } catch (error) {
       console.error('Error adding admin note:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add note. Please try again.',
-        variant: 'destructive',
-      });
-      setSavingNote(false);
+      toast.error('Failed to add admin note');
     }
   };
   
-  const handleUploadFile = async () => {
+  const handleTaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim() || !user?.id) return;
+    
     try {
-      if (!id || !selectedFile) return;
+      await addProjectTask(id!, newTaskTitle, user.id);
+      toast.success('Task added successfully');
+      setNewTaskTitle('');
+      // Refresh tasks
+      const updatedTasks = await fetchProjectTasks(id!);
+      setTasks(updatedTasks);
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast.error('Failed to add task');
+    }
+  };
+  
+  const handleMessageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!newMessage.trim() && !selectedFile) || !user?.id) return;
+    
+    try {
+      let attachmentUrl = '';
       
-      setUploadingFile(true);
+      if (selectedFile) {
+        attachmentUrl = await uploadFile(selectedFile);
+      }
       
-      // Upload file
-      const uploadedFile = await uploadProjectFile(id, selectedFile);
+      await sendProjectMessage(
+        id!,
+        newMessage.trim() || 'Shared a file',
+        user.id,
+        true,
+        attachmentUrl,
+        selectedFile?.type
+      );
       
-      // Update files list
-      setProjectFiles([...projectFiles, uploadedFile]);
+      toast.success('Message sent successfully');
+      setNewMessage('');
       setSelectedFile(null);
       
-      toast({
-        title: 'File uploaded',
-        description: 'Your file has been uploaded successfully.',
+      // Refresh messages
+      const updatedMessages = await fetchProjectMessages(id!);
+      setMessages(updatedMessages);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
+  };
+  
+  const handleProjectUpdate = async () => {
+    if (!project) return;
+    
+    try {
+      setIsUpdating(true);
+      
+      await updateProject(id!, {
+        title: formState.title,
+        description: formState.description,
+        status: formState.status,
+        price: formState.price,
+        hasCMS: formState.hasCMS,
+        hasEcommerce: formState.hasEcommerce,
+        hasSEO: formState.hasSEO,
+        hasMaintenance: formState.hasMaintenance,
+        dueDate: formState.dueDate,
+        websiteType: formState.websiteType,
+        designComplexity: formState.designComplexity,
+        pageCount: formState.pageCount,
+        paymentStatus: formState.paymentStatus,
+        amountPaid: formState.amountPaid
       });
       
-      setUploadingFile(false);
+      // Update local state
+      setProject({
+        ...project,
+        title: formState.title,
+        description: formState.description,
+        status: formState.status,
+        price: formState.price,
+        hasCMS: formState.hasCMS,
+        hasEcommerce: formState.hasEcommerce,
+        hasSEO: formState.hasSEO,
+        hasMaintenance: formState.hasMaintenance,
+        dueDate: formState.dueDate,
+        websiteType: formState.websiteType,
+        designComplexity: formState.designComplexity,
+        pageCount: formState.pageCount,
+        paymentStatus: formState.paymentStatus,
+        amountPaid: formState.amountPaid
+      });
+      
+      toast.success('Project updated successfully');
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast.error('Failed to update project');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    try {
+      const file = e.target.files[0];
+      const projectFile = await uploadProjectFile(id!, file);
+      
+      toast.success('File uploaded successfully');
+      
+      // Refresh files
+      const updatedFiles = await fetchProjectFiles(id!);
+      setFiles(updatedFiles);
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to upload file. Please try again.',
-        variant: 'destructive',
-      });
-      setUploadingFile(false);
+      toast.error('Failed to upload file');
     }
   };
   
   if (loading) {
-    return <LoadingScreen />;
+    return <div className="flex items-center justify-center h-screen">Loading project details...</div>;
   }
   
   if (!project) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-          <p className="text-yellow-700">Project not found or you don't have permission to view it.</p>
-        </div>
-        <Button onClick={() => navigate('/admin/projects')}>Back to Projects</Button>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-screen">Project not found</div>;
   }
   
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Project Details</h1>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">{project.title}</h1>
+          <p className="text-gray-500">Project ID: {id}</p>
+        </div>
         <div className="flex gap-2">
-          {!editMode ? (
-            <Button onClick={() => setEditMode(true)}>
-              <PencilIcon className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          ) : (
-            <>
-              <Button variant="outline" onClick={() => setEditMode(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveChanges} disabled={savingChanges}>
-                {savingChanges ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </>
-          )}
+          <Badge variant={project.status === 'completed' ? 'default' : 
+                          project.status === 'in_progress' ? 'secondary' : 
+                          project.status === 'cancelled' ? 'destructive' : 
+                          'outline'}>
+            {project.status.replace('_', ' ')}
+          </Badge>
+          <Badge variant={project.paymentStatus === 'paid' ? 'default' : 
+                          project.paymentStatus === 'partial' ? 'secondary' : 
+                          project.paymentStatus === 'overdue' ? 'destructive' : 
+                          'outline'}>
+            {project.paymentStatus || 'pending'}
+          </Badge>
         </div>
       </div>
       
-      <Tabs defaultValue="details">
-        <TabsList className="grid grid-cols-6 mb-6">
-          <TabsTrigger value="details">
-            <File className="h-4 w-4 mr-2" />
-            Details
-          </TabsTrigger>
-          <TabsTrigger value="notes">
-            <StickyNote className="h-4 w-4 mr-2" />
-            Notes
-          </TabsTrigger>
-          <TabsTrigger value="admin-notes">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Admin Notes
-          </TabsTrigger>
-          <TabsTrigger value="tasks">
-            <ListTodo className="h-4 w-4 mr-2" />
-            Tasks
-          </TabsTrigger>
-          <TabsTrigger value="files">
-            <Upload className="h-4 w-4 mr-2" />
-            Files
-          </TabsTrigger>
-          <TabsTrigger value="payment">
-            <CreditCard className="h-4 w-4 mr-2" />
-            Payment
-          </TabsTrigger>
+      <Tabs defaultValue="details" className="space-y-4">
+        <TabsList className="mb-4">
+          <TabsTrigger value="details">Project Details</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="notes">Admin Notes</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="details">
+        <TabsContent value="details" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Project Information</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="title">Title</Label>
-                    {editMode ? (
-                      <Input
-                        id="title"
-                        name="title"
-                        value={formData.title || ''}
-                        onChange={handleInputChange}
-                      />
-                    ) : (
-                      <p className="mt-1 text-lg">{project.title}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    {editMode ? (
-                      <Select
-                        value={formData.status || 'pending'}
-                        onValueChange={(value) => handleSelectChange('status', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {projectStatusOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="mt-1 capitalize">
-                        <span className={`inline-block px-2 py-1 rounded text-xs ${
-                          project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          project.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {project.status === 'in_progress' ? 'In Progress' : 
-                           project.status === 'pending' ? 'Pending' : 
-                           project.status}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="price">Price</Label>
-                    {editMode ? (
-                      <div className="flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <Input
-                          id="price"
-                          name="price"
-                          type="number"
-                          value={formData.price || 0}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    ) : (
-                      <p className="mt-1 font-semibold">${project.price || 0}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    {editMode ? (
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={formData.description || ''}
-                        onChange={handleInputChange}
-                        rows={4}
-                      />
-                    ) : (
-                      <p className="mt-1 whitespace-pre-wrap">{project.description || 'No description'}</p>
-                    )}
-                  </div>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Project Title</Label>
+                  <Input 
+                    id="title" 
+                    value={formState.title} 
+                    onChange={(e) => setFormState({...formState, title: e.target.value})}
+                  />
                 </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <Label>Created At</Label>
-                    <p className="mt-1">
-                      {project.createdAt ? format(new Date(project.createdAt), 'PPP') : 'Unknown'}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="dueDate">Due Date</Label>
-                    {editMode ? (
-                      <Input
-                        id="dueDate"
-                        name="dueDate"
-                        type="date"
-                        value={formData.dueDate ? formData.dueDate.slice(0, 10) : ''}
-                        onChange={handleInputChange}
-                      />
-                    ) : (
-                      <p className="mt-1">
-                        {project.dueDate ? format(new Date(project.dueDate), 'PPP') : 'Not set'}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Features</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-2">
-                        {editMode ? (
-                          <Checkbox
-                            id="hasEcommerce"
-                            checked={formData.hasEcommerce || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange('hasEcommerce', checked as boolean)
-                            }
-                          />
-                        ) : (
-                          <Checkbox id="hasEcommerce" checked={project.hasEcommerce || false} disabled />
-                        )}
-                        <Label htmlFor="hasEcommerce">E-commerce</Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {editMode ? (
-                          <Checkbox
-                            id="hasCMS"
-                            checked={formData.hasCMS || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange('hasCMS', checked as boolean)
-                            }
-                          />
-                        ) : (
-                          <Checkbox id="hasCMS" checked={project.hasCMS || false} disabled />
-                        )}
-                        <Label htmlFor="hasCMS">CMS</Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {editMode ? (
-                          <Checkbox
-                            id="hasSEO"
-                            checked={formData.hasSEO || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange('hasSEO', checked as boolean)
-                            }
-                          />
-                        ) : (
-                          <Checkbox id="hasSEO" checked={project.hasSEO || false} disabled />
-                        )}
-                        <Label htmlFor="hasSEO">SEO</Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {editMode ? (
-                          <Checkbox
-                            id="hasMaintenance"
-                            checked={formData.hasMaintenance || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange('hasMaintenance', checked as boolean)
-                            }
-                          />
-                        ) : (
-                          <Checkbox id="hasMaintenance" checked={project.hasMaintenance || false} disabled />
-                        )}
-                        <Label htmlFor="hasMaintenance">Maintenance</Label>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="websiteType">Website Type</Label>
-                    {editMode ? (
-                      <Select
-                        value={formData.websiteType || ''}
-                        onValueChange={(value) => handleSelectChange('websiteType', value)}
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select 
+                    value={formState.status} 
+                    onValueChange={(value) => setFormState({...formState, status: value as ProjectStatus})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectStatusOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price ($)</Label>
+                  <Input 
+                    id="price" 
+                    type="number" 
+                    value={formState.price} 
+                    onChange={(e) => setFormState({...formState, price: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="amountPaid">Amount Paid ($)</Label>
+                  <Input 
+                    id="amountPaid" 
+                    type="number" 
+                    value={formState.amountPaid} 
+                    onChange={(e) => setFormState({...formState, amountPaid: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="paymentStatus">Payment Status</Label>
+                  <Select 
+                    value={formState.paymentStatus} 
+                    onValueChange={(value) => setFormState({...formState, paymentStatus: value as PaymentStatus})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentStatusOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="dueDate">Due Date</Label>
+                  <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select website type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="business">Business</SelectItem>
-                          <SelectItem value="ecommerce">E-commerce</SelectItem>
-                          <SelectItem value="blog">Blog</SelectItem>
-                          <SelectItem value="portfolio">Portfolio</SelectItem>
-                          <SelectItem value="informational">Informational</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="mt-1 capitalize">{project.websiteType || 'Not specified'}</p>
-                    )}
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formState.dueDate ? format(new Date(formState.dueDate), 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={formState.dueDate ? new Date(formState.dueDate) : undefined}
+                        onSelect={(date) => {
+                          setFormState({...formState, dueDate: date ? date.toISOString() : ''});
+                          setDueDateOpen(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea 
+                    id="description" 
+                    value={formState.description} 
+                    onChange={(e) => setFormState({...formState, description: e.target.value})}
+                    rows={4}
+                  />
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Features</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="hasCMS" 
+                      checked={formState.hasCMS} 
+                      onCheckedChange={(checked) => setFormState({...formState, hasCMS: checked === true})}
+                    />
+                    <label htmlFor="hasCMS" className="cursor-pointer">CMS</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="hasEcommerce" 
+                      checked={formState.hasEcommerce} 
+                      onCheckedChange={(checked) => setFormState({...formState, hasEcommerce: checked === true})}
+                    />
+                    <label htmlFor="hasEcommerce" className="cursor-pointer">E-commerce</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="hasSEO" 
+                      checked={formState.hasSEO} 
+                      onCheckedChange={(checked) => setFormState({...formState, hasSEO: checked === true})}
+                    />
+                    <label htmlFor="hasSEO" className="cursor-pointer">SEO</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="hasMaintenance" 
+                      checked={formState.hasMaintenance} 
+                      onCheckedChange={(checked) => setFormState({...formState, hasMaintenance: checked === true})}
+                    />
+                    <label htmlFor="hasMaintenance" className="cursor-pointer">Maintenance</label>
                   </div>
                 </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="websiteType">Website Type</Label>
+                  <Input 
+                    id="websiteType" 
+                    value={formState.websiteType} 
+                    onChange={(e) => setFormState({...formState, websiteType: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="designComplexity">Design Complexity</Label>
+                  <Input 
+                    id="designComplexity" 
+                    value={formState.designComplexity} 
+                    onChange={(e) => setFormState({...formState, designComplexity: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pageCount">Page Count</Label>
+                  <Input 
+                    id="pageCount" 
+                    type="number" 
+                    value={formState.pageCount} 
+                    onChange={(e) => setFormState({...formState, pageCount: Number(e.target.value)})}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button onClick={handleProjectUpdate} disabled={isUpdating}>
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="notes">
+        <TabsContent value="tasks" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Client Notes</CardTitle>
+              <CardTitle>Project Tasks</CardTitle>
             </CardHeader>
             <CardContent>
-              {projectNotes.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No notes yet</p>
-              ) : (
-                <div className="space-y-4">
-                  {projectNotes.map((note) => (
-                    <div key={note.id} className="p-4 border rounded-lg bg-muted/30">
-                      <p className="whitespace-pre-wrap">{note.content}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {format(new Date(note.createdAt), 'PPp')}
-                      </p>
+              <form onSubmit={handleTaskSubmit} className="flex space-x-2 mb-4">
+                <Input 
+                  placeholder="Add a new task..." 
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                />
+                <Button type="submit">Add</Button>
+              </form>
+              
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2">
+                  {tasks.map(task => (
+                    <div key={task.id} className="p-3 border rounded-md flex justify-between items-center">
+                      <div>
+                        <p className={task.isCompleted ? "line-through text-gray-500" : ""}>
+                          {task.title}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(task.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <Checkbox 
+                          checked={task.isCompleted} 
+                          // Placeholder as actual completion functionality would be added here
+                          onCheckedChange={() => {}}
+                        />
+                      </div>
                     </div>
                   ))}
+                  {tasks.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No tasks yet.</p>
+                  )}
                 </div>
-              )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="admin-notes">
+        <TabsContent value="notes" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Admin Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-6">
-                <Textarea
+              <form onSubmit={handleAdminNoteSubmit} className="space-y-4 mb-4">
+                <Textarea 
+                  placeholder="Add a private note (only visible to admin)..." 
                   value={newAdminNote}
                   onChange={(e) => setNewAdminNote(e.target.value)}
-                  placeholder="Add an admin note..."
-                  className="mb-2"
                   rows={3}
                 />
-                <Button 
-                  onClick={handleAddAdminNote} 
-                  disabled={!newAdminNote.trim() || savingNote}
-                >
-                  {savingNote ? 'Saving...' : 'Add Note'}
-                </Button>
-              </div>
+                <div className="flex justify-end">
+                  <Button type="submit">Add Note</Button>
+                </div>
+              </form>
               
-              {adminNotes.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No admin notes yet</p>
-              ) : (
+              <ScrollArea className="h-[400px]">
                 <div className="space-y-4">
-                  {adminNotes.map((note) => (
-                    <div key={note.id} className="p-4 border rounded-lg bg-blue-50">
-                      <p className="whitespace-pre-wrap">{note.content}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {format(new Date(note.createdAt), 'PPp')}
-                      </p>
+                  {adminNotes.map(note => (
+                    <div key={note.id} className="p-4 border rounded-md">
+                      <p>{note.content}</p>
+                      <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+                        <span>By: {note.createdBy || 'Admin'}</span>
+                        <span>{new Date(note.createdAt).toLocaleString()}</span>
+                      </div>
                     </div>
                   ))}
+                  {adminNotes.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No admin notes yet.</p>
+                  )}
                 </div>
-              )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="tasks">
+        <TabsContent value="messages" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tasks</CardTitle>
+              <CardTitle>Client Communication</CardTitle>
             </CardHeader>
             <CardContent>
-              {projectTasks.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No tasks assigned yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {projectTasks.map((task) => (
-                    <div key={task.id} className="flex items-center p-3 border rounded-lg">
-                      <Checkbox
-                        checked={task.isCompleted}
-                        disabled
-                        className="mr-3"
-                      />
-                      <div className="flex-1">
-                        <p className={task.isCompleted ? 'line-through text-muted-foreground' : ''}>
-                          {task.title}
-                        </p>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {task.description}
-                          </p>
+              <ScrollArea className="h-[400px] mb-4">
+                <div className="space-y-4">
+                  {messages.map(message => (
+                    <div 
+                      key={message.id} 
+                      className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] p-3 rounded-lg ${message.isAdmin ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback>{message.isAdmin ? 'A' : 'C'}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium">
+                            {message.isAdmin ? 'Admin' : 'Client'}
+                          </span>
+                        </div>
+                        <p className="text-sm">{message.content}</p>
+                        {message.attachmentUrl && (
+                          <a 
+                            href={message.attachmentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center mt-2 text-xs text-blue-600 hover:underline"
+                          >
+                            <FileIcon className="h-4 w-4 mr-1" />
+                            View Attachment
+                          </a>
                         )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(task.createdAt), 'MMM d')}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(message.createdAt).toLocaleString()}
+                        </p>
                       </div>
                     </div>
                   ))}
+                  {messages.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No messages yet.</p>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="files">
-          <Card>
-            <CardHeader>
-              <CardTitle>Files</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-6 border-b pb-6">
-                <div className="flex items-end gap-4">
-                  <div className="flex-1">
-                    <Label htmlFor="fileUpload" className="mb-2 block">Upload New File</Label>
-                    <Input
-                      id="fileUpload"
-                      type="file"
-                      onChange={handleFileChange}
-                    />
+              </ScrollArea>
+              
+              <form onSubmit={handleMessageSubmit} className="space-y-2">
+                <Textarea 
+                  placeholder="Type your message here..." 
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  rows={3}
+                />
+                <div className="flex justify-between items-center">
+                  <div>
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      />
+                      <div className="flex items-center">
+                        <PaperclipIcon className="h-5 w-5 text-gray-500" />
+                        <span className="ml-1">
+                          {selectedFile ? selectedFile.name : 'Attach file'}
+                        </span>
+                      </div>
+                    </label>
                   </div>
-                  <Button 
-                    onClick={handleUploadFile} 
-                    disabled={!selectedFile || uploadingFile}
-                  >
-                    {uploadingFile ? 'Uploading...' : 'Upload'}
+                  <Button type="submit">
+                    <SendIcon className="h-4 w-4 mr-2" />
+                    Send
                   </Button>
                 </div>
-              </div>
-              
-              {projectFiles.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No files uploaded yet</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {projectFiles.map((file) => (
-                    <div key={file.id} className="flex border rounded-lg p-3 items-center">
-                      <div className="mr-3">
-                        {file.fileType?.includes('image') ? (
-                          <FileImage className="h-10 w-10 text-blue-500" />
-                        ) : file.fileType?.includes('pdf') ? (
-                          <FilePresentationIcon className="h-10 w-10 text-red-500" />
-                        ) : (
-                          <FileIcon className="h-10 w-10 text-gray-500" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium">{file.filename}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(file.uploadedAt), 'PPp')}
-                        </p>
-                      </div>
-                      <a 
-                        href={file.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:text-blue-700"
-                      >
-                        <Button variant="ghost" size="sm">
-                          <FileTextIcon className="h-4 w-4" />
-                          <span className="sr-only">View</span>
-                        </Button>
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              )}
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="payment">
+        <TabsContent value="files" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Payment Information</CardTitle>
+              <CardTitle>Project Files</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="totalPrice">Total Price</Label>
-                    {editMode ? (
-                      <div className="flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <Input
-                          id="totalPrice"
-                          name="price"
-                          type="number"
-                          value={formData.price || 0}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-xl font-bold">${project.price || 0}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="amountPaid">Amount Paid</Label>
-                    {editMode ? (
-                      <div className="flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <Input
-                          id="amountPaid"
-                          type="number"
-                          value={amountPaid}
-                          onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-green-600 font-semibold">
-                        ${project.amountPaid || 0}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="amountDue">Amount Due</Label>
-                    <p className="mt-1 text-red-600 font-semibold">
-                      ${(project.price || 0) - (project.amountPaid || 0)}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="paymentStatus">Payment Status</Label>
-                    {editMode ? (
-                      <Select
-                        value={selectedPaymentStatus}
-                        onValueChange={setSelectedPaymentStatus}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="partial">Partial</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="mt-1">
-                        <span className={`inline-block px-2 py-1 rounded text-xs ${
-                          project.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                          project.paymentStatus === 'partial' ? 'bg-blue-100 text-blue-800' :
-                          project.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {project.paymentStatus || 'Pending'}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label>Payment History</Label>
-                    {project.paymentHistory && project.paymentHistory.length > 0 ? (
-                      <div className="space-y-2 mt-2">
-                        {project.paymentHistory.map((payment, index) => (
-                          <div key={index} className="text-sm border-b pb-2">
-                            <div className="flex justify-between">
-                              <span>{format(new Date(payment.date), 'PP')}</span>
-                              <span className="font-medium">${payment.amount}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {payment.method}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mt-2">No payment history available</p>
-                    )}
-                  </div>
+              <div className="mb-4">
+                <label className="block mb-2">Upload File</label>
+                <div className="flex">
+                  <input
+                    type="file"
+                    className="hidden"
+                    id="fileUpload"
+                    onChange={handleFileUpload}
+                  />
+                  <label 
+                    htmlFor="fileUpload" 
+                    className="cursor-pointer flex-1 mr-2 px-4 py-2 border border-dashed rounded-md flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    <PlusCircleIcon className="h-5 w-5 mr-2" />
+                    <span>Upload new file</span>
+                  </label>
                 </div>
               </div>
+              
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2">
+                  {files.map(file => (
+                    <a 
+                      key={file.id} 
+                      href={file.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="block p-3 border rounded-md hover:bg-gray-50"
+                    >
+                      <div className="flex items-center">
+                        <FileIcon className="h-5 w-5 mr-2 text-blue-500" />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{file.filename}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(file.uploadedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                  {files.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No files uploaded yet.</p>
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
-};
-
-export default AdminProjectDetails;
+}
