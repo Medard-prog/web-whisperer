@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile } from '@/types';
@@ -184,16 +183,26 @@ export const fetchProjectMessages = async (projectId: string) => {
   }
 };
 
-export const sendProjectMessage = async (projectId: string, userId: string, message: string) => {
+export const sendProjectMessage = async (
+  projectId: string,
+  content: string,
+  userId: string,
+  isAdmin: boolean = false,
+  attachmentUrl: string = '',
+  attachmentType: string = ''
+) => {
   try {
     const { data, error } = await supabase
-      .from('project_messages')
+      .from('messages')
       .insert([{
         project_id: projectId,
         user_id: userId,
-        content: message
+        content: content,
+        is_admin: isAdmin,
+        attachment_url: attachmentUrl,
+        attachment_type: attachmentType
       }])
-      .select('*, user:profiles(id, email, profile_data)')
+      .select('*')
       .single();
 
     if (error) {
@@ -202,14 +211,23 @@ export const sendProjectMessage = async (projectId: string, userId: string, mess
       return null;
     }
 
-    return data;
+    // Format the message according to our Message type
+    return {
+      id: data.id,
+      projectId: data.project_id,
+      content: data.content,
+      createdAt: data.created_at,
+      isAdmin: data.is_admin,
+      userId: data.user_id,
+      attachmentUrl: data.attachment_url,
+      attachmentType: data.attachment_type
+    } as Message;
   } catch (error: any) {
     toast.error(`Failed to send project message: ${error.message}`);
     return null;
   }
 };
 
-// Add missing functions referenced in the codebase
 export const fetchProjectTasks = async (projectId: string) => {
   try {
     const { data, error } = await supabase

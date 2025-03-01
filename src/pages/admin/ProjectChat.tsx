@@ -128,7 +128,10 @@ const AdminProjectChat = () => {
       let attachmentUrl = '';
       
       if (selectedFile) {
-        attachmentUrl = await uploadFile(selectedFile);
+        const fileData = await uploadFile(selectedFile, id, user.id);
+        if (fileData) {
+          attachmentUrl = fileData.url || '';
+        }
       }
       
       const sentMessage = await sendProjectMessage(
@@ -137,7 +140,7 @@ const AdminProjectChat = () => {
         user.id,
         true, // Admin
         attachmentUrl,
-        selectedFile?.type
+        selectedFile?.type || ''
       );
       
       // Add the new message to the UI immediately without waiting for realtime
@@ -162,20 +165,19 @@ const AdminProjectChat = () => {
       setUploading(true);
       setUploadProgress(30);
       
-      // Use correct parameter count for uploadFile
-      const fileDoc = await uploadFile(project.id, file, user.id);
+      const fileData = await uploadFile(file, project.id, user.id);
       
       setUploadProgress(90);
       
-      if (fileDoc) {
+      if (fileData) {
         // Add the new message to the UI immediately without waiting for realtime
         const sentMessage = await sendProjectMessage(
           project.id,
           'Shared a file',
           user.id,
           true, // Admin
-          fileDoc.url,
-          fileDoc.type
+          fileData.url || '',
+          file.type || ''
         );
         
         if (sentMessage) {

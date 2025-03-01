@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { fetchSupportMessages, sendSupportMessage } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -126,8 +125,10 @@ const Support = () => {
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
                         <Avatar>
-                          {/* Replace profile with user's avatar url directly */}
-                          <AvatarImage src={message.is_from_user ? user?.avatar_url || undefined : '/placeholder.svg'} />
+                          <AvatarImage 
+                            src={user?.user_metadata?.avatar_url || "https://github.com/shadcn.png"} 
+                            alt="Profile picture" 
+                          />
                           <AvatarFallback>{message.is_from_user ? user?.email?.charAt(0).toUpperCase() || 'U' : 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
