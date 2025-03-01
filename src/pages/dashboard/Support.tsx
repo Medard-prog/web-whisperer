@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchSupportMessages, sendSupportMessage } from "@/integrations/supabase/client";

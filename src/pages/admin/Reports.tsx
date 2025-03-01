@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjectStatusChartData, getProjectsByPaymentStatus, getTotalRevenueData, getPopularFeaturesData, fetchProjectsForReports } from "@/integrations/supabase/client";
@@ -84,7 +85,10 @@ const Reports = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+              <DateRangePicker 
+                value={dateRange} 
+                onChange={setDateRange} 
+              />
               <Select onValueChange={setReportType}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Tip raport" />

@@ -12,7 +12,9 @@ import {
   mapProjectNote,
   mapUser,
   mapMessage,
-  mapProjectFile
+  mapProjectFile,
+  ProjectStatus,
+  PaymentStatus
 } from '@/types';
 
 // Initialize the Supabase client
@@ -102,7 +104,7 @@ export async function fetchProjectRequests(userId?: string) {
       designComplexity: item.design_complexity,
       additionalInfo: item.business_goal,
       amountPaid: 0,
-      paymentStatus: 'pending' as PaymentStatus // Cast to the enum type
+      paymentStatus: 'pending' as PaymentStatus 
     }));
   } catch (error) {
     console.error("Error in fetchProjectRequests:", error);
@@ -156,7 +158,7 @@ export async function fetchProjectById(id: string): Promise<Project> {
         designComplexity: requestData.design_complexity,
         additionalInfo: requestData.business_goal,
         amountPaid: 0,
-        paymentStatus: 'pending' as PaymentStatus // Cast to PaymentStatus enum
+        paymentStatus: 'pending' as PaymentStatus
       };
     }
     
@@ -202,6 +204,36 @@ export async function createProjectTask(task: Partial<ProjectTask>): Promise<Pro
     return mapProjectTask(data);
   } catch (error) {
     console.error("Error creating project task:", error);
+    throw error;
+  }
+}
+
+export async function addProjectTask(
+  projectId: string, 
+  title: string, 
+  userId: string
+): Promise<ProjectTask> {
+  console.log("Adding task for project:", projectId);
+  
+  try {
+    const taskData = {
+      project_id: projectId,
+      title,
+      created_by: userId,
+      is_completed: false
+    };
+    
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .insert(taskData)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return mapProjectTask(data);
+  } catch (error) {
+    console.error("Error adding project task:", error);
     throw error;
   }
 }
@@ -344,6 +376,61 @@ export async function sendProjectMessage(
   }
 }
 
+// Support messages functions
+export async function fetchSupportMessages(userId: string): Promise<Message[]> {
+  console.log("Fetching support messages for user:", userId);
+  
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('user_id', userId)
+      .is('project_id', null)
+      .order('created_at', { ascending: true });
+      
+    if (error) throw error;
+    
+    console.log("Support messages fetched:", data);
+    return data.map(mapMessage);
+  } catch (error) {
+    console.error("Error fetching support messages:", error);
+    return [];
+  }
+}
+
+export async function sendSupportMessage(
+  content: string,
+  userId: string,
+  isAdmin: boolean,
+  attachmentUrl?: string,
+  attachmentType?: string
+): Promise<Message | null> {
+  console.log("Sending support message for user:", userId);
+  
+  try {
+    const messageData = {
+      content,
+      user_id: userId,
+      is_admin: isAdmin,
+      attachment_url: attachmentUrl,
+      attachment_type: attachmentType
+    };
+    
+    const { data, error } = await supabase
+      .from('messages')
+      .insert(messageData)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return mapMessage(data);
+  } catch (error) {
+    console.error("Error sending support message:", error);
+    throw error;
+  }
+}
+
 // Files functions
 export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[]> {
   console.log("Fetching files for project:", projectId);
@@ -459,3 +546,116 @@ export async function enableRealtimeForTable(tableName: string) {
 enableRealtimeForTable('messages').then(result => {
   console.log("Realtime enabled for messages:", result);
 });
+
+// Report related functions
+export async function getProjectStatusChartData() {
+  try {
+    const { data, error } = await supabase.rpc('get_project_status_counts');
+    
+    if (error) throw error;
+    
+    const requestStatusData = await supabase.rpc('get_project_request_status_counts');
+    
+    // Combine and format data for chart
+    const formattedData = [...(data || []), ...(requestStatusData.data || [])]
+      .reduce((acc: any[], item) => {
+        const existingItem = acc.find(i => i.name === item.status);
+        if (existingItem) {
+          existingItem.value += Number(item.count);
+        } else {
+          acc.push({ name: item.status, value: Number(item.count) });
+        }
+        return acc;
+      }, []);
+    
+    return formattedData;
+  } catch (error) {
+    console.error("Error getting project status data:", error);
+    return [];
+  }
+}
+
+export async function getProjectsByPaymentStatus() {
+  try {
+    const { data, error } = await supabase.rpc('get_payment_status_counts');
+    
+    if (error) throw error;
+    
+    // Format data for chart
+    return (data || []).map(item => ({
+      name: item.payment_status,
+      value: Number(item.count)
+    }));
+  } catch (error) {
+    console.error("Error getting payment status data:", error);
+    return [];
+  }
+}
+
+export async function getTotalRevenueData() {
+  try {
+    const { data, error } = await supabase.rpc('get_monthly_revenue');
+    
+    if (error) throw error;
+    
+    // Format data for chart
+    return (data || []).map(item => ({
+      name: item.month_year,
+      total: Number(item.total_revenue),
+      collected: Number(item.total_collected)
+    }));
+  } catch (error) {
+    console.error("Error getting revenue data:", error);
+    return [];
+  }
+}
+
+export async function getPopularFeaturesData() {
+  try {
+    const [ecommerce, cms, seo, maintenance] = await Promise.all([
+      supabase.rpc('count_projects_with_ecommerce'),
+      supabase.rpc('count_projects_with_cms'),
+      supabase.rpc('count_projects_with_seo'),
+      supabase.rpc('count_projects_with_maintenance')
+    ]);
+    
+    if (ecommerce.error || cms.error || seo.error || maintenance.error) {
+      throw new Error("Error fetching feature counts");
+    }
+    
+    return [
+      { name: 'E-commerce', value: Number(ecommerce.data) },
+      { name: 'CMS', value: Number(cms.data) },
+      { name: 'SEO', value: Number(seo.data) },
+      { name: 'Maintenance', value: Number(maintenance.data) }
+    ];
+  } catch (error) {
+    console.error("Error getting popular features data:", error);
+    return [];
+  }
+}
+
+export async function fetchProjectsForReports(dateRange: { from?: Date; to?: Date }) {
+  try {
+    let query = supabase
+      .from('projects')
+      .select('*');
+    
+    if (dateRange.from) {
+      query = query.gte('created_at', dateRange.from.toISOString());
+    }
+    
+    if (dateRange.to) {
+      query = query.lte('created_at', dateRange.to.toISOString());
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return data.map(mapProject);
+  } catch (error) {
+    console.error("Error fetching projects for reports:", error);
+    return [];
+  }
+}
