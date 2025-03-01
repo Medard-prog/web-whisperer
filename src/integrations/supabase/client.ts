@@ -15,6 +15,20 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Helper functions to get properly typed data
 export async function fetchProjects(userId?: string): Promise<Project[]> {
   try {
+    console.log("Fetching projects for user:", userId);
+    
+    // First check if connection is working
+    const { data: testData, error: testError } = await supabase
+      .from('projects')
+      .select('count')
+      .limit(1);
+    
+    if (testError) {
+      console.error("Error testing connection:", testError);
+      throw testError;
+    }
+    
+    // Now fetch the actual projects
     const query = supabase.from('projects').select('*');
     
     if (userId) {
@@ -28,6 +42,7 @@ export async function fetchProjects(userId?: string): Promise<Project[]> {
       throw error;
     }
     
+    console.log("Projects fetched:", data);
     return (data || []).map(mapProject);
   } catch (error) {
     console.error("Error in fetchProjects:", error);

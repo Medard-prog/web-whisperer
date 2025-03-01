@@ -34,14 +34,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Initialize the auth state with the current session
   useEffect(() => {
     const initializeAuth = async () => {
-      setLoading(true);
-      
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      
-      if (session?.user) {
-        try {
+      try {
+        setLoading(true);
+        
+        // Get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          setLoading(false);
+          return;
+        }
+        
+        setSession(session);
+        
+        if (session?.user) {
+          console.log("Session found, user is logged in:", session.user.id);
           // Basic user info from session
           setUser({
             id: session.user.id,
@@ -51,97 +59,129 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           });
           
           // Try to fetch additional profile data, but don't block on errors
-          const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (data) {
-            setUser(prevUser => ({
-              ...prevUser as UserDetails,
-              name: data.name || prevUser?.name,
-              isAdmin: data.is_admin || prevUser?.isAdmin,
-              phone: data.phone,
-              company: data.company,
-            }));
-          }
-        } catch (error) {
-          console.error('Error setting up user data:', error);
-          // Continue with basic user info even if profile fetch fails
-        }
-      } else {
-        setUser(null);
-      }
-      
-      // Listen for auth changes
-      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          console.log('Auth state changed:', event);
-          setSession(session);
-          
-          if (session?.user) {
-            try {
-              // Basic user info from session
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                isAdmin: session.user.user_metadata?.isAdmin || false
-              });
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
               
-              // Try to fetch profile data
-              const { data } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-                
-              if (data) {
-                setUser(prevUser => ({
-                  ...prevUser as UserDetails,
-                  name: data.name || prevUser?.name,
-                  isAdmin: data.is_admin || prevUser?.isAdmin,
-                  phone: data.phone,
-                  company: data.company,
-                }));
-              }
-            } catch (error) {
-              console.error('Error updating user data on auth change:', error);
-              // Continue with basic user info
+            if (profileError && profileError.code !== 'PGRST116') {
+              console.error('Error fetching profile:', profileError);
             }
-          } else {
-            setUser(null);
+              
+            if (profileData) {
+              console.log("Profile data found:", profileData);
+              setUser(prevUser => ({
+                ...prevUser as UserDetails,
+                name: profileData.name || prevUser?.name,
+                isAdmin: profileData.is_admin || prevUser?.isAdmin,
+                phone: profileData.phone,
+                company: profileData.company,
+              }));
+            }
+          } catch (error) {
+            console.error('Error fetching profile data:', error);
+            // Continue with basic user info even if profile fetch fails
           }
+        } else {
+          console.log("No session found, user is not logged in");
+          setUser(null);
         }
-      );
-      
-      setLoading(false);
-      
-      // Cleanup subscription on unmount
-      return () => {
-        subscription.unsubscribe();
-      };
+        
+        // Listen for auth changes
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+          async (event, newSession) => {
+            console.log('Auth state changed:', event);
+            setSession(newSession);
+            
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              if (newSession?.user) {
+                console.log("User signed in:", newSession.user.id);
+                
+                // Navigate to dashboard on successful login
+                navigate('/dashboard');
+                
+                // Basic user info from session
+                setUser({
+                  id: newSession.user.id,
+                  email: newSession.user.email || '',
+                  name: newSession.user.user_metadata?.name || newSession.user.email?.split('@')[0] || 'User',
+                  isAdmin: newSession.user.user_metadata?.isAdmin || false
+                });
+                
+                // Try to fetch profile data
+                try {
+                  const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', newSession.user.id)
+                    .single();
+                    
+                  if (profileError && profileError.code !== 'PGRST116') {
+                    console.error('Error fetching profile:', profileError);
+                  }
+                    
+                  if (profileData) {
+                    console.log("Profile data found on sign in:", profileData);
+                    setUser(prevUser => ({
+                      ...prevUser as UserDetails,
+                      name: profileData.name || prevUser?.name,
+                      isAdmin: profileData.is_admin || prevUser?.isAdmin,
+                      phone: profileData.phone,
+                      company: profileData.company,
+                    }));
+                  }
+                } catch (error) {
+                  console.error('Error updating user data on auth change:', error);
+                  // Continue with basic user info
+                }
+              }
+            } else if (event === 'SIGNED_OUT') {
+              console.log("User signed out");
+              setUser(null);
+              navigate('/auth');
+            }
+          }
+        );
+        
+        setLoading(false);
+        
+        // Cleanup subscription on unmount
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setLoading(false);
+      }
     };
     
     initializeAuth();
-  }, []);
+  }, [navigate]);
   
   // Refresh the user's profile data
   const refreshUser = async () => {
     if (session?.user) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
           
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error refreshing user data:', error);
+          toast.error('Nu s-a putut actualiza profilul');
+          return;
+        }
+          
         if (data) {
+          console.log("Profile data refreshed:", data);
           setUser(prevUser => ({
             ...prevUser as UserDetails,
-            name: data.name,
-            isAdmin: data.is_admin,
+            name: data.name || prevUser?.name,
+            isAdmin: data.is_admin || prevUser?.isAdmin,
             phone: data.phone,
             company: data.company,
           }));
@@ -158,7 +198,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await supabase.auth.signOut();
       setUser(null);
-      navigate('/logout');
+      navigate('/auth');
       toast.success('Te-ai deconectat cu succes');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -185,6 +225,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         
       if (error) {
+        console.error('Error updating profile in database:', error);
         throw error;
       }
       
