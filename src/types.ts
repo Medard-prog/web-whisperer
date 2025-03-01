@@ -1,6 +1,5 @@
-
 // Project management types
-export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled";
+export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 
 export interface Project {
   id: string;

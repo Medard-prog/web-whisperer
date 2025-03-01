@@ -32,6 +32,10 @@ const statusMap = {
     label: "Anulat",
     color: "bg-red-100 text-red-800 border-red-200"
   },
+  new: {
+    label: "Nou",
+    color: "bg-purple-100 text-purple-800 border-purple-200"
+  },
 };
 
 const ProjectDetailsPanel = ({ project, loading, isAdmin = false }: ProjectDetailsPanelProps) => {
