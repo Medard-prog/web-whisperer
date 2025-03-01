@@ -28,7 +28,7 @@ import AdminProjectChat from "@/pages/admin/ProjectChat";
 import { lazy, Suspense, Component, ReactNode } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 
-// Add error boundary with proper type definitions
+// Error boundary with proper type definitions
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
@@ -131,11 +131,11 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    // <ErrorBoundary>
+    <ErrorBoundary>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
-    // </ErrorBoundary>
+    </ErrorBoundary>
   );
 };
 
