@@ -1,20 +1,22 @@
 
-import { ReactNode } from 'react';
+import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import LoadingScreen from '@/components/LoadingScreen';
 
-export interface RequireAuthProps {
-  children?: ReactNode;
+interface RequireAuthProps {
   adminRequired?: boolean;
 }
 
-export default function RequireAuth({ children, adminRequired = false }: RequireAuthProps) {
+const RequireAuth: React.FC<RequireAuthProps> = ({ adminRequired = false }) => {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -25,5 +27,7 @@ export default function RequireAuth({ children, adminRequired = false }: Require
     return <Navigate to="/dashboard" replace />;
   }
 
-  return children ? <>{children}</> : <Outlet />;
-}
+  return <Outlet />;
+};
+
+export default RequireAuth;

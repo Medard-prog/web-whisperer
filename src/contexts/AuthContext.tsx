@@ -8,9 +8,7 @@ export interface UserDetails {
   id: string;
   email: string;
   name?: string;
-  isAdmin?: boolean;
-  phone?: string;
-  company?: string;
+  isAdmin: boolean;
 }
 
 export interface AuthContextType {
@@ -23,13 +21,13 @@ export interface AuthContextType {
   signOut: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
-  updateProfile: (data: Partial<UserDetails>) => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (userData: Partial<UserDetails>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -283,26 +281,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  return (
-    <AuthContext.Provider value={{ 
-      session, 
-      user, 
-      loading, 
-      isAuthenticated,
-      isAdmin,
-      isLoading,
-      signIn,
-      signUp,
-      signOut, 
-      updateProfile,
-      refreshUser 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const authValue: AuthContextType = {
+    session, 
+    user, 
+    loading, 
+    isAuthenticated,
+    isAdmin,
+    isLoading,
+    signIn,
+    signUp,
+    signOut, 
+    refreshUser,
+    updateProfile
+  };
+
+  return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
