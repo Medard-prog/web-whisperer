@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm, FormProvider, SubmitHandler } from "react-hook-form";
@@ -157,8 +158,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
         password: loginPassword,
       });
       
-      
-      if (error) throw error;
+      if (loginError) throw loginError;
       
       await refreshUser();
       setLoginDialogOpen(false);
@@ -188,7 +188,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
         },
       });
       
-      if (error) throw error;
+      if (signupError) throw signupError;
       
       setLoginDialogOpen(false);
       toast.success("Cont creat cu succes!", { description: "Verificați email-ul pentru a confirma" });

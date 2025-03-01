@@ -76,6 +76,9 @@ const RequestProject = () => {
       // Just use the URL parameters if nothing else is available
       if (Object.keys(urlParams).length > 0) {
         setInitialValues(urlParams);
+      } else {
+        // Provide empty initial values to prevent form from waiting for values
+        setInitialValues({});
       }
     }
   }, [user, loading, location.state, location.search]);
@@ -108,7 +111,7 @@ const RequestProject = () => {
       
       const { data, error } = await supabase
         .from('project_requests')
-        .insert(requestData);
+        .insert([requestData]);
         
       if (error) {
         throw error;

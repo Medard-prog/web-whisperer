@@ -4,7 +4,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Mail, Phone, Building } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Country codes for phone numbers
 const countryCodes = [
@@ -24,34 +24,40 @@ const countryCodes = [
 const StepOne = () => {
   const { control, setValue, watch } = useFormContext();
   const [selectedCountryCode, setSelectedCountryCode] = useState("+40"); // Default to Romania
+  const [phoneWithoutCode, setPhoneWithoutCode] = useState("");
   const phoneValue = watch("phone") || "";
+  
+  // Initialize phone without code on component mount or when phoneValue changes
+  useEffect(() => {
+    // If phone value exists but doesn't have country code extracted yet
+    if (phoneValue) {
+      // Check if phone starts with any country code
+      const matchedCountry = countryCodes.find(country => 
+        phoneValue.startsWith(country.code)
+      );
+      
+      if (matchedCountry) {
+        setSelectedCountryCode(matchedCountry.code);
+        setPhoneWithoutCode(phoneValue.substring(matchedCountry.code.length));
+      } else {
+        // If no country code is found, assume it's just the number
+        setPhoneWithoutCode(phoneValue);
+      }
+    }
+  }, []);
 
   // Handle country code change
   const handleCountryChange = (code: string) => {
     setSelectedCountryCode(code);
-    
-    // Remove any existing country code from the phone number
-    let phoneWithoutCode = phoneValue;
-    countryCodes.forEach(country => {
-      if (phoneValue.startsWith(country.code)) {
-        phoneWithoutCode = phoneValue.substring(country.code.length);
-      }
-    });
-    
-    // Set the new phone number with the selected country code
+    // Update the full phone number with new country code + existing number
     setValue("phone", code + phoneWithoutCode);
   };
 
   // Handle phone input changes
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let inputValue = e.target.value;
-    
-    // Ensure the country code is always present
-    if (!inputValue.startsWith(selectedCountryCode)) {
-      inputValue = selectedCountryCode + inputValue.replace(selectedCountryCode, "");
-    }
-    
-    setValue("phone", inputValue);
+    const numberOnly = e.target.value;
+    setPhoneWithoutCode(numberOnly);
+    setValue("phone", selectedCountryCode + numberOnly);
   };
   
   return (
@@ -106,7 +112,7 @@ const StepOne = () => {
                 <div className="w-32">
                   <Select 
                     onValueChange={handleCountryChange}
-                    defaultValue="+40"
+                    defaultValue={selectedCountryCode}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Cod" />
@@ -129,7 +135,7 @@ const StepOne = () => {
                     <Input 
                       placeholder="Numărul de telefon" 
                       className="pl-10" 
-                      value={phoneValue} 
+                      value={phoneWithoutCode} 
                       onChange={handlePhoneChange}
                     />
                   </div>
