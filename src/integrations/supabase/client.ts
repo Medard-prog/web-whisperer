@@ -490,8 +490,8 @@ export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[
       // Skip placeholder files
       if (file.name === '.placeholder') continue;
       
-      // Get the public URL
-      const publicUrlData = supabase.storage
+      // Get the public URL - Fixed: Access the nested publicUrl property correctly
+      const { data: urlData } = supabase.storage
         .from('project_files')
         .getPublicUrl(`projects/${projectId}/${file.name}`);
       
@@ -506,7 +506,7 @@ export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[
         uploadedBy: '',
         uploadedAt: file.created_at || new Date().toISOString(),
         isAdminOnly: false,
-        url: publicUrlData.publicUrl
+        url: urlData.publicUrl
       };
       
       result.push(projectFile);
