@@ -131,11 +131,11 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    <ErrorBoundary>
+    // <ErrorBoundary>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
-    </ErrorBoundary>
+    // </ErrorBoundary>
   );
 };
 
