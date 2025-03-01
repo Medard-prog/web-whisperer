@@ -30,6 +30,7 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  console.log("AuthProvider initializing");
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,11 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isLoading = loading;
 
   useEffect(() => {
+    console.log("AuthProvider useEffect running");
     const initializeAuth = async () => {
       try {
+        console.log("Initializing auth...");
         setLoading(true);
         
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Error getting session:', sessionError);
@@ -52,24 +55,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         
-        setSession(session);
+        console.log("Session retrieved:", currentSession ? "Found" : "Not found");
+        setSession(currentSession);
         
-        if (session?.user) {
-          console.log("Session found, user is logged in:", session.user.id);
+        if (currentSession?.user) {
+          console.log("Session found, user is logged in:", currentSession.user.id);
           setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            isAdmin: session.user.user_metadata?.isAdmin || false,
-            phone: session.user.user_metadata?.phone || '',
-            company: session.user.user_metadata?.company || ''
+            id: currentSession.user.id,
+            email: currentSession.user.email || '',
+            name: currentSession.user.user_metadata?.name || currentSession.user.email?.split('@')[0] || 'User',
+            isAdmin: currentSession.user.user_metadata?.isAdmin || false,
+            phone: currentSession.user.user_metadata?.phone || '',
+            company: currentSession.user.user_metadata?.company || ''
           });
           
           try {
+            console.log("Fetching profile data for user:", currentSession.user.id);
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .select('*')
-              .eq('id', session.user.id)
+              .eq('id', currentSession.user.id)
               .single();
               
             if (profileError && profileError.code !== 'PGRST116') {
@@ -82,9 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...prevUser as UserDetails,
                 name: profileData.name || prevUser?.name,
                 isAdmin: profileData.is_admin || prevUser?.isAdmin,
-                phone: profileData.phone,
-                company: profileData.company,
+                phone: profileData.phone || prevUser?.phone,
+                company: profileData.company || prevUser?.company,
               }));
+            } else {
+              console.log("No profile data found for user");
             }
           } catch (error) {
             console.error('Error fetching profile data:', error);
@@ -103,8 +110,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (newSession?.user) {
                 console.log("User signed in:", newSession.user.id);
                 
-                navigate('/dashboard');
-                
                 setUser({
                   id: newSession.user.id,
                   email: newSession.user.email || '',
@@ -115,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
                 
                 try {
+                  console.log("Fetching profile data on sign in");
                   const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
                     .select('*')
@@ -131,8 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                       ...prevUser as UserDetails,
                       name: profileData.name || prevUser?.name,
                       isAdmin: profileData.is_admin || prevUser?.isAdmin,
-                      phone: profileData.phone,
-                      company: profileData.company,
+                      phone: profileData.phone || prevUser?.phone,
+                      company: profileData.company || prevUser?.company,
                     }));
                   }
                 } catch (error) {
@@ -142,14 +148,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else if (event === 'SIGNED_OUT') {
               console.log("User signed out");
               setUser(null);
-              navigate('/auth');
             }
           }
         );
         
         setLoading(false);
+        console.log("Auth initialization complete, loading set to false");
         
         return () => {
+          console.log("Cleaning up auth subscription");
           subscription.unsubscribe();
         };
       } catch (error) {
@@ -163,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const signIn = async (email: string, password: string) => {
     try {
+      console.log("Attempting sign in for:", email);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -176,6 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
+      console.log("Sign in successful");
       toast.success('Autentificare reușită');
     } catch (error) {
       console.error('Error in signIn:', error);
@@ -185,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      console.log("Attempting sign up for:", email);
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -203,6 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
+      console.log("Sign up successful");
       toast.success('Înregistrare reușită', {
         description: 'Verifică-ți email-ul pentru a confirma contul'
       });
@@ -215,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async () => {
     if (session?.user) {
       try {
+        console.log("Refreshing user data");
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -233,8 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...prevUser as UserDetails,
             name: data.name || prevUser?.name,
             isAdmin: data.is_admin || prevUser?.isAdmin,
-            phone: data.phone,
-            company: data.company,
+            phone: data.phone || prevUser?.phone,
+            company: data.company || prevUser?.company,
           }));
         }
       } catch (error) {
@@ -246,9 +258,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const signOut = async () => {
     try {
+      console.log("Signing out user");
       await supabase.auth.signOut();
       setUser(null);
-      navigate('/auth');
       toast.success('Te-ai deconectat cu succes');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -262,6 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
+      console.log("Updating profile:", userData);
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -300,6 +313,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser,
     updateProfile
   };
+
+  console.log("AuthProvider rendering with state:", { 
+    isAuthenticated, 
+    isAdmin, 
+    isLoading 
+  });
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>;
 };

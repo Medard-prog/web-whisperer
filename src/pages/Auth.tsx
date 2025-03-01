@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -32,9 +33,17 @@ const registerSchema = z.object({
 });
 
 export default function Auth() {
+  console.log("Auth component rendering");
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const { user, signIn, signUp, loading } = useAuth();
+  const location = useLocation();
+  
+  console.log("Auth state:", { 
+    isLoggedIn: !!user, 
+    loading,
+    from: location.state?.from?.pathname
+  });
   
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -55,6 +64,7 @@ export default function Auth() {
 
   const onSubmitLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
+      console.log("Attempting login with:", values.email);
       await signIn(values.email, values.password);
     } catch (error) {
       console.error('Login error:', error);
@@ -63,6 +73,7 @@ export default function Auth() {
 
   const onSubmitRegister = async (values: z.infer<typeof registerSchema>) => {
     try {
+      console.log("Attempting registration with:", values.email);
       await signUp(values.email, values.password, values.name);
       toast.success('Cont creat cu succes!', {
         description: 'Te rugăm să verifici emailul pentru a confirma contul.',
@@ -73,7 +84,9 @@ export default function Auth() {
   };
 
   if (user && !loading) {
-    return <Navigate to="/dashboard" />;
+    const redirectTo = location.state?.from?.pathname || '/dashboard';
+    console.log("User is authenticated, redirecting to:", redirectTo);
+    return <Navigate to={redirectTo} />;
   }
 
   return (

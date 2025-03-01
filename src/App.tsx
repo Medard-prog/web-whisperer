@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import Index from '@/pages/Index';
@@ -29,8 +29,10 @@ import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 
 function App() {
+  console.log("App component rendering");
+  
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
         <ThemeProvider defaultTheme="light">
           <Routes>
@@ -71,7 +73,7 @@ function App() {
           <Toaster />
         </ThemeProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 }
 
