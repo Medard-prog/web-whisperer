@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   getProjectStatusChartData, 
@@ -467,7 +466,7 @@ const Reports = () => {
                     
                     <DateRangePicker
                       value={dateRange}
-                      onValueChange={(range: DateRange) => setDateRange(range)}
+                      onChange={(range: DateRange) => setDateRange(range)}
                     />
                   </div>
                 </CardHeader>
@@ -575,7 +574,7 @@ const Reports = () => {
               <h3 className="font-medium mb-2">Interval de date</h3>
               <DateRangePicker 
                 value={dateRange}
-                onValueChange={(range: DateRange) => setDateRange(range)}
+                onChange={(range: DateRange) => setDateRange(range)}
               />
             </div>
             
