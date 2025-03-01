@@ -278,59 +278,60 @@ export async function addAdminNote(projectId: string, content: string, userId: s
   }
 }
 
-// Fetch project files
+// Fetch project files - simplified to avoid type recursion issues
 export async function fetchProjectFiles(projectId: string, adminOnly: boolean = false): Promise<ProjectFile[]> {
   try {
     console.log("Fetching project files for project:", projectId, "adminOnly:", adminOnly);
     
-    // Since we're using storage for files, check if the storage bucket exists
-    try {
-      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('project_files');
-      
-      if (bucketError) {
-        console.error("Error checking bucket:", bucketError);
-        console.log("Storage bucket 'project_files' doesn't exist, returning empty array");
-        return [];
-      }
-      
-      // List files in the bucket path for this project
-      const { data: filesData, error: listError } = await supabase.storage
-        .from('project_files')
-        .list(`projects/${projectId}`);
-      
-      if (listError) {
-        console.error("Error listing files:", listError);
-        return [];
-      }
-      
-      // Map the files to ProjectFile objects
-      return (filesData || []).map(file => {
-        const publicUrl = supabase.storage
-          .from('project_files')
-          .getPublicUrl(`projects/${projectId}/${file.name}`).data.publicUrl;
-          
-        return {
-          id: file.id || Math.random().toString(36).substring(2, 15),
-          projectId: projectId,
-          filename: file.name,
-          filePath: publicUrl,
-          fileType: file.metadata?.mimetype || '',
-          fileSize: file.metadata?.size || 0,
-          uploadedAt: file.created_at || new Date().toISOString(),
-          isAdminOnly: adminOnly
-        };
-      });
-    } catch (error) {
-      console.error("Error accessing storage:", error);
+    // Check if the project_files bucket exists
+    const { data: buckets, error: bucketError } = await supabase.storage
+      .listBuckets();
+    
+    if (bucketError) {
+      console.error("Error checking buckets:", bucketError);
       return [];
     }
+    
+    const bucketExists = buckets.some(bucket => bucket.name === 'project_files');
+    if (!bucketExists) {
+      console.log("Storage bucket 'project_files' doesn't exist, returning empty array");
+      return [];
+    }
+    
+    // List files in the bucket path for this project
+    const { data: filesData, error: listError } = await supabase.storage
+      .from('project_files')
+      .list(`projects/${projectId}`);
+    
+    if (listError) {
+      console.error("Error listing files:", listError);
+      return [];
+    }
+    
+    // Map the files to ProjectFile objects
+    return (filesData || []).map(file => {
+      const publicUrl = supabase.storage
+        .from('project_files')
+        .getPublicUrl(`projects/${projectId}/${file.name}`).data.publicUrl;
+        
+      return {
+        id: file.id || Math.random().toString(36).substring(2, 15),
+        projectId: projectId,
+        filename: file.name,
+        filePath: publicUrl,
+        fileType: file.metadata?.mimetype || '',
+        fileSize: file.metadata?.size || 0,
+        uploadedAt: file.created_at || new Date().toISOString(),
+        isAdminOnly: adminOnly
+      };
+    });
   } catch (error) {
     console.error("Error in fetchProjectFiles:", error);
     return []; // Return empty array as fallback
   }
 }
 
-// Upload a project file
+// Upload a project file - simplified to avoid type recursion issues
 export async function uploadProjectFile(
   projectId: string, 
   file: File, 
@@ -340,55 +341,61 @@ export async function uploadProjectFile(
   try {
     console.log("Uploading file for project:", projectId);
     
-    // First upload the file to storage
+    // First check if bucket exists
+    const { data: buckets, error: bucketsError } = await supabase.storage
+      .listBuckets();
+      
+    if (bucketsError) {
+      console.error("Error checking buckets:", bucketsError);
+      throw bucketsError;
+    }
+    
+    const bucketExists = buckets.some(bucket => bucket.name === 'project_files');
+    
+    // Create bucket if it doesn't exist
+    if (!bucketExists) {
+      console.log("Bucket 'project_files' doesn't exist yet, creating it");
+      const { error: createError } = await supabase.storage
+        .createBucket('project_files', { public: true });
+        
+      if (createError) {
+        console.error("Failed to create storage bucket:", createError);
+        throw createError;
+      }
+    }
+    
+    // Prepare file path and upload
     const fileExt = file.name.split('.').pop();
     const filePath = `projects/${projectId}/${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     
-    // Check if bucket exists first
-    try {
-      await supabase.storage.getBucket('project_files')
-        .catch(async () => {
-          console.log("Bucket 'project_files' doesn't exist yet, creating it");
-          // Try to create the bucket
-          await supabase.storage.createBucket('project_files', { public: true })
-            .catch(e => console.error("Failed to create storage bucket:", e));
-        });
-      
-      // Now try to upload
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('project_files')
-        .upload(filePath, file);
-      
-      if (uploadError) {
-        console.error("Error uploading file to storage:", uploadError);
-        throw uploadError;
-      }
-      
-      // Get the public URL
-      const { data: urlData } = supabase.storage
-        .from('project_files')
-        .getPublicUrl(filePath);
-        
-      console.log("File uploaded to:", urlData.publicUrl);
-      
-      // Return a ProjectFile object directly
-      const projectFile: ProjectFile = {
-        id: Math.random().toString(36).substring(2, 15),
-        projectId: projectId,
-        filename: file.name,
-        filePath: urlData.publicUrl,
-        fileType: file.type,
-        fileSize: file.size,
-        uploadedBy: uploadedBy,
-        uploadedAt: new Date().toISOString(),
-        isAdminOnly: isAdminOnly
-      };
-      
-      return projectFile;
-    } catch (error) {
-      console.error("Error with bucket operations:", error);
-      throw error;
+    const { error: uploadError } = await supabase.storage
+      .from('project_files')
+      .upload(filePath, file);
+    
+    if (uploadError) {
+      console.error("Error uploading file to storage:", uploadError);
+      throw uploadError;
     }
+    
+    // Get the public URL
+    const { data: urlData } = supabase.storage
+      .from('project_files')
+      .getPublicUrl(filePath);
+      
+    console.log("File uploaded to:", urlData.publicUrl);
+    
+    // Return a ProjectFile object directly
+    return {
+      id: Math.random().toString(36).substring(2, 15),
+      projectId: projectId,
+      filename: file.name,
+      filePath: urlData.publicUrl,
+      fileType: file.type,
+      fileSize: file.size,
+      uploadedBy: uploadedBy,
+      uploadedAt: new Date().toISOString(),
+      isAdminOnly: isAdminOnly
+    };
   } catch (error) {
     console.error("Error in uploadProjectFile:", error);
     throw error;
