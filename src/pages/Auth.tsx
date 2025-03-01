@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { z } from 'zod';
@@ -61,6 +60,7 @@ export default function Auth() {
       await signIn(values.email, values.password);
     } catch (error) {
       console.error('Login error:', error);
+      // Error is already handled in the Auth context with toast
     }
   };
 
@@ -72,6 +72,7 @@ export default function Auth() {
       });
     } catch (error) {
       console.error('Register error:', error);
+      // Error is already handled in the Auth context with toast
     }
   };
 

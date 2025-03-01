@@ -126,7 +126,7 @@ const Support = () => {
                       <div className="flex items-start gap-4">
                         <Avatar>
                           <AvatarImage 
-                            src={user?.avatar_url || user?.name?.charAt(0) || 'U'} 
+                            src={user?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'User'}`} 
                             alt="Profile picture" 
                           />
                           <AvatarFallback>{message.is_from_user ? user?.email?.charAt(0).toUpperCase() || 'U' : 'S'}</AvatarFallback>
