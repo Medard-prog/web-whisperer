@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,8 +104,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (newSession?.user) {
                 console.log("User signed in:", newSession.user.id);
                 
-                navigate('/dashboard');
-                
                 setUser({
                   id: newSession.user.id,
                   email: newSession.user.email || '',
@@ -137,6 +136,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   }
                 } catch (error) {
                   console.error('Error updating user data on auth change:', error);
+                }
+                
+                // Only navigate to dashboard if not already there
+                if (!window.location.pathname.includes('/dashboard')) {
+                  navigate('/dashboard');
                 }
               }
             } else if (event === 'SIGNED_OUT') {
@@ -300,6 +304,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser,
     updateProfile
   };
+
+  console.log("Auth provider rendering with context value:", {
+    isAuthenticated,
+    isAdmin,
+    isLoading,
+    userExists: !!user
+  });
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>;
 };
