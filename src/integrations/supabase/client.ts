@@ -120,52 +120,65 @@ export async function fetchProjectRequests(userId?: string): Promise<Project[]> 
   }
 }
 
-// Fetch a single project by ID (check both tables)
+// Updated fetchProjectById to properly check both regular projects and project requests
 export async function fetchProjectById(projectId: string): Promise<Project | null> {
   try {
     console.log("Fetching project details for:", projectId);
     
-    // Try projects table first
-    let { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .maybeSingle();
+    // Check if this is a project request ID (based on prefix if you're using one)
+    const isProjectRequest = projectId.includes('request_');
     
-    if (data) {
-      return mapProject(data);
-    }
-    
-    // If not found, try project_requests table
-    const { data: requestData, error: requestError } = await supabase
-      .from('project_requests')
-      .select('*')
-      .eq('id', projectId)
-      .maybeSingle();
-    
-    if (requestError) {
-      console.error("Error fetching project request:", requestError);
-      throw requestError;
-    }
-    
-    if (requestData) {
-      return {
-        id: requestData.id,
-        title: requestData.project_name,
-        description: requestData.description || '',
-        status: requestData.status === 'new' ? 'pending' : requestData.status as any,
-        createdAt: requestData.created_at,
-        price: requestData.price || 0,
-        userId: requestData.user_id,
-        hasEcommerce: requestData.has_ecommerce || false,
-        hasCMS: requestData.has_cms || false,
-        hasSEO: requestData.has_seo || false,
-        hasMaintenance: requestData.has_maintenance || false,
-        websiteType: requestData.project_type,
-        pageCount: requestData.page_count,
-        designComplexity: requestData.design_complexity,
-        additionalInfo: requestData.business_goal
-      };
+    if (isProjectRequest) {
+      // Try project_requests table with the actual ID (removing any prefix)
+      const actualId = projectId.replace('request_', '');
+      const { data: requestData, error: requestError } = await supabase
+        .from('project_requests')
+        .select('*')
+        .eq('id', actualId)
+        .maybeSingle();
+      
+      if (requestError) {
+        console.error("Error fetching project request:", requestError);
+        throw requestError;
+      }
+      
+      if (requestData) {
+        return {
+          id: `request_${requestData.id}`, // Add prefix to distinguish requests from projects
+          title: requestData.project_name,
+          description: requestData.description || '',
+          status: requestData.status === 'new' ? 'pending' : requestData.status as any,
+          createdAt: requestData.created_at,
+          price: requestData.price || 0,
+          userId: requestData.user_id,
+          hasEcommerce: requestData.has_ecommerce || false,
+          hasCMS: requestData.has_cms || false,
+          hasSEO: requestData.has_seo || false,
+          hasMaintenance: requestData.has_maintenance || false,
+          websiteType: requestData.project_type,
+          pageCount: requestData.page_count,
+          designComplexity: requestData.design_complexity,
+          additionalInfo: requestData.business_goal,
+          amountPaid: 0, // Default for new requests
+          paymentStatus: 'pending', // Default status
+        };
+      }
+    } else {
+      // Try projects table
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error fetching project:", error);
+        throw error;
+      }
+      
+      if (data) {
+        return mapProject(data);
+      }
     }
     
     return null;
@@ -239,23 +252,59 @@ export async function addProjectTask(projectId: string, title: string, userId: s
   }
 }
 
+// Fix fetchProjectNotes to work with both projects and project requests
 export async function fetchProjectNotes(projectId: string): Promise<ProjectNote[]> {
   try {
     console.log("Fetching notes for project:", projectId);
     
+    // Check if this is a project request ID (based on prefix if you're using one)
+    const isProjectRequest = projectId.includes('request_');
+    const actualId = isProjectRequest ? projectId.replace('request_', '') : projectId;
+    
+    // For regular projects
+    if (!isProjectRequest) {
+      const { data, error } = await supabase
+        .from('project_notes')
+        .select('*')
+        .eq('project_id', actualId)
+        .eq('is_admin_only', false)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching project notes:", error);
+        throw error;
+      }
+      
+      return (data || []).map(mapProjectNote);
+    }
+    
+    // For project requests, we need to check the request_notes table
+    // Assuming we have a request_notes table, otherwise we'd have to adapt this
     const { data, error } = await supabase
-      .from('project_notes')
+      .from('request_notes')
       .select('*')
-      .eq('project_id', projectId)
+      .eq('request_id', actualId)
       .eq('is_admin_only', false)
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error("Error fetching project notes:", error);
+      console.error("Error fetching request notes:", error);
+      // If the table doesn't exist, return empty array rather than failing
+      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
+        return [];
+      }
       throw error;
     }
     
-    return (data || []).map(mapProjectNote);
+    // Map request notes to project notes format
+    return (data || []).map(note => ({
+      id: note.id,
+      projectId: `request_${note.request_id}`,
+      content: note.content,
+      createdAt: note.created_at,
+      createdBy: note.created_by,
+      isAdminOnly: note.is_admin_only
+    }));
   } catch (error) {
     console.error("Error in fetchProjectNotes:", error);
     return [];
@@ -375,24 +424,55 @@ export async function fetchAdminNotes(projectId: string): Promise<AdminNote[]> {
   try {
     console.log("Fetching admin notes for project:", projectId);
     
-    // Use direct query to project_notes table with admin-only filter
+    // Check if this is a project request ID
+    const isProjectRequest = projectId.includes('request_');
+    const actualId = isProjectRequest ? projectId.replace('request_', '') : projectId;
+    
+    // For regular projects
+    if (!isProjectRequest) {
+      const { data, error } = await supabase
+        .from('project_notes')
+        .select('*')
+        .eq('project_id', actualId)
+        .eq('is_admin_only', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching admin notes:", error);
+        throw error;
+      }
+      
+      return (data || []).map(mapAdminNote);
+    }
+    
+    // For project requests
     const { data, error } = await supabase
-      .from('project_notes')
+      .from('request_notes')
       .select('*')
-      .eq('project_id', projectId)
+      .eq('request_id', actualId)
       .eq('is_admin_only', true)
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error("Error fetching admin notes:", error);
+      console.error("Error fetching request admin notes:", error);
+      // If the table doesn't exist, return empty array
+      if (error.code === '42P01') {
+        return [];
+      }
       throw error;
     }
     
-    console.log("Admin notes fetched:", data);
-    return (data || []).map(mapAdminNote);
+    // Map request notes to admin notes format
+    return (data || []).map(note => ({
+      id: note.id,
+      projectId: `request_${note.request_id}`,
+      content: note.content,
+      createdBy: note.created_by,
+      createdAt: note.created_at
+    }));
   } catch (error) {
     console.error("Error in fetchAdminNotes:", error);
-    return []; // Return empty array as fallback
+    return [];
   }
 }
 
@@ -401,22 +481,45 @@ export async function addAdminNote(projectId: string, content: string, userId: s
   try {
     console.log("Adding admin note for project:", projectId);
     
-    // Insert directly into project_notes table with admin flag
-    const { data, error } = await supabase
-      .from('project_notes')
-      .insert({ 
-        project_id: projectId,
-        content: content,
-        created_by: userId,
-        is_admin_only: true
-      });
+    // Check if this is a project request ID
+    const isProjectRequest = projectId.includes('request_');
+    const actualId = isProjectRequest ? projectId.replace('request_', '') : projectId;
     
-    if (error) {
-      console.error("Error adding admin note:", error);
-      throw error;
+    if (!isProjectRequest) {
+      // Insert into project_notes for regular projects
+      const { data, error } = await supabase
+        .from('project_notes')
+        .insert({ 
+          project_id: actualId,
+          content: content,
+          created_by: userId,
+          is_admin_only: true
+        });
+      
+      if (error) {
+        console.error("Error adding admin note:", error);
+        throw error;
+      }
+      
+      return data;
+    } else {
+      // Insert into request_notes for project requests
+      const { data, error } = await supabase
+        .from('request_notes')
+        .insert({
+          request_id: actualId,
+          content: content,
+          created_by: userId,
+          is_admin_only: true
+        });
+      
+      if (error) {
+        console.error("Error adding admin note for request:", error);
+        throw error;
+      }
+      
+      return data;
     }
-    
-    return data;
   } catch (error) {
     console.error("Error in addAdminNote:", error);
     throw error;
@@ -625,14 +728,11 @@ export async function updateProject(projectId: string, projectData: Partial<Proj
   try {
     console.log("Updating project:", projectId, projectData);
     
-    // Check if it's a project or project request
-    const { data: projectExists } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', projectId)
-      .maybeSingle();
+    // Check if this is a project request ID
+    const isProjectRequest = projectId.includes('request_');
+    const actualId = isProjectRequest ? projectId.replace('request_', '') : projectId;
     
-    if (projectExists) {
+    if (!isProjectRequest) {
       // It's a regular project
       const { error } = await supabase
         .from('projects')
@@ -648,9 +748,11 @@ export async function updateProject(projectId: string, projectData: Partial<Proj
           due_date: projectData.dueDate,
           website_type: projectData.websiteType,
           page_count: projectData.pageCount,
-          design_complexity: projectData.designComplexity
+          design_complexity: projectData.designComplexity,
+          amount_paid: projectData.amountPaid,
+          payment_status: projectData.paymentStatus
         })
-        .eq('id', projectId);
+        .eq('id', actualId);
       
       if (error) {
         console.error("Error updating project:", error);
@@ -672,9 +774,11 @@ export async function updateProject(projectId: string, projectData: Partial<Proj
           project_type: projectData.websiteType,
           page_count: projectData.pageCount,
           design_complexity: projectData.designComplexity,
-          business_goal: projectData.additionalInfo
+          business_goal: projectData.additionalInfo,
+          amount_paid: projectData.amountPaid,
+          payment_status: projectData.paymentStatus
         })
-        .eq('id', projectId);
+        .eq('id', actualId);
       
       if (error) {
         console.error("Error updating project request:", error);

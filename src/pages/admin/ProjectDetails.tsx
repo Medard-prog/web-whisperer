@@ -1,805 +1,838 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
-  fetchProjects,
-  fetchProjectRequests,
+  fetchProjectById, 
+  fetchProjectNotes, 
   fetchProjectTasks, 
-  fetchProjectNotes,
-  fetchProjectMessages,
   fetchAdminNotes,
-  fetchProjectFiles,
-  sendProjectMessage,
   addAdminNote,
-  uploadProjectFile,
   updateProject,
-  supabase
-} from "@/integrations/supabase/client";
-import { Project, ProjectTask, ProjectNote, Message, ProjectFile, AdminNote } from "@/types";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
-import ProjectTasksPanel from "@/components/ProjectTasksPanel";
-import ProjectNotesPanel from "@/components/ProjectNotesPanel";
-import { Button } from "@/components/ui/button";
+  uploadProjectFile, 
+  fetchProjectFiles 
+} from '@/integrations/supabase/client';
 import { 
-  Card, 
-  CardContent
-} from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+  Project, 
+  ProjectNote, 
+  ProjectTask, 
+  AdminNote, 
+  ProjectFile 
+} from '@/types';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
-  ArrowLeft,
-  FileText,
-  MessageSquare,
-  CheckSquare,
-  Settings,
-  StickyNote,
-  FilePlus,
-  Paperclip,
-  Pencil
-} from "lucide-react";
-import PageTransition from "@/components/PageTransition";
-import { format } from "date-fns";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { format } from 'date-fns';
+import { 
+  Calendar, 
+  File, 
+  ListTodo, 
+  MessageSquare, 
+  PencilIcon, 
+  StickyNote, 
+  Upload, 
+  Users, 
+  FileIcon,
+  FileTextIcon,
+  PaperclipIcon,
+  FilePresentationIcon,
+  CreditCard,
+  DollarSign
+} from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import LoadingScreen from '@/components/LoadingScreen';
+import { projectStatusOptions } from '@/lib/constants';
 
 const AdminProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [loading, setLoading] = useState<boolean>(true);
   const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<ProjectTask[]>([]);
-  const [notes, setNotes] = useState<ProjectNote[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [projectNotes, setProjectNotes] = useState<ProjectNote[]>([]);
+  const [projectTasks, setProjectTasks] = useState<ProjectTask[]>([]);
   const [adminNotes, setAdminNotes] = useState<AdminNote[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newAdminNote, setNewAdminNote] = useState("");
-  const [newMessage, setNewMessage] = useState("");
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [newTask, setNewTask] = useState({ title: "", description: "" });
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editedProject, setEditedProject] = useState<Project | null>(null);
+  
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [formData, setFormData] = useState<Partial<Project>>({});
+  const [newAdminNote, setNewAdminNote] = useState<string>('');
+  const [savingNote, setSavingNote] = useState<boolean>(false);
+  const [savingChanges, setSavingChanges] = useState<boolean>(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState<boolean>(false);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('');
+  const [amountPaid, setAmountPaid] = useState<number>(0);
+  const [amountDue, setAmountDue] = useState<number>(0);
   
   useEffect(() => {
     const loadProjectData = async () => {
-      if (!id) return;
-      
       try {
         setLoading(true);
+        if (!id) return;
         
-        const regularProjects = await fetchProjects();
-        const projectRequests = await fetchProjectRequests();
-        
-        const allProjects = [...regularProjects, ...projectRequests];
-        const foundProject = allProjects.find(p => p.id === id);
-        
-        if (!foundProject) {
-          toast.error("Proiectul nu a fost găsit");
-          navigate("/admin/projects");
+        // Fetch project data
+        const fetchedProject = await fetchProjectById(id);
+        if (!fetchedProject) {
+          toast({
+            title: 'Project not found',
+            description: 'The project you are looking for does not exist or you do not have permission to view it.',
+            variant: 'destructive',
+          });
+          navigate('/admin/projects');
           return;
         }
         
-        setProject(foundProject);
+        setProject(fetchedProject);
+        setFormData(fetchedProject);
         
-        if (foundProject) {
-          const projectTasks = await fetchProjectTasks(id);
-          const projectNotes = await fetchProjectNotes(id);
-          const projectMessages = await fetchProjectMessages(id);
-          
-          try {
-            const adminProjectNotes = await fetchAdminNotes(id);
-            setAdminNotes(adminProjectNotes);
-            
-            try {
-              const files = await fetchProjectFiles(id);
-              setProjectFiles(files);
-            } catch (fileError) {
-              console.warn("Project files functionality might not be available:", fileError);
-              setProjectFiles([]);
-            }
-          } catch (error) {
-            console.error("Error fetching admin data:", error);
-          }
-          
-          setTasks(projectTasks);
-          setNotes(projectNotes);
-          setMessages(projectMessages);
+        // Initialize payment values
+        setAmountDue(fetchedProject.price || 0);
+        setAmountPaid(fetchedProject.amountPaid || 0);
+        setSelectedPaymentStatus(fetchedProject.paymentStatus || 'pending');
+        
+        try {
+          // Fetch project notes
+          const notes = await fetchProjectNotes(id);
+          setProjectNotes(notes);
+        } catch (error) {
+          console.error('Error fetching project notes:', error);
         }
+        
+        try {
+          // Fetch project tasks
+          const tasks = await fetchProjectTasks(id);
+          setProjectTasks(tasks);
+        } catch (error) {
+          console.error('Error fetching project tasks:', error);
+        }
+        
+        try {
+          // Fetch admin notes
+          const adminNotesData = await fetchAdminNotes(id);
+          setAdminNotes(adminNotesData);
+        } catch (error) {
+          console.error('Error fetching admin notes:', error);
+        }
+        
+        try {
+          // Fetch project files
+          const files = await fetchProjectFiles(id);
+          setProjectFiles(files);
+        } catch (error) {
+          console.error('Error fetching project files:', error);
+        }
+        
+        setLoading(false);
       } catch (error) {
-        console.error("Error loading project data:", error);
-        toast.error("Eroare la încărcarea datelor proiectului");
-      } finally {
+        console.error('Error loading project data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load project data. Please try again.',
+          variant: 'destructive',
+        });
         setLoading(false);
       }
     };
     
     loadProjectData();
-    
-    if (id) {
-      const channel = supabase
-        .channel('project_messages')
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `project_id=eq.${id}`
-        }, (payload) => {
-          console.log('New message received:', payload);
-          const newMessage = {
-            id: payload.new.id,
-            projectId: payload.new.project_id,
-            content: payload.new.content,
-            createdAt: payload.new.created_at,
-            isAdmin: payload.new.is_admin,
-            userId: payload.new.user_id,
-            attachmentUrl: payload.new.attachment_url,
-            attachmentType: payload.new.attachment_type
-          };
-          
-          setMessages(prevMessages => [...prevMessages, newMessage]);
-        })
-        .subscribe();
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
+  }, [id, navigate, toast]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData({ ...formData, [name]: value });
+  };
+  
+  const handleCheckboxChange = (name: string, checked: boolean) => {
+    setFormData({ ...formData, [name]: checked });
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
-  }, [id, navigate]);
+  };
+  
+  const handleSaveChanges = async () => {
+    try {
+      if (!id || !project) return;
+      
+      setSavingChanges(true);
+      
+      // Update payment related fields
+      const updatedData = {
+        ...formData,
+        paymentStatus: selectedPaymentStatus,
+        amountPaid: amountPaid,
+        price: amountDue + amountPaid, // Total price is amount due + amount paid
+      };
+      
+      // Update project
+      await updateProject(id, updatedData);
+      
+      // Update local state
+      setProject({ ...project, ...updatedData });
+      setEditMode(false);
+      
+      toast({
+        title: 'Success',
+        description: 'Project details have been updated.',
+      });
+      
+      setSavingChanges(false);
+      
+      // Refresh data
+      const updatedProject = await fetchProjectById(id);
+      if (updatedProject) {
+        setProject(updatedProject);
+        setFormData(updatedProject);
+        setAmountDue(updatedProject.price - (updatedProject.amountPaid || 0));
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update project details. Please try again.',
+        variant: 'destructive',
+      });
+      setSavingChanges(false);
+    }
+  };
   
   const handleAddAdminNote = async () => {
-    if (!id || !user || !newAdminNote.trim()) return;
-    
     try {
+      if (!id || !user || !newAdminNote.trim()) return;
+      
+      setSavingNote(true);
+      
+      // Check if this is a project request
+      const isProjectRequest = id.startsWith('request_');
+      
+      // Add admin note
       await addAdminNote(id, newAdminNote, user.id);
       
-      const refreshedNotes = await fetchAdminNotes(id);
-      setAdminNotes(refreshedNotes);
+      // Clear input and refresh notes
+      setNewAdminNote('');
+      const updatedNotes = await fetchAdminNotes(id);
+      setAdminNotes(updatedNotes);
       
-      setNewAdminNote("");
-      toast.success("Notă adăugată cu succes");
+      toast({
+        title: 'Note added',
+        description: 'Your note has been added to the project.',
+      });
+      
+      setSavingNote(false);
     } catch (error) {
-      console.error("Error adding admin note:", error);
-      toast.error("Eroare la adăugarea notei");
+      console.error('Error adding admin note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add note. Please try again.',
+        variant: 'destructive',
+      });
+      setSavingNote(false);
     }
   };
   
-  const handleSendMessage = async () => {
-    if (!id || !user || !newMessage.trim()) return;
-    
+  const handleUploadFile = async () => {
     try {
-      await sendProjectMessage(id, newMessage, user.id, true);
+      if (!id || !selectedFile) return;
       
-      const refreshedMessages = await fetchProjectMessages(id);
-      setMessages(refreshedMessages);
-      
-      setNewMessage("");
-      toast.success("Mesaj trimis cu succes");
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Eroare la trimiterea mesajului");
-    }
-  };
-  
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!id || !user || !event.target.files || event.target.files.length === 0) return;
-    
-    const file = event.target.files[0];
-    
-    try {
       setUploadingFile(true);
       
-      await uploadProjectFile(id, file);
+      // Upload file
+      const uploadedFile = await uploadProjectFile(id, selectedFile);
       
-      const refreshedFiles = await fetchProjectFiles(id);
-      setProjectFiles(refreshedFiles);
+      // Update files list
+      setProjectFiles([...projectFiles, uploadedFile]);
+      setSelectedFile(null);
       
-      toast.success("Fișier încărcat cu succes");
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error("Eroare la încărcarea fișierului");
-    } finally {
+      toast({
+        title: 'File uploaded',
+        description: 'Your file has been uploaded successfully.',
+      });
+      
       setUploadingFile(false);
-      event.target.value = "";
-    }
-  };
-  
-  const handleAddTask = async () => {
-    if (!id || !newTask.title.trim()) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .insert({
-          project_id: id,
-          title: newTask.title,
-          description: newTask.description || null,
-          is_completed: false,
-          created_by: user?.id
-        });
-      
-      if (error) throw error;
-      
-      const refreshedTasks = await fetchProjectTasks(id);
-      setTasks(refreshedTasks);
-      
-      setNewTask({ title: "", description: "" });
-      toast.success("Sarcină adăugată cu succes");
     } catch (error) {
-      console.error("Error adding task:", error);
-      toast.error("Eroare la adăugarea sarcinii");
-    }
-  };
-  
-  const handleToggleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ is_completed: !isCompleted })
-        .eq('id', taskId);
-      
-      if (error) throw error;
-      
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === taskId ? { ...task, isCompleted: !isCompleted } : task
-        )
-      );
-      
-      toast.success("Sarcină actualizată");
-    } catch (error) {
-      console.error("Error toggling task:", error);
-      toast.error("Eroare la actualizarea sarcinii");
-    }
-  };
-  
-  const handleEditProject = () => {
-    if (!project) return;
-    setEditedProject({...project});
-    setShowEditDialog(true);
-  };
-  
-  const handleSaveProjectChanges = async () => {
-    if (!editedProject || !id) return;
-    
-    try {
-      await updateProject(id, editedProject);
-      
-      setProject(editedProject);
-      setShowEditDialog(false);
-      toast.success("Proiect actualizat cu succes");
-    } catch (error) {
-      console.error("Error updating project:", error);
-      toast.error("Eroare la actualizarea proiectului");
+      console.error('Error uploading file:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to upload file. Please try again.',
+        variant: 'destructive',
+      });
+      setUploadingFile(false);
     }
   };
   
   if (loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        <DashboardSidebar isAdmin={true} />
-        <div className="flex-1 p-6 lg:p-10">
-          <div className="text-center py-12">
-            <p>Se încarcă detaliile proiectului...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
   
   if (!project) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <DashboardSidebar isAdmin={true} />
-        <div className="flex-1 p-6 lg:p-10">
-          <div className="text-center py-12">
-            <p>Proiectul nu a fost găsit</p>
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => navigate("/admin/projects")}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Înapoi la proiecte
-            </Button>
-          </div>
+      <div className="container mx-auto py-8">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <p className="text-yellow-700">Project not found or you don't have permission to view it.</p>
         </div>
+        <Button onClick={() => navigate('/admin/projects')}>Back to Projects</Button>
       </div>
     );
   }
   
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <DashboardSidebar isAdmin={true} />
-      <PageTransition>
-        <div className="flex-1 p-6 lg:p-10">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => navigate("/admin/projects")}
-              >
-                <ArrowLeft className="h-4 w-4" />
+    <div className="container mx-auto py-6">
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Project Details</h1>
+        <div className="flex gap-2">
+          {!editMode ? (
+            <Button onClick={() => setEditMode(true)}>
+              <PencilIcon className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setEditMode(false)}>
+                Cancel
               </Button>
-              <div>
-                <h1 className="text-3xl font-bold mb-1">{project.title}</h1>
-                <div className="flex items-center text-gray-500 text-sm">
-                  <span>
-                    Creat la {format(new Date(project.createdAt), "dd MMM yyyy")}
-                  </span>
-                  <span className="mx-2">•</span>
-                  <span className={`
-                    px-2 py-0.5 rounded-full text-xs font-medium
-                    ${project.status === 'completed' ? 'bg-green-100 text-green-800' : ''}
-                    ${project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : ''}
-                    ${project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                    ${project.status === 'cancelled' ? 'bg-red-100 text-red-800' : ''}
-                    ${project.status === 'new' ? 'bg-purple-100 text-purple-800' : ''}
-                  `}>
-                    {project.status === 'completed' && 'Finalizat'}
-                    {project.status === 'in_progress' && 'În progres'}
-                    {project.status === 'pending' && 'În așteptare'}
-                    {project.status === 'cancelled' && 'Anulat'}
-                    {project.status === 'new' && 'Nou'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleEditProject}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Editează
+              <Button onClick={handleSaveChanges} disabled={savingChanges}>
+                {savingChanges ? 'Saving...' : 'Save Changes'}
               </Button>
-            </div>
-          </div>
-          
-          <Tabs defaultValue="details">
-            <TabsList className="mb-8">
-              <TabsTrigger value="details" className="flex items-center gap-1">
-                <FileText className="h-4 w-4" />
-                <span>Detalii</span>
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="flex items-center gap-1">
-                <CheckSquare className="h-4 w-4" />
-                <span>Sarcini</span>
-              </TabsTrigger>
-              <TabsTrigger value="messages" className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" />
-                <span>Mesaje Client</span>
-              </TabsTrigger>
-              <TabsTrigger value="admin-notes" className="flex items-center gap-1">
-                <StickyNote className="h-4 w-4" />
-                <span>Note Admin</span>
-              </TabsTrigger>
-              <TabsTrigger value="admin-files" className="flex items-center gap-1">
-                <FilePlus className="h-4 w-4" />
-                <span>Fișiere Admin</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2">
-                  <ProjectDetailsPanel project={project} loading={false} isAdmin={true} />
-                </div>
-                
-                <div className="lg:col-span-1">
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-lg font-semibold mb-4">Notițe Recente</h3>
-                      {notes.length === 0 ? (
-                        <p className="text-gray-500 text-sm">Nu există notițe încă.</p>
-                      ) : (
-                        <div className="space-y-4">
-                          {notes.slice(0, 3).map(note => (
-                            <div key={note.id} className="bg-gray-50 p-3 rounded-lg">
-                              <p className="text-sm">{note.content}</p>
-                              <p className="text-xs text-gray-500 mt-2">
-                                {format(new Date(note.createdAt), "dd MMM yyyy, HH:mm")}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="tasks">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-6">Sarcini de Proiect</h3>
+            </>
+          )}
+        </div>
+      </div>
+      
+      <Tabs defaultValue="details">
+        <TabsList className="grid grid-cols-6 mb-6">
+          <TabsTrigger value="details">
+            <File className="h-4 w-4 mr-2" />
+            Details
+          </TabsTrigger>
+          <TabsTrigger value="notes">
+            <StickyNote className="h-4 w-4 mr-2" />
+            Notes
+          </TabsTrigger>
+          <TabsTrigger value="admin-notes">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Admin Notes
+          </TabsTrigger>
+          <TabsTrigger value="tasks">
+            <ListTodo className="h-4 w-4 mr-2" />
+            Tasks
+          </TabsTrigger>
+          <TabsTrigger value="files">
+            <Upload className="h-4 w-4 mr-2" />
+            Files
+          </TabsTrigger>
+          <TabsTrigger value="payment">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Payment
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="details">
+          <Card>
+            <CardHeader>
+              <CardTitle>Project Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Title</Label>
+                    {editMode ? (
+                      <Input
+                        id="title"
+                        name="title"
+                        value={formData.title || ''}
+                        onChange={handleInputChange}
+                      />
+                    ) : (
+                      <p className="mt-1 text-lg">{project.title}</p>
+                    )}
+                  </div>
                   
-                  <div className="mb-6">
-                    <div className="flex gap-4 mb-4">
-                      <div className="flex-1">
-                        <Input 
-                          placeholder="Titlu sarcină nouă" 
-                          value={newTask.title}
-                          onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    {editMode ? (
+                      <Select
+                        value={formData.status || 'pending'}
+                        onValueChange={(value) => handleSelectChange('status', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projectStatusOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="mt-1 capitalize">
+                        <span className={`inline-block px-2 py-1 rounded text-xs ${
+                          project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          project.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {project.status === 'in_progress' ? 'In Progress' : 
+                           project.status === 'pending' ? 'Pending' : 
+                           project.status}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="price">Price</Label>
+                    {editMode ? (
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <Input
+                          id="price"
+                          name="price"
+                          type="number"
+                          value={formData.price || 0}
+                          onChange={handleInputChange}
                         />
                       </div>
-                      <Button 
-                        onClick={handleAddTask}
-                        disabled={!newTask.title.trim()}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      >
-                        Adaugă Sarcină
-                      </Button>
-                    </div>
-                    <Textarea 
-                      placeholder="Descriere sarcină (opțional)" 
-                      value={newTask.description}
-                      onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                      className="h-20"
-                    />
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {tasks.length === 0 ? (
-                      <div className="text-center py-8">
-                        <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500">Nu există sarcini încă</p>
-                      </div>
                     ) : (
-                      tasks.map(task => (
-                        <div 
-                          key={task.id} 
-                          className={`p-4 rounded-lg border ${task.isCompleted ? 'bg-gray-50' : 'bg-white'}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div 
-                              className={`flex-shrink-0 w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center ${
-                                task.isCompleted ? 'bg-green-100 border-green-500 text-green-500' : 'border-gray-300'
-                              }`}
-                              onClick={() => handleToggleTaskCompletion(task.id, task.isCompleted)}
-                            >
-                              {task.isCompleted && (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <h4 className={`text-lg font-medium ${task.isCompleted ? 'line-through text-gray-500' : ''}`}>
-                                {task.title}
-                              </h4>
-                              {task.description && (
-                                <p className={`mt-1 text-gray-600 ${task.isCompleted ? 'line-through text-gray-400' : ''}`}>
-                                  {task.description}
-                                </p>
-                              )}
-                              <div className="mt-2 text-xs text-gray-500">
-                                Creat la {format(new Date(task.createdAt), "dd MMM yyyy")}
-                                {task.dueDate && (
-                                  <span className="ml-4">
-                                    Termen: {format(new Date(task.dueDate), "dd MMM yyyy")}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="messages">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-6">Conversație cu Clientul</h3>
-                  
-                  <div className="mb-6 space-y-4 max-h-[400px] overflow-y-auto p-2">
-                    {messages.length === 0 ? (
-                      <div className="text-center py-8">
-                        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500">Nu există mesaje încă</p>
-                      </div>
-                    ) : (
-                      messages.map(message => (
-                        <div 
-                          key={message.id} 
-                          className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div 
-                            className={`
-                              max-w-[80%] rounded-lg p-3
-                              ${message.isAdmin 
-                                ? 'bg-purple-100 text-purple-900' 
-                                : 'bg-gray-100 text-gray-900'}
-                            `}
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              <Avatar className="h-6 w-6">
-                                <AvatarFallback className={message.isAdmin ? 'bg-purple-600 text-white' : 'bg-gray-400 text-white'}>
-                                  {message.isAdmin ? 'A' : 'C'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs font-medium">
-                                {message.isAdmin ? 'Admin' : 'Client'}
-                              </span>
-                            </div>
-                            <p className="text-sm">{message.content}</p>
-                            <p className="text-[10px] text-gray-500 mt-1 text-right">
-                              {format(new Date(message.createdAt), "dd MMM, HH:mm")}
-                            </p>
-                          </div>
-                        </div>
-                      ))
+                      <p className="mt-1 font-semibold">${project.price || 0}</p>
                     )}
                   </div>
                   
-                  <div className="mt-4">
-                    <div className="flex gap-2">
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    {editMode ? (
                       <Textarea
-                        placeholder="Trimite un mesaj clientului..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        className="flex-1"
+                        id="description"
+                        name="description"
+                        value={formData.description || ''}
+                        onChange={handleInputChange}
+                        rows={4}
                       />
-                    </div>
-                    <div className="mt-2 flex justify-end gap-2">
-                      <Button variant="outline" size="sm">
-                        <Paperclip className="h-4 w-4 mr-1" />
-                        Atașează Fișier
-                      </Button>
-                      <Button 
-                        size="sm"
-                        onClick={handleSendMessage}
-                        disabled={!newMessage.trim()}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                      >
-                        Trimite
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="admin-notes">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-6">Note Administrative</h3>
-                  <p className="text-gray-500 text-sm mb-6">
-                    Aceste note sunt vizibile doar pentru administratori
-                  </p>
-                  
-                  <div className="mb-6 space-y-4 max-h-[300px] overflow-y-auto p-2">
-                    {adminNotes.length === 0 ? (
-                      <div className="text-center py-8">
-                        <StickyNote className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500">Nu există note administrative încă</p>
-                      </div>
                     ) : (
-                      adminNotes.map(note => (
-                        <div key={note.id} className="bg-gray-50 p-4 rounded-lg">
-                          <p className="text-sm">{note.content}</p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {format(new Date(note.createdAt), "dd MMM yyyy, HH:mm")}
-                          </p>
-                        </div>
-                      ))
+                      <p className="mt-1 whitespace-pre-wrap">{project.description || 'No description'}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label>Created At</Label>
+                    <p className="mt-1">
+                      {project.createdAt ? format(new Date(project.createdAt), 'PPP') : 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dueDate">Due Date</Label>
+                    {editMode ? (
+                      <Input
+                        id="dueDate"
+                        name="dueDate"
+                        type="date"
+                        value={formData.dueDate ? formData.dueDate.slice(0, 10) : ''}
+                        onChange={handleInputChange}
+                      />
+                    ) : (
+                      <p className="mt-1">
+                        {project.dueDate ? format(new Date(project.dueDate), 'PPP') : 'Not set'}
+                      </p>
                     )}
                   </div>
                   
-                  <div className="mt-4">
-                    <Textarea
-                      placeholder="Adaugă o notă administrativă..."
-                      value={newAdminNote}
-                      onChange={(e) => setNewAdminNote(e.target.value)}
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <Button 
-                        onClick={handleAddAdminNote}
-                        disabled={!newAdminNote.trim()}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600"
-                      >
-                        Adaugă Notă
-                      </Button>
+                  <div className="space-y-2">
+                    <Label>Features</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        {editMode ? (
+                          <Checkbox
+                            id="hasEcommerce"
+                            checked={formData.hasEcommerce || false}
+                            onCheckedChange={(checked) => 
+                              handleCheckboxChange('hasEcommerce', checked as boolean)
+                            }
+                          />
+                        ) : (
+                          <Checkbox id="hasEcommerce" checked={project.hasEcommerce || false} disabled />
+                        )}
+                        <Label htmlFor="hasEcommerce">E-commerce</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {editMode ? (
+                          <Checkbox
+                            id="hasCMS"
+                            checked={formData.hasCMS || false}
+                            onCheckedChange={(checked) => 
+                              handleCheckboxChange('hasCMS', checked as boolean)
+                            }
+                          />
+                        ) : (
+                          <Checkbox id="hasCMS" checked={project.hasCMS || false} disabled />
+                        )}
+                        <Label htmlFor="hasCMS">CMS</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {editMode ? (
+                          <Checkbox
+                            id="hasSEO"
+                            checked={formData.hasSEO || false}
+                            onCheckedChange={(checked) => 
+                              handleCheckboxChange('hasSEO', checked as boolean)
+                            }
+                          />
+                        ) : (
+                          <Checkbox id="hasSEO" checked={project.hasSEO || false} disabled />
+                        )}
+                        <Label htmlFor="hasSEO">SEO</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {editMode ? (
+                          <Checkbox
+                            id="hasMaintenance"
+                            checked={formData.hasMaintenance || false}
+                            onCheckedChange={(checked) => 
+                              handleCheckboxChange('hasMaintenance', checked as boolean)
+                            }
+                          />
+                        ) : (
+                          <Checkbox id="hasMaintenance" checked={project.hasMaintenance || false} disabled />
+                        )}
+                        <Label htmlFor="hasMaintenance">Maintenance</Label>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="admin-files">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-6">Fișiere Administrative</h3>
-                  <p className="text-gray-500 text-sm mb-6">
-                    Aceste fișiere sunt vizibile doar pentru administratori
-                  </p>
                   
-                  <div className="mb-6">
-                    {projectFiles.length === 0 ? (
-                      <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                        <FilePlus className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500">Nu există fișiere administrative încă</p>
+                  <div>
+                    <Label htmlFor="websiteType">Website Type</Label>
+                    {editMode ? (
+                      <Select
+                        value={formData.websiteType || ''}
+                        onValueChange={(value) => handleSelectChange('websiteType', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select website type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="business">Business</SelectItem>
+                          <SelectItem value="ecommerce">E-commerce</SelectItem>
+                          <SelectItem value="blog">Blog</SelectItem>
+                          <SelectItem value="portfolio">Portfolio</SelectItem>
+                          <SelectItem value="informational">Informational</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="mt-1 capitalize">{project.websiteType || 'Not specified'}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="notes">
+          <Card>
+            <CardHeader>
+              <CardTitle>Client Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {projectNotes.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No notes yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {projectNotes.map((note) => (
+                    <div key={note.id} className="p-4 border rounded-lg bg-muted/30">
+                      <p className="whitespace-pre-wrap">{note.content}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(note.createdAt), 'PPp')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="admin-notes">
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6">
+                <Textarea
+                  value={newAdminNote}
+                  onChange={(e) => setNewAdminNote(e.target.value)}
+                  placeholder="Add an admin note..."
+                  className="mb-2"
+                  rows={3}
+                />
+                <Button 
+                  onClick={handleAddAdminNote} 
+                  disabled={!newAdminNote.trim() || savingNote}
+                >
+                  {savingNote ? 'Saving...' : 'Add Note'}
+                </Button>
+              </div>
+              
+              {adminNotes.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No admin notes yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {adminNotes.map((note) => (
+                    <div key={note.id} className="p-4 border rounded-lg bg-blue-50">
+                      <p className="whitespace-pre-wrap">{note.content}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(note.createdAt), 'PPp')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="tasks">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {projectTasks.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No tasks assigned yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {projectTasks.map((task) => (
+                    <div key={task.id} className="flex items-center p-3 border rounded-lg">
+                      <Checkbox
+                        checked={task.isCompleted}
+                        disabled
+                        className="mr-3"
+                      />
+                      <div className="flex-1">
+                        <p className={task.isCompleted ? 'line-through text-muted-foreground' : ''}>
+                          {task.title}
+                        </p>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(task.createdAt), 'MMM d')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="files">
+          <Card>
+            <CardHeader>
+              <CardTitle>Files</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6 border-b pb-6">
+                <div className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="fileUpload" className="mb-2 block">Upload New File</Label>
+                    <Input
+                      id="fileUpload"
+                      type="file"
+                      onChange={handleFileChange}
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleUploadFile} 
+                    disabled={!selectedFile || uploadingFile}
+                  >
+                    {uploadingFile ? 'Uploading...' : 'Upload'}
+                  </Button>
+                </div>
+              </div>
+              
+              {projectFiles.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No files uploaded yet</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {projectFiles.map((file) => (
+                    <div key={file.id} className="flex border rounded-lg p-3 items-center">
+                      <div className="mr-3">
+                        {file.fileType?.includes('image') ? (
+                          <FileImage className="h-10 w-10 text-blue-500" />
+                        ) : file.fileType?.includes('pdf') ? (
+                          <FilePresentationIcon className="h-10 w-10 text-red-500" />
+                        ) : (
+                          <FileIcon className="h-10 w-10 text-gray-500" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{file.filename}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(file.uploadedAt), 'PPp')}
+                        </p>
+                      </div>
+                      <a 
+                        href={file.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        <Button variant="ghost" size="sm">
+                          <FileTextIcon className="h-4 w-4" />
+                          <span className="sr-only">View</span>
+                        </Button>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="payment">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="totalPrice">Total Price</Label>
+                    {editMode ? (
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <Input
+                          id="totalPrice"
+                          name="price"
+                          type="number"
+                          value={formData.price || 0}
+                          onChange={handleInputChange}
+                        />
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {projectFiles.map(file => (
-                          <div key={file.id} className="border rounded-lg p-4">
-                            <div className="flex items-center">
-                              <div className="bg-gray-100 h-10 w-10 rounded flex items-center justify-center mr-3">
-                                <FileText className="h-5 w-5 text-gray-500" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{file.filename}</p>
-                                <p className="text-xs text-gray-500">
-                                  {format(new Date(file.uploadedAt), "dd MMM yyyy")}
-                                </p>
-                              </div>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => window.open(file.filePath, "_blank")}
-                              >
-                                Vizualizează
-                              </Button>
+                      <p className="mt-1 text-xl font-bold">${project.price || 0}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="amountPaid">Amount Paid</Label>
+                    {editMode ? (
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <Input
+                          id="amountPaid"
+                          type="number"
+                          value={amountPaid}
+                          onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-green-600 font-semibold">
+                        ${project.amountPaid || 0}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="amountDue">Amount Due</Label>
+                    <p className="mt-1 text-red-600 font-semibold">
+                      ${(project.price || 0) - (project.amountPaid || 0)}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="paymentStatus">Payment Status</Label>
+                    {editMode ? (
+                      <Select
+                        value={selectedPaymentStatus}
+                        onValueChange={setSelectedPaymentStatus}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select payment status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="partial">Partial</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="mt-1">
+                        <span className={`inline-block px-2 py-1 rounded text-xs ${
+                          project.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                          project.paymentStatus === 'partial' ? 'bg-blue-100 text-blue-800' :
+                          project.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {project.paymentStatus || 'Pending'}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label>Payment History</Label>
+                    {project.paymentHistory && project.paymentHistory.length > 0 ? (
+                      <div className="space-y-2 mt-2">
+                        {project.paymentHistory.map((payment, index) => (
+                          <div key={index} className="text-sm border-b pb-2">
+                            <div className="flex justify-between">
+                              <span>{format(new Date(payment.date), 'PP')}</span>
+                              <span className="font-medium">${payment.amount}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {payment.method}
                             </div>
                           </div>
                         ))}
                       </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-2">No payment history available</p>
                     )}
                   </div>
-                  
-                  <div className="mt-4">
-                    <label className="block w-full">
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                        disabled={uploadingFile}
-                      />
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        disabled={uploadingFile}
-                      >
-                        {uploadingFile ? (
-                          <span>Se încarcă...</span>
-                        ) : (
-                          <>
-                            <FilePlus className="mr-2 h-4 w-4" />
-                            Încarcă un fișier nou
-                          </>
-                        )}
-                      </Button>
-                    </label>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </PageTransition>
-      
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editare Proiect</DialogTitle>
-          </DialogHeader>
-          
-          {editedProject && (
-            <div className="space-y-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Titlu</Label>
-                <Input 
-                  id="title" 
-                  value={editedProject.title}
-                  onChange={e => setEditedProject({...editedProject, title: e.target.value})}
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="description">Descriere</Label>
-                <Textarea 
-                  id="description" 
-                  value={editedProject.description || ''}
-                  onChange={e => setEditedProject({...editedProject, description: e.target.value})}
-                  rows={4}
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <select 
-                  id="status" 
-                  value={editedProject.status}
-                  onChange={e => setEditedProject({...editedProject, status: e.target.value as any})}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="new">Nou</option>
-                  <option value="pending">În așteptare</option>
-                  <option value="in_progress">În progres</option>
-                  <option value="completed">Finalizat</option>
-                  <option value="cancelled">Anulat</option>
-                </select>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="price">Preț (RON)</Label>
-                <Input 
-                  id="price" 
-                  type="number"
-                  value={editedProject.price}
-                  onChange={e => setEditedProject({...editedProject, price: Number(e.target.value)})}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="hasCMS" 
-                    checked={editedProject.hasCMS || false}
-                    onChange={e => setEditedProject({...editedProject, hasCMS: e.target.checked})}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="hasCMS">Include CMS</Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="hasEcommerce" 
-                    checked={editedProject.hasEcommerce || false}
-                    onChange={e => setEditedProject({...editedProject, hasEcommerce: e.target.checked})}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="hasEcommerce">Include Ecommerce</Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="hasSEO" 
-                    checked={editedProject.hasSEO || false}
-                    onChange={e => setEditedProject({...editedProject, hasSEO: e.target.checked})}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="hasSEO">Include SEO</Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="hasMaintenance" 
-                    checked={editedProject.hasMaintenance || false}
-                    onChange={e => setEditedProject({...editedProject, hasMaintenance: e.target.checked})}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="hasMaintenance">Include Mentenanță</Label>
                 </div>
               </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Anulează
-            </Button>
-            <Button onClick={handleSaveProjectChanges} className="bg-gradient-to-r from-purple-600 to-indigo-600">
-              Salvează Modificările
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

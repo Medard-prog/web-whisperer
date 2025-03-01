@@ -1,6 +1,13 @@
-
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
+export type PaymentStatus = "pending" | "partial" | "paid" | "overdue";
+
+export interface PaymentRecord {
+  date: string;
+  amount: number;
+  method: string;
+  reference?: string;
+}
 
 export interface Project {
   id: string;
@@ -15,12 +22,16 @@ export interface Project {
   hasCMS?: boolean;
   hasSEO?: boolean;
   hasMaintenance?: boolean;
-  // Adding missing properties that AdminDashboard.tsx is looking for
+  // Website details
   websiteType?: string;
   pageCount?: number;
   designComplexity?: string;
   exampleUrls?: string[];
   additionalInfo?: string;
+  // Payment details
+  amountPaid?: number;
+  paymentStatus?: PaymentStatus;
+  paymentHistory?: PaymentRecord[];
 }
 
 export interface ProjectTask {
@@ -99,12 +110,16 @@ export function mapProject(data: any): Project {
     hasCMS: data.has_cms,
     hasSEO: data.has_seo,
     hasMaintenance: data.has_maintenance,
-    // Adding mapping for the additional fields
+    // Website details
     websiteType: data.website_type,
     pageCount: data.page_count,
     designComplexity: data.design_complexity,
     exampleUrls: data.example_urls,
-    additionalInfo: data.additional_info
+    additionalInfo: data.additional_info,
+    // Payment details
+    amountPaid: data.amount_paid || 0,
+    paymentStatus: data.payment_status || 'pending',
+    paymentHistory: data.payment_history || []
   };
 }
 
