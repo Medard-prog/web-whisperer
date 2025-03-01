@@ -16,7 +16,7 @@ import ProjectNotesPanel from "@/components/ProjectNotesPanel";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, RefreshCw } from "lucide-react";
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,60 +33,63 @@ const ProjectDetails = () => {
   useEffect(() => {
     if (!id) return;
     
-    const loadProjectData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        console.log("Loading project data for ID:", id);
-        
-        // Load project details
-        const projectData = await fetchProjectById(id);
-        if (!projectData) {
-          throw new Error("Project not found");
-        }
-        setProject(projectData);
-        
-        // Load tasks
-        try {
-          const tasksData = await fetchProjectTasks(id);
-          setTasks(tasksData);
-        } catch (tasksError) {
-          console.error("Error loading tasks:", tasksError);
-          // Don't fail the whole page for tasks
-        }
-        
-        // Load notes
-        try {
-          const notesData = await fetchProjectNotes(id);
-          setNotes(notesData);
-        } catch (notesError) {
-          console.error("Error loading notes:", notesError);
-          // Don't fail the whole page for notes
-        }
-        
-        // Load files
-        try {
-          const filesData = await fetchProjectFiles(id);
-          setFiles(filesData);
-        } catch (filesError) {
-          console.error("Error loading files:", filesError);
-          // Don't fail the whole page for files
-        }
-        
-      } catch (err) {
-        console.error("Error loading project data:", err);
-        setError(err instanceof Error ? err.message : "Failed to load project data");
-        toast.error("Error loading project data", {
-          description: "Please try again later."
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadProjectData();
   }, [id]);
+  
+  const loadProjectData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log("Loading project data for ID:", id);
+      
+      // Load project details
+      const projectData = await fetchProjectById(id!);
+      if (!projectData) {
+        console.error("Project not found for ID:", id);
+        throw new Error("Project not found");
+      }
+      
+      console.log("Project data loaded successfully:", projectData);
+      setProject(projectData);
+      
+      // Load tasks
+      try {
+        const tasksData = await fetchProjectTasks(id!);
+        setTasks(tasksData);
+      } catch (tasksError) {
+        console.error("Error loading tasks:", tasksError);
+        // Don't fail the whole page for tasks
+      }
+      
+      // Load notes
+      try {
+        const notesData = await fetchProjectNotes(id!);
+        setNotes(notesData);
+      } catch (notesError) {
+        console.error("Error loading notes:", notesError);
+        // Don't fail the whole page for notes
+      }
+      
+      // Load files
+      try {
+        const filesData = await fetchProjectFiles(id!);
+        setFiles(filesData);
+      } catch (filesError) {
+        console.error("Error loading files:", filesError);
+        // Don't fail the whole page for files
+      }
+      
+    } catch (err) {
+      console.error("Error loading project data:", err);
+      setError(err instanceof Error ? err.message : "Failed to load project data");
+      toast.error("Error loading project data", {
+        description: "Please try again later."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const handleProjectUpdate = (updatedProject: Project) => {
     setProject(updatedProject);
@@ -131,14 +134,15 @@ const ProjectDetails = () => {
             </div>
             
             {error ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-                <p className="font-medium">Error</p>
-                <p>{error}</p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center text-red-800">
+                <p className="font-medium text-xl mb-2">Error</p>
+                <p className="mb-4">{error}</p>
                 <Button 
                   variant="outline" 
-                  className="mt-2" 
-                  onClick={() => window.location.reload()}
+                  className="mt-2 gap-2" 
+                  onClick={() => loadProjectData()}
                 >
+                  <RefreshCw className="h-4 w-4" />
                   Try Again
                 </Button>
               </div>
