@@ -1,7 +1,7 @@
-
-import { useState } from "react";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";

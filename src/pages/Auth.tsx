@@ -1,335 +1,349 @@
-
-import { useState, useEffect } from 'react';
-import { Navigate, Link, useLocation } from 'react-router-dom';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, Lock, User, Google } from "lucide-react";
+import { toast } from "sonner";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
-import WavyBackground from '@/components/WavyBackground';
-import { AtSign, Eye, EyeOff, Lock, User } from 'lucide-react';
+} from "@/components/ui/form";
 
-// Login form schema
-const loginSchema = z.object({
-  email: z.string().email('Email invalid'),
-  password: z.string().min(6, 'Parola trebuie să aibă minim 6 caractere'),
+const loginFormSchema = z.object({
+  email: z.string().email({
+    message: "Adresa de email trebuie să fie validă.",
+  }),
+  password: z.string().min(8, {
+    message: "Parola trebuie să aibă cel puțin 8 caractere.",
+  }),
 });
 
-// Register form schema 
-const registerSchema = z.object({
-  name: z.string().min(2, 'Numele trebuie să aibă minim 2 caractere'),
-  email: z.string().email('Email invalid'),
-  password: z.string().min(6, 'Parola trebuie să aibă minim 6 caractere'),
-});
+const registerFormSchema = z
+  .object({
+    name: z.string().min(2, {
+      message: "Numele trebuie să aibă cel puțin 2 caractere.",
+    }),
+    email: z.string().email({
+      message: "Adresa de email trebuie să fie validă.",
+    }),
+    password: z.string().min(8, {
+      message: "Parola trebuie să aibă cel puțin 8 caractere.",
+    }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Parolele nu se potrivesc.",
+    path: ["confirmPassword"],
+  });
 
-export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+const Auth = () => {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   const location = useLocation();
-  
-  const loginForm = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
+  const { signIn, signUp } = useAuth();
+
+  const loginForm = useForm<z.infer<typeof loginFormSchema>>({
+    resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
-  const registerForm = useForm<z.infer<typeof registerSchema>>({
-    resolver: zodResolver(registerSchema),
+  const registerForm = useForm<z.infer<typeof registerFormSchema>>({
+    resolver: zodResolver(registerFormSchema),
     defaultValues: {
-      name: '',
-      email: '',
-      password: '',
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
-  // Reset forms when switching between login and register
-  useEffect(() => {
-    loginForm.reset();
-    registerForm.reset();
-    setShowPassword(false);
-  }, [isLogin]);
-
-  const onSubmitLogin = async (values: z.infer<typeof loginSchema>) => {
+  const onSubmitLogin = async (values: z.infer<typeof loginFormSchema>) => {
+    setIsLoading(true);
     try {
-      setIsSubmitting(true);
       await signIn(values.email, values.password);
-      
-      // The redirect will be handled by AuthContext
-    } catch (error) {
-      console.error('Login error:', error);
-      // Error is already handled in the Auth context with toast
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const onSubmitRegister = async (values: z.infer<typeof registerSchema>) => {
-    try {
-      setIsSubmitting(true);
-      await signUp(values.email, values.password, values.name);
-      // Switch to login after registration
-      setIsLogin(true);
-      toast.success('Cont creat cu succes!', {
-        description: 'Te rugăm să verifici emailul pentru a confirma contul.',
+      const from = location.state?.from || "/dashboard";
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      toast({
+        title: "Eroare la autentificare",
+        description: error.message,
+        variant: "destructive",
       });
-    } catch (error) {
-      console.error('Register error:', error);
-      // Error is already handled in the Auth context with toast
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  // Get the path we should redirect to after login
-  const from = location.state?.from?.pathname || '/dashboard';
+  const onSubmitRegister = async (values: z.infer<typeof registerFormSchema>) => {
+    setIsLoading(true);
+    try {
+      await signUp(values.email, values.password, values.name);
+      setMode("login");
+      toast({
+        title: "Cont creat cu succes",
+        description: "Verifică-ți emailul pentru a confirma contul.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Eroare la înregistrare",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Redirect if user is already logged in
-  if (user && !authLoading) {
-    return <Navigate to={from} />;
-  }
+  const resetPassword = () => {
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set("type", "reset-password");
+    navigate(`${location.pathname}?${searchParams.toString()}`);
+  };
+
+  const isResetPassword = location.search.includes("type=reset-password");
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative">
-      <WavyBackground className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/80 via-white/90 to-blue-50/80 backdrop-blur-sm" />
-      </WavyBackground>
-      
-      <div className="max-w-md w-full mx-auto p-6 sm:p-10 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl">
-        <div className="text-center mb-8">
-          <div className="flex justify-center">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white h-12 w-12 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl font-bold">W</span>
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold mb-2">
-            {isLogin ? 'Bine ai revenit!' : 'Creează un cont nou'}
-          </h1>
-          <p className="text-gray-500">
-            {isLogin
-              ? 'Intră în contul tău pentru a-ți gestiona proiectele.'
-              : 'Completează detaliile pentru a crea un cont nou.'}
-          </p>
-        </div>
-
-        <Tabs
-          defaultValue="login"
-          value={isLogin ? 'login' : 'register'}
-          onValueChange={(value) => setIsLogin(value === 'login')}
-          className="w-full"
-        >
-          <TabsList className="grid grid-cols-2 w-full mb-6">
-            <TabsTrigger value="login">Autentificare</TabsTrigger>
-            <TabsTrigger value="register">Înregistrare</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="login">
-            <Form {...loginForm}>
-              <form
-                onSubmit={loginForm.handleSubmit(onSubmitLogin)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={loginForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            placeholder="exemplu@email.com"
-                            className="pl-9"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={loginForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Parolă</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="••••••••"
-                            className="pl-9"
-                            {...field}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-gray-400" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-gray-400" />
-                            )}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end">
-                  <Link
-                    to="/auth/reset-password"
-                    className="text-sm text-purple-600 hover:text-purple-800"
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        className="max-w-md w-full space-y-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="shadow-xl border-none">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">
+              {mode === "login" ? "Autentificare" : "Înregistrare"}
+            </CardTitle>
+            <CardDescription className="text-sm text-gray-500 text-center">
+              {mode === "login"
+                ? "Autentifică-te pentru a accesa contul tău"
+                : "Creează un cont nou"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            {mode === "login" ? (
+              <Form {...loginForm}>
+                <form
+                  onSubmit={loginForm.handleSubmit(onSubmitLogin)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={loginForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm">Email</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="adresa@email.com"
+                              type="email"
+                              className="pl-9"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm">Parola</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Parola"
+                              type="password"
+                              className="pl-9"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                    disabled={isLoading}
                   >
-                    Ai uitat parola?
-                  </Link>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || authLoading}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    {isLoading ? "Se autentifică..." : "Autentificare"}
+                  </Button>
+                </form>
+              </Form>
+            ) : (
+              <Form {...registerForm}>
+                <form
+                  onSubmit={registerForm.handleSubmit(onSubmitRegister)}
+                  className="space-y-4"
                 >
-                  {(isSubmitting || authLoading) ? 'Se procesează...' : 'Intră în cont'}
-                </Button>
-              </form>
-            </Form>
-          </TabsContent>
-
-          <TabsContent value="register">
-            <Form {...registerForm}>
-              <form
-                onSubmit={registerForm.handleSubmit(onSubmitRegister)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={registerForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nume</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            placeholder="Numele tău"
-                            className="pl-9"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            placeholder="exemplu@email.com"
-                            className="pl-9"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Parolă</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="Parolă (minim 6 caractere)"
-                            className="pl-9"
-                            {...field}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-gray-400" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-gray-400" />
-                            )}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || authLoading}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                  <FormField
+                    control={registerForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm">Nume</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Numele tău"
+                              type="text"
+                              className="pl-9"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm">Email</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="adresa@email.com"
+                              type="email"
+                              className="pl-9"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm">Parola</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Parola"
+                              type="password"
+                              className="pl-9"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm">Confirmă parola</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Confirmă parola"
+                              type="password"
+                              className="pl-9"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Se înregistrează..." : "Înregistrare"}
+                  </Button>
+                </form>
+              </Form>
+            )}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Sau
+                </span>
+              </div>
+            </div>
+            <Button variant="outline" disabled>
+              <Google className="mr-2 h-4 w-4" />
+              Google
+            </Button>
+          </CardContent>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            {mode === "login" ? (
+              <>
+                Nu ai un cont?{" "}
+                <Link
+                  to="/auth?mode=register"
+                  className="font-semibold text-purple-600 hover:underline"
+                  onClick={() => setMode("register")}
                 >
-                  {(isSubmitting || authLoading) ? 'Se procesează...' : 'Creează cont'}
-                </Button>
-              </form>
-            </Form>
-          </TabsContent>
-        </Tabs>
-
-        <Separator className="my-6" />
-
-        <div className="text-center text-sm text-gray-500">
-          <p>
-            {isLogin ? 'Nu ai un cont?' : 'Ai deja un cont?'}{' '}
-            <button
-              type="button"
-              className="text-purple-600 hover:text-purple-800 font-medium"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? 'Înregistrează-te' : 'Autentifică-te'}
-            </button>
-          </p>
-        </div>
-      </div>
+                  Înregistrează-te
+                </Link>
+              </>
+            ) : (
+              <>
+                Ai deja un cont?{" "}
+                <Link
+                  to="/auth?mode=login"
+                  className="font-semibold text-purple-600 hover:underline"
+                  onClick={() => setMode("login")}
+                >
+                  Autentifică-te
+                </Link>
+              </>
+            )}
+          </div>
+        </Card>
+        {isResetPassword && (
+          <div className="text-center">
+            <Button variant="link" size="sm" onClick={resetPassword}>
+              Resetează parola
+            </Button>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
-}
+};
+
+export default Auth;

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { supabase, fetchProjectNotes } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectNote, mapProjectNote } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

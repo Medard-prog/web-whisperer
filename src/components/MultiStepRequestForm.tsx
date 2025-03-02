@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm, FormProvider, SubmitHandler } from "react-hook-form";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Check, UserPlus, LogIn } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import StepOne from "./request-form/StepOne";
@@ -294,7 +293,6 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
                 {currentStep === 2 && <StepThree />}
                 {currentStep === 3 && <StepFour />}
               </motion.div>
-            </AnimatePresence>
           </form>
         </CardContent>
         
