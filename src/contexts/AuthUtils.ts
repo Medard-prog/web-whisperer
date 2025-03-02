@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { UserDetails } from './AuthTypes';
 import { toast } from 'sonner';
+import { Session } from '@supabase/supabase-js';
 
 // Helper to fetch user profile data from Supabase
 export async function fetchUserProfile(userId: string): Promise<Partial<UserDetails> | null> {
