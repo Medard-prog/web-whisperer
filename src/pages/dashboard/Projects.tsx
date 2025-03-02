@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, FileText, ExternalLink } from "lucide-react";
-import { format, isValid } from "date-fns";
+import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 
 const statusTranslations: Record<string, { label: string; color: string }> = {
@@ -27,19 +27,6 @@ const Projects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Format date safely
-  const formatDate = (dateString: string | undefined, formatStr: string = 'dd MMMM yyyy') => {
-    if (!dateString) return "N/A";
-    
-    try {
-      const date = new Date(dateString);
-      return isValid(date) ? format(date, formatStr, { locale: ro }) : "Data invalidă";
-    } catch (error) {
-      console.error("Error formatting date:", dateString, error);
-      return "Data invalidă";
-    }
-  };
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -71,9 +58,8 @@ const Projects = () => {
         
         // Sort all projects by creation date
         combinedProjects.sort((a, b) => {
-          // Handle potential invalid dates
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
           return dateB - dateA; // Descending order
         });
         
@@ -157,7 +143,7 @@ const Projects = () => {
                       </Badge>
                     </div>
                     <CardDescription>
-                      {project.createdAt && formatDate(project.createdAt)}
+                      {project.createdAt && format(new Date(project.createdAt), 'dd MMMM yyyy', { locale: ro })}
                     </CardDescription>
                   </CardHeader>
                   
@@ -185,7 +171,7 @@ const Projects = () => {
                         <div>
                           <span className="font-medium">Termen:</span>{" "}
                           <span className="text-gray-600">
-                            {formatDate(project.dueDate, 'dd MMM yyyy')}
+                            {format(new Date(project.dueDate), 'dd MMM yyyy', { locale: ro })}
                           </span>
                         </div>
                       )}

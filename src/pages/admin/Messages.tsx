@@ -1,7 +1,6 @@
 
-// Update import only
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { fetchUsers, fetchProjectMessages } from "@/integrations/supabase/client";
 import { User, Message } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";

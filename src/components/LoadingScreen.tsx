@@ -1,7 +1,6 @@
 
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 
 interface LoadingScreenProps {
   isLoading?: boolean;
@@ -11,7 +10,7 @@ interface LoadingScreenProps {
 
 const LoadingScreen = ({ 
   isLoading = true, 
-  timeout = 5000,
+  timeout = 10000,
   message = "Se încarcă..."
 }: LoadingScreenProps) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
@@ -40,28 +39,8 @@ const LoadingScreen = ({
         <p className="text-muted-foreground">Vă rugăm așteptați</p>
         
         {showTimeoutMessage && (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
-              Încărcarea durează mai mult decât de obicei. Reîmprospătați pagina sau încercați din nou mai târziu.
-            </div>
-            <div className="flex gap-2 justify-center">
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.reload()}
-              >
-                Reîmprospătează pagina
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={() => {
-                  // Clear auth state to be safe
-                  localStorage.removeItem("supabase.auth.token");
-                  window.location.href = "/auth";
-                }}
-              >
-                Mergi la autentificare
-              </Button>
-            </div>
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+            Încărcarea durează mai mult decât de obicei. Reîmprospătați pagina sau încercați din nou mai târziu.
           </div>
         )}
       </div>

@@ -1,9 +1,9 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/auth";
-import { LogOut } from "lucide-react";
-import PageTransition from "@/components/PageTransition";
+
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
+import PageTransition from '@/components/PageTransition';
 
 const Logout = () => {
   const { signOut } = useAuth();
@@ -18,7 +18,6 @@ const Logout = () => {
         console.error('Error during sign out:', error);
         // If there's an error, navigate to home anyway
         navigate('/');
-        toast.error('Eroare la deconectare. Vă mulțumim că ați folosit serviciile noastre. Vă redirecționăm către pagina principală.');
       }
     };
     

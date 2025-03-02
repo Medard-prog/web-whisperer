@@ -3,7 +3,7 @@ import { CalendarIcon, Clock } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Project } from "@/types";
-import { format, isValid } from "date-fns";
+import { format } from "date-fns";
 
 interface ProjectCardProps {
   project: Project;
@@ -27,19 +27,6 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
     new: "Nou"
   };
 
-  // Format date safely
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return "N/A";
-    
-    try {
-      const date = new Date(dateString);
-      return isValid(date) ? format(date, "dd.MM.yyyy") : "Data invalidă";
-    } catch (error) {
-      console.error("Error formatting date:", dateString, error);
-      return "Data invalidă";
-    }
-  };
-
   return (
     <Card 
       className="h-full transition-all hover:shadow-md cursor-pointer"
@@ -58,12 +45,12 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
         <div className="space-y-1">
           <div className="flex items-center text-sm text-gray-500">
             <CalendarIcon className="w-4 h-4 mr-1" />
-            <span>Creat: {formatDate(project.createdAt)}</span>
+            <span>Creat: {format(new Date(project.createdAt), "dd.MM.yyyy")}</span>
           </div>
           {project.dueDate && (
             <div className="flex items-center text-sm text-gray-500">
               <Clock className="w-4 h-4 mr-1" />
-              <span>Termen: {formatDate(project.dueDate)}</span>
+              <span>Termen: {format(new Date(project.dueDate), "dd.MM.yyyy")}</span>
             </div>
           )}
         </div>

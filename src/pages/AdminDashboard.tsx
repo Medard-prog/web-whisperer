@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase, fetchProjects, fetchUsers } from "@/integrations/supabase/client";
 import { Project, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
