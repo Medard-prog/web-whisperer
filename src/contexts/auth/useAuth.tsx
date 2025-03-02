@@ -17,7 +17,7 @@ export const useAuth = () => {
     return {
       user: null,
       session: null,
-      isLoading: false,
+      loading: false,  // Changed from isLoading to loading to match AuthContextType
       isAuthenticated: false,
       isAdmin: false,
       signIn: () => Promise.reject(new Error('Auth provider not available')),
@@ -25,6 +25,7 @@ export const useAuth = () => {
       signOut: () => Promise.reject(new Error('Auth provider not available')),
       updateProfile: () => Promise.reject(new Error('Auth provider not available')),
       resetPassword: () => Promise.reject(new Error('Auth provider not available')),
+      refreshUser: () => Promise.reject(new Error('Auth provider not available')),
     };
   }
   
