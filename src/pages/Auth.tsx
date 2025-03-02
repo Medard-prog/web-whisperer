@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Lock, User, Google } from "lucide-react";
+import { Mail, Lock, User, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import {
   Form,
@@ -78,10 +78,8 @@ const Auth = () => {
       const from = location.state?.from || "/dashboard";
       navigate(from, { replace: true });
     } catch (error: any) {
-      toast({
-        title: "Eroare la autentificare",
-        description: error.message,
-        variant: "destructive",
+      toast.error("Eroare la autentificare", {
+        description: error.message
       });
     } finally {
       setIsLoading(false);
@@ -93,15 +91,12 @@ const Auth = () => {
     try {
       await signUp(values.email, values.password, values.name);
       setMode("login");
-      toast({
-        title: "Cont creat cu succes",
-        description: "Verifică-ți emailul pentru a confirma contul.",
+      toast.success("Cont creat cu succes", {
+        description: "Verifică-ți emailul pentru a confirma contul."
       });
     } catch (error: any) {
-      toast({
-        title: "Eroare la înregistrare",
-        description: error.message,
-        variant: "destructive",
+      toast.error("Eroare la înregistrare", {
+        description: error.message
       });
     } finally {
       setIsLoading(false);
@@ -304,7 +299,7 @@ const Auth = () => {
               </div>
             </div>
             <Button variant="outline" disabled>
-              <Google className="mr-2 h-4 w-4" />
+              <LogIn className="mr-2 h-4 w-4" />
               Google
             </Button>
           </CardContent>
