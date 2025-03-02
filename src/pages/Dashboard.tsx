@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectCard from "@/components/ProjectCard";
@@ -52,9 +53,16 @@ const Dashboard = () => {
         console.error("Error fetching regular projects in Dashboard:", projectsError);
       }
       
-      // Sort by creation date (newest first)
+      // Sort by creation date (newest first) with error handling
       combinedProjects.sort((a, b) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        try {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        } catch (error) {
+          console.error("Error sorting project dates:", error);
+          return 0;
+        }
       });
       
       console.log("Combined projects in Dashboard:", combinedProjects);

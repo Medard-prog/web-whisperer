@@ -1,6 +1,6 @@
 
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import LoadingScreen from "@/components/LoadingScreen";
 import { toast } from "sonner";
 import { useEffect } from "react";

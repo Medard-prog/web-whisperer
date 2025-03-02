@@ -1,8 +1,7 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/auth";
 import RequireAuth from "@/components/RequireAuth";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Index from "@/pages/Index";
@@ -28,7 +27,6 @@ import AdminProjectChat from "@/pages/admin/ProjectChat";
 import { lazy, Suspense, Component, ReactNode } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 
-// Error boundary with proper type definitions
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
@@ -77,19 +75,16 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-// Move the Router outside of the App component to be used in main.tsx
 const AppRoutes = () => {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/request" element={<RequestProject />} />
         
-        {/* Protected user routes */}
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/dashboard/projects" element={<RequireAuth><Projects /></RequireAuth>} />
         <Route path="/dashboard/messages" element={<RequireAuth><Messages /></RequireAuth>} />
@@ -99,7 +94,6 @@ const AppRoutes = () => {
         <Route path="/project/:id" element={<RequireAuth><ProjectDetails /></RequireAuth>} />
         <Route path="/project/:id/chat" element={<RequireAuth><ProjectChat /></RequireAuth>} />
         
-        {/* Admin routes */}
         <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
         <Route path="/admin/projects" element={<RequireAuth adminOnly={true}><AdminProjects /></RequireAuth>} />
         <Route path="/admin/clients" element={<RequireAuth adminOnly={true}><AdminClients /></RequireAuth>} />
@@ -109,7 +103,6 @@ const AppRoutes = () => {
         <Route path="/admin/project/:id" element={<RequireAuth adminOnly={true}><AdminProjectDetails /></RequireAuth>} />
         <Route path="/admin/project/:id/chat" element={<RequireAuth adminOnly={true}><AdminProjectChat /></RequireAuth>} />
         
-        {/* Fallback routes */}
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
