@@ -9,7 +9,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string, metadata?: object) => Promise<any>;
+  signUp: (email: string, password: string, name: string) => Promise<any>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<UserDetails>) => Promise<any>;
   resetPassword: (email: string) => Promise<any>;

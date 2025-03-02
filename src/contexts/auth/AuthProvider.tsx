@@ -27,16 +27,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Set up profile management
   const { refreshUser, updateProfile } = useProfileManagement(user, session, setLoading, setUser);
   
+  // Calculate derived properties
+  const isAuthenticated = !!user;
+  const isAdmin = !!user?.isAdmin;
+  
   return (
     <AuthContext.Provider value={{ 
       session, 
       user, 
       loading, 
+      isAuthenticated,
+      isAdmin,
       signIn,
       signUp,
       signOut, 
       updateProfile,
-      refreshUser 
+      refreshUser,
+      resetPassword: async (email: string) => {
+        // Implement password reset functionality or throw error
+        throw new Error('Password reset not implemented yet');
+      }
     }}>
       {children}
     </AuthContext.Provider>
