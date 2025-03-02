@@ -1,4 +1,3 @@
-
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
@@ -28,31 +27,13 @@ import AdminProjectChat from "@/pages/admin/ProjectChat";
 import { lazy, Suspense, useState, useEffect } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 
-// Standard React error boundary using hooks instead of class component
-const ErrorFallback = ({ error }: { error: Error }) => {
-  return (
-    <div role="alert" className="p-6 bg-red-50 border border-red-200 rounded-md m-4">
-      <h2 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
-      <p className="text-gray-700 mb-3">Error: {error.message}</p>
-      <button
-        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-        onClick={() => window.location.reload()}
-      >
-        Try again
-      </button>
-    </div>
-  );
-};
-
 const App = () => {
   const [error, setError] = useState<Error | null>(null);
   
-  // Setting up error handler at the root level
   useEffect(() => {
     const errorHandler = (event: ErrorEvent) => {
       console.error("Caught error:", event.error);
       setError(event.error);
-      // Prevent default error handling
       event.preventDefault();
     };
     
@@ -64,7 +45,17 @@ const App = () => {
   }, []);
 
   if (error) {
-    return <ErrorFallback error={error} />;
+    return (
+      <div role="alert" className="p-6 text-center">
+        <h2 className="text-lg font-semibold text-red-800 mb-2">Error: {error.message}</h2>
+        <button
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </button>
+      </div>
+    );
   }
 
   return (

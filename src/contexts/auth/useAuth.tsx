@@ -1,11 +1,10 @@
 
 import { useContext } from 'react';
-import AuthContext from './AuthContext';
+import AuthContext, { AuthContextType } from './AuthContext';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   
-  // Make the error more informative and add a fallback
   if (context === undefined) {
     // In development, show a helpful error message
     if (process.env.NODE_ENV !== 'production') {
@@ -17,7 +16,7 @@ export const useAuth = () => {
     return {
       user: null,
       session: null,
-      loading: false,  // Changed from isLoading to loading to match AuthContextType
+      loading: false,
       isAuthenticated: false,
       isAdmin: false,
       signIn: () => Promise.reject(new Error('Auth provider not available')),

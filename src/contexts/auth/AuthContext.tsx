@@ -1,19 +1,22 @@
 
 import { createContext } from 'react';
-import { Session } from '@supabase/supabase-js';
 import { UserDetails } from './types';
 
 export interface AuthContextType {
-  session: Session | null;
   user: UserDetails | null;
+  session: any | null;
   loading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  signIn: (email: string, password: string) => Promise<any>;
+  signUp: (email: string, password: string, metadata?: object) => Promise<any>;
   signOut: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
-  updateProfile: (data: Partial<UserDetails>) => Promise<void>;
-  refreshUser: () => Promise<void>;
+  updateProfile: (data: Partial<UserDetails>) => Promise<any>;
+  resetPassword: (email: string) => Promise<any>;
+  refreshUser: () => Promise<any>;
 }
 
+// Create a context with a default undefined value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export default AuthContext;
