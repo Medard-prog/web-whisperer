@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm, FormProvider, SubmitHandler } from "react-hook-form";
@@ -293,6 +294,7 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
                 {currentStep === 2 && <StepThree />}
                 {currentStep === 3 && <StepFour />}
               </motion.div>
+            </AnimatePresence>
           </form>
         </CardContent>
         
