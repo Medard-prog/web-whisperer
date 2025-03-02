@@ -1,9 +1,9 @@
 
+import { useState, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingScreen from "@/components/LoadingScreen";
 import { toast } from "sonner";
-import { useEffect } from "react";
 
 interface RequireAuthProps {
   children: React.ReactNode;
@@ -11,12 +11,37 @@ interface RequireAuthProps {
 }
 
 const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
-  const { user, loading, session } = useAuth();
+  const { user, loading, session, refreshUser } = useAuth();
   const location = useLocation();
+  const [longLoading, setLongLoading] = useState(false);
+
+  // Set a timer to detect long loading times
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => {
+        setLongLoading(true);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setLongLoading(false);
+    }
+  }, [loading]);
+
+  // Handle retry action
+  const handleRetry = () => {
+    refreshUser();
+    window.location.reload();
+  };
 
   // Show loading screen while checking auth state
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen 
+      isLoading={true} 
+      timeout={5000} 
+      message={longLoading ? "Autentificare în curs..." : "Se încarcă..."}
+      onRetry={longLoading ? handleRetry : undefined}
+    />;
   }
 
   // If no session or user, redirect to login

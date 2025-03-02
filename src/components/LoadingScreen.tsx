@@ -1,17 +1,20 @@
 
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface LoadingScreenProps {
   isLoading?: boolean;
   timeout?: number;
   message?: string;
+  onRetry?: () => void;
 }
 
 const LoadingScreen = ({ 
   isLoading = true, 
   timeout = 10000,
-  message = "Se încarcă..."
+  message = "Se încarcă...",
+  onRetry
 }: LoadingScreenProps) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   
@@ -39,8 +42,20 @@ const LoadingScreen = ({
         <p className="text-muted-foreground">Vă rugăm așteptați</p>
         
         {showTimeoutMessage && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
-            Încărcarea durează mai mult decât de obicei. Reîmprospătați pagina sau încercați din nou mai târziu.
+          <div className="mt-4 space-y-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+              Încărcarea durează mai mult decât de obicei. Reîmprospătați pagina sau încercați din nou mai târziu.
+            </div>
+            
+            {onRetry && (
+              <Button 
+                variant="outline" 
+                onClick={onRetry}
+                className="w-full"
+              >
+                Încearcă din nou
+              </Button>
+            )}
           </div>
         )}
       </div>

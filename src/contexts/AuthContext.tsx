@@ -4,27 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { UserDetails, AuthContextType } from './AuthTypes';
+import { fetchUserProfile, createUserDetails, handleAuthError } from './AuthUtils';
 
-export interface UserDetails {
-  id: string;
-  email: string;
-  name?: string;
-  isAdmin?: boolean;
-  phone?: string;
-  company?: string;
-}
-
-export interface AuthContextType {
-  session: Session | null;
-  user: UserDetails | null;
-  loading: boolean;
-  signOut: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
-  updateProfile: (data: Partial<UserDetails>) => Promise<void>;
-  refreshUser: () => Promise<void>;
-}
-
+// Create context with undefined initial value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -33,7 +16,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Initialize the auth state with the current session
+  // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -52,107 +35,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (session?.user) {
           console.log("Session found, user is logged in:", session.user.id);
-          // Basic user info from session
-          setUser({
+          
+          // Set basic user info
+          const basicUser: UserDetails = {
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
             isAdmin: session.user.user_metadata?.isAdmin || false
-          });
+          };
           
-          // Try to fetch additional profile data, but don't block on errors
+          setUser(basicUser);
+          
+          // Try to fetch additional profile data
           try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (profileError && profileError.code !== 'PGRST116') {
-              console.error('Error fetching profile:', profileError);
-            }
-              
+            const profileData = await fetchUserProfile(session.user.id);
+            
             if (profileData) {
               console.log("Profile data found:", profileData);
-              setUser(prevUser => ({
-                ...prevUser as UserDetails,
-                name: profileData.name || prevUser?.name,
-                isAdmin: profileData.is_admin || prevUser?.isAdmin,
+              setUser(current => ({
+                ...current as UserDetails,
+                name: profileData.name || current?.name,
+                isAdmin: profileData.isAdmin || current?.isAdmin,
                 phone: profileData.phone,
                 company: profileData.company,
               }));
             }
           } catch (error) {
             console.error('Error fetching profile data:', error);
-            // Continue with basic user info even if profile fetch fails
+            // Continue with basic user info
           }
         } else {
           console.log("No session found, user is not logged in");
           setUser(null);
         }
         
-        // Listen for auth changes
-        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
-            console.log('Auth state changed:', event);
-            setSession(newSession);
-            
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-              if (newSession?.user) {
-                console.log("User signed in:", newSession.user.id);
-                
-                // Navigate to dashboard on successful login
-                navigate('/dashboard');
-                
-                // Basic user info from session
-                setUser({
-                  id: newSession.user.id,
-                  email: newSession.user.email || '',
-                  name: newSession.user.user_metadata?.name || newSession.user.email?.split('@')[0] || 'User',
-                  isAdmin: newSession.user.user_metadata?.isAdmin || false
-                });
-                
-                // Try to fetch profile data
-                try {
-                  const { data: profileData, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', newSession.user.id)
-                    .single();
-                    
-                  if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('Error fetching profile:', profileError);
-                  }
-                    
-                  if (profileData) {
-                    console.log("Profile data found on sign in:", profileData);
-                    setUser(prevUser => ({
-                      ...prevUser as UserDetails,
-                      name: profileData.name || prevUser?.name,
-                      isAdmin: profileData.is_admin || prevUser?.isAdmin,
-                      phone: profileData.phone,
-                      company: profileData.company,
-                    }));
-                  }
-                } catch (error) {
-                  console.error('Error updating user data on auth change:', error);
-                  // Continue with basic user info
-                }
-              }
-            } else if (event === 'SIGNED_OUT') {
-              console.log("User signed out");
-              setUser(null);
-              navigate('/auth');
-            }
-          }
-        );
+        // Setup auth state change listener
+        setupAuthListener();
         
         setLoading(false);
-        
-        // Cleanup subscription on unmount
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
         console.error('Error initializing auth:', error);
         setLoading(false);
@@ -160,9 +80,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
     
     initializeAuth();
+    
+    // Cleanup is handled in setupAuthListener
   }, [navigate]);
   
-  // Sign in with email and password
+  // Setup auth state change listener as a separate function
+  const setupAuthListener = async () => {
+    const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        console.log('Auth state changed:', event);
+        setSession(newSession);
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (newSession?.user) {
+            console.log("User signed in:", newSession.user.id);
+            
+            // Navigate to dashboard
+            navigate('/dashboard');
+            
+            // Update user data
+            const profileData = await fetchUserProfile(newSession.user.id);
+            const userData = createUserDetails(newSession, profileData);
+            setUser(userData);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log("User signed out");
+          setUser(null);
+          navigate('/auth');
+        }
+      }
+    );
+    
+    // Return the unsubscribe function
+    return () => {
+      subscription.unsubscribe();
+    };
+  };
+  
+  // Authentication functions
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
@@ -172,10 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) {
-        console.error('Error signing in:', error);
-        toast.error('Eroare la autentificare', {
-          description: error.message
-        });
+        handleAuthError(error, 'autentificare');
         throw error;
       }
 
@@ -188,7 +140,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Sign up with email and password
   const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
@@ -203,10 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) {
-        console.error('Error signing up:', error);
-        toast.error('Eroare la înregistrare', {
-          description: error.message
-        });
+        handleAuthError(error, 'înregistrare');
         throw error;
       }
       
@@ -221,30 +169,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Refresh the user's profile data
   const refreshUser = async () => {
     if (session?.user) {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error refreshing user data:', error);
-          toast.error('Nu s-a putut actualiza profilul');
-          return;
-        }
-          
-        if (data) {
-          console.log("Profile data refreshed:", data);
+        const profileData = await fetchUserProfile(session.user.id);
+        
+        if (profileData) {
           setUser(prevUser => ({
             ...prevUser as UserDetails,
-            name: data.name || prevUser?.name,
-            isAdmin: data.is_admin || prevUser?.isAdmin,
-            phone: data.phone,
-            company: data.company,
+            name: profileData.name || prevUser?.name,
+            isAdmin: profileData.isAdmin || prevUser?.isAdmin,
+            phone: profileData.phone,
+            company: profileData.company,
           }));
         }
       } catch (error) {
@@ -254,7 +190,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Sign out the user
   const signOut = async () => {
     try {
       setLoading(true);
@@ -270,7 +205,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Update the user's profile
   const updateProfile = async (userData: Partial<UserDetails>) => {
     if (!user || !session) {
       throw new Error('User not authenticated');
@@ -278,6 +212,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     try {
       setLoading(true);
+      
       // Update profile in database
       const { error } = await supabase
         .from('profiles')
@@ -307,6 +242,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
+  // Provide context value
   return (
     <AuthContext.Provider value={{ 
       session, 
@@ -323,6 +259,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Export the hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
