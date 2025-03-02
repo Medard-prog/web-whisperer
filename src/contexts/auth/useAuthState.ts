@@ -98,10 +98,12 @@ export function useAuthState() {
           console.log("No session found, user is not logged in");
           setUser(null);
         }
-        
-        setLoading(false);
       } catch (error) {
         console.error('Error initializing auth:', error);
+        // Even in case of error, we should set loading to false to prevent infinite loading
+        setUser(null);
+      } finally {
+        // Make sure loading is always set to false at the end
         setLoading(false);
       }
     };
