@@ -18,6 +18,8 @@ export function useAuthState() {
     isAdmin: boolean | undefined,
     profileData?: ProfileData
   ) => {
+    console.log("Updating user with profile:", { userId, email, name, isAdmin, profileData });
+    
     setUser({
       id: userId,
       email: email || '',
@@ -31,17 +33,25 @@ export function useAuthState() {
   // Fetch profile data from the database
   const fetchProfileData = async (userId: string) => {
     try {
+      console.log("Fetching profile data for user:", userId);
+      
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
         
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
+      if (profileError) {
+        // If profile doesn't exist (PGRST116), that's OK
+        if (profileError.code !== 'PGRST116') {
+          console.error('Error fetching profile:', profileError);
+        } else {
+          console.log("Profile not found for user:", userId);
+        }
         return null;
       }
-        
+      
+      console.log("Profile fetched successfully:", profileData);
       return profileData;
     } catch (error) {
       console.error('Error fetching profile data:', error);
@@ -49,67 +59,23 @@ export function useAuthState() {
     }
   };
 
-  // Initialize auth state
+  // Initialize auth state - no longer needed as useAuthSubscription handles this
+  // This will just provide the interface but not actually fetch anything
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        setLoading(true);
-        
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting session:', sessionError);
-          setLoading(false);
-          return;
-        }
-        
-        setSession(session);
-        
-        if (session?.user) {
-          console.log("Session found, user is logged in:", session.user.id);
-          
-          // Basic user info from session
-          const name = session.user.user_metadata?.name;
-          const isAdmin = session.user.user_metadata?.isAdmin;
-          
-          // Set basic user info first
-          updateUserWithProfile(
-            session.user.id,
-            session.user.email || '',
-            name,
-            isAdmin
-          );
-          
-          // Try to fetch additional profile data
-          const profileData = await fetchProfileData(session.user.id);
-          
-          if (profileData) {
-            console.log("Profile data found:", profileData);
-            updateUserWithProfile(
-              session.user.id,
-              session.user.email || '',
-              name,
-              isAdmin,
-              profileData
-            );
-          }
-        } else {
-          console.log("No session found, user is not logged in");
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        // Even in case of error, we should set loading to false to prevent infinite loading
-        setUser(null);
-      } finally {
-        // Make sure loading is always set to false at the end
+    // Don't do the initialization here, let useAuthSubscription handle it
+    console.log("useAuthState initial setup");
+    
+    // Still set a timeout to force loading to false after a maximum time
+    // This helps prevent infinite loading issues
+    const forceTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn("Force stopping loading state after timeout");
         setLoading(false);
       }
-    };
+    }, 10000);
     
-    initializeAuth();
-  }, []);
+    return () => clearTimeout(forceTimeout);
+  }, [loading]);
 
   return {
     session,

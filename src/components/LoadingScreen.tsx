@@ -53,7 +53,11 @@ const LoadingScreen = ({
               </Button>
               <Button 
                 variant="default" 
-                onClick={() => window.location.href = "/auth"}
+                onClick={() => {
+                  // Clear auth state to be safe
+                  localStorage.removeItem("supabase.auth.token");
+                  window.location.href = "/auth";
+                }}
               >
                 Mergi la autentificare
               </Button>
