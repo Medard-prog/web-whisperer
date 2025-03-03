@@ -39,8 +39,8 @@ const ChatMessage = ({ message, isCurrentUser, userName = 'User' }: ChatMessageP
         
         <div className={`rounded-lg p-3 ${
           isCurrentUser 
-            ? 'bg-green-500 text-white rounded-tr-none' 
-            : 'bg-gray-100 text-gray-800 rounded-tl-none'
+            ? 'bg-brand-600 text-white rounded-tr-none' 
+            : 'bg-white text-gray-800 rounded-tl-none shadow-sm border border-gray-100'
         }`}>
           <div className="space-y-2">
             <p className="text-sm whitespace-pre-line">{message.content}</p>
