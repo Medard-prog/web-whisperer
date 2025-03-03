@@ -39,9 +39,10 @@ const AdminProjects = () => {
         setIsLoading(true);
         
         // Fetch both projects and project requests
+        // Pass undefined as userId to fetch all project requests for admin
         const [projectsData, requestsData] = await Promise.all([
           fetchProjects(),
-          fetchProjectRequests()
+          fetchProjectRequests(undefined)
         ]);
         
         // Format project requests to match Project structure for display

@@ -48,13 +48,18 @@ export const fetchUsers = async () => {
   }
 };
 
-export const fetchProjectRequests = async (userId: string) => {
+export const fetchProjectRequests = async (userId?: string) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('project_requests')
       .select('*')
-      .eq('user_id', userId)
       .order('created_at', { ascending: false });
+    
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching project requests:", error);
