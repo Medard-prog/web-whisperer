@@ -44,6 +44,10 @@ const formSchema = z.object({
   hasSeo: z.boolean().optional(),
   hasMaintenance: z.boolean().optional(),
   price: z.number().optional(),
+  
+  // Additional fields for project submission
+  exampleUrls: z.array(z.string()).optional(),
+  additionalInfo: z.string().optional(),
 });
 
 export type RequestFormValues = z.infer<typeof formSchema>;
