@@ -278,20 +278,61 @@ export const updateProject = async (id: string, projectData: Partial<Project>) =
 
 export const updateProjectStatus = async (projectId: string, status: string) => {
   try {
-    const { data, error } = await supabase
-      .from('projects')
-      .update({ status: status })
+    // First check if this is a project request or regular project
+    const { data: projectRequest, error: checkError } = await supabase
+      .from('project_requests')
+      .select('id, status')
       .eq('id', projectId)
-      .select('*')
       .single();
-
-    if (error) {
-      console.error("Error updating project status:", error);
-      toast.error(`Failed to update project status: ${error.message}`);
+      
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error("Error checking project type:", checkError);
+      toast.error(`Failed to update project status: ${checkError.message}`);
       return null;
     }
+    
+    // If it's a project request being moved from 'new' or 'pending' to another status
+    if (projectRequest && (projectRequest.status === 'new' || projectRequest.status === 'pending') && 
+        (status !== 'new' && status !== 'pending')) {
+      
+      // Import the transition function only when needed
+      const { transitionProjectToActive } = await import('./projectTransition');
+      return await transitionProjectToActive(projectId, status);
+    }
+    
+    // Otherwise just update the status in the appropriate table
+    if (projectRequest) {
+      const { data, error } = await supabase
+        .from('project_requests')
+        .update({ status: status })
+        .eq('id', projectId)
+        .select('*')
+        .single();
 
-    return data;
+      if (error) {
+        console.error("Error updating project request status:", error);
+        toast.error(`Failed to update project status: ${error.message}`);
+        return null;
+      }
+      
+      return data;
+    } else {
+      // Regular project update
+      const { data, error } = await supabase
+        .from('projects')
+        .update({ status: status })
+        .eq('id', projectId)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error("Error updating project status:", error);
+        toast.error(`Failed to update project status: ${error.message}`);
+        return null;
+      }
+
+      return data;
+    }
   } catch (error: any) {
     toast.error(`Failed to update project status: ${error.message}`);
     return null;

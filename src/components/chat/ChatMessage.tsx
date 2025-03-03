@@ -22,23 +22,25 @@ const ChatMessage = ({ message, isCurrentUser, userName = 'User' }: ChatMessageP
   return (
     <div className={`flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
       {!isCurrentUser && (
-        <Avatar className="h-9 w-9 mr-2 mt-1">
-          <AvatarImage src={message.isAdmin ? "/lovable-uploads/2f905194-2593-457d-8702-354488b73410.png" : "/placeholder.svg"} />
-          <AvatarFallback className={message.isAdmin ? "bg-purple-600 text-white" : "bg-blue-600 text-white"}>
-            {message.isAdmin ? 'A' : userName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <div className="flex flex-col items-center mr-2">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={message.isAdmin ? "/lovable-uploads/2f905194-2593-457d-8702-354488b73410.png" : "/placeholder.svg"} />
+            <AvatarFallback className={message.isAdmin ? "bg-purple-600 text-white" : "bg-blue-600 text-white"}>
+              {message.isAdmin ? 'A' : userName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
       )}
       
-      <div className={`max-w-[75%] ${isCurrentUser ? 'order-1' : 'order-2'} flex flex-col`}>
+      <div className={`max-w-[75%] flex flex-col`}>
         <span className={`text-xs text-gray-500 mb-1 ${isCurrentUser ? 'text-right' : 'text-left'}`}>
-          {isCurrentUser ? 'You' : (message.isAdmin ? 'Admin' : userName)} • {formattedTime}
+          {isCurrentUser ? 'You' : (message.isAdmin ? 'Admin' : userName)}
         </span>
         
         <div className={`rounded-lg p-3 ${
           isCurrentUser 
-            ? 'bg-primary text-primary-foreground ml-auto rounded-tr-none' 
-            : 'bg-muted mr-auto rounded-tl-none'
+            ? 'bg-green-500 text-white rounded-tr-none' 
+            : 'bg-gray-100 text-gray-800 rounded-tl-none'
         }`}>
           <div className="space-y-2">
             <p className="text-sm whitespace-pre-line">{message.content}</p>
@@ -83,15 +85,21 @@ const ChatMessage = ({ message, isCurrentUser, userName = 'User' }: ChatMessageP
               </div>
             )}
           </div>
+          <span className="text-xs opacity-70 block text-right mt-1">
+            {formattedTime}
+          </span>
         </div>
       </div>
       
       {isCurrentUser && (
-        <Avatar className="h-9 w-9 ml-2 mt-1">
-          <AvatarFallback className="bg-blue-600 text-white">
-            {userName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <div className="flex flex-col items-center ml-2">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src="/placeholder.svg" />
+            <AvatarFallback className="bg-blue-600 text-white">
+              {userName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
       )}
     </div>
   );

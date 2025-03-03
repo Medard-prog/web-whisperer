@@ -235,7 +235,7 @@ const ProjectChat = () => {
                 <CardContent className="p-0">
                   <div 
                     ref={messagesContainerRef}
-                    className="h-[500px] overflow-y-auto p-4 space-y-2 bg-background/80"
+                    className="h-[500px] overflow-y-auto p-4 space-y-4 bg-[#efe5de]"
                   >
                     {messages.length === 0 ? (
                       <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
