@@ -17,22 +17,23 @@ import {
 import { format } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProjectNote } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectNotesPanelProps {
   projectId: string;
+  userId?: string;
+  onNoteAdded?: (note: ProjectNote) => void;
 }
 
-const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
+const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanelProps) => {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [activeTab, setActiveTab] = useState('all');
-  const { user } = useAuth();
   
   useEffect(() => {
     if (projectId) {
@@ -64,16 +65,17 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
       setNotes(formattedNotes);
     } catch (error: any) {
       console.error('Error fetching notes:', error);
+      toast.error('Failed to load project notes');
     } finally {
       setLoading(false);
     }
   };
   
   const addNote = async () => {
-    if (!noteContent.trim()) return;
+    if (!noteContent.trim() || !userId) return;
     
     try {
-      setIsAddingNote(true);
+      setIsSaving(true);
       
       const { data, error } = await supabase
         .from('project_notes')
@@ -81,7 +83,7 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
           project_id: projectId,
           content: noteContent,
           is_admin_only: isPrivate,
-          created_by: user?.id
+          created_by: userId
         }])
         .select()
         .single();
@@ -103,10 +105,16 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
       setNoteContent('');
       setIsPrivate(false);
       toast.success('Note added successfully');
+      
+      if (onNoteAdded) {
+        onNoteAdded(newNote);
+      }
+      
     } catch (error: any) {
       console.error('Error adding note:', error);
-      toast.error(isPrivate ? 'Nu s-a putut adăuga notița privată. Încercați din nou.' : 'Failed to add note. Please try again.');
+      toast.error('Failed to add note. Please try again.');
     } finally {
+      setIsSaving(false);
       setIsAddingNote(false);
     }
   };
@@ -118,7 +126,7 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
       : notes.filter(note => note.isAdminOnly);
   
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center">
@@ -163,9 +171,9 @@ const ProjectNotesPanel = ({ projectId }: ProjectNotesPanelProps) => {
               <Button 
                 size="sm" 
                 onClick={addNote} 
-                disabled={!noteContent.trim() || isAddingNote}
+                disabled={!noteContent.trim() || isSaving || !userId}
               >
-                {isAddingNote ? (
+                {isSaving ? (
                   <>
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     Saving...

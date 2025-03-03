@@ -91,6 +91,14 @@ const AdminProjectDetails = () => {
     }
   };
   
+  const handleNoteAdded = (newNote: ProjectNote) => {
+    if (notes) {
+      setNotes([newNote, ...notes]);
+    } else {
+      setNotes([newNote]);
+    }
+  };
+  
   return (
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar isAdmin={true} />
@@ -136,25 +144,31 @@ const AdminProjectDetails = () => {
                   onProjectUpdate={handleProjectUpdate}
                 />
                 
-                {/* Chat button */}
-                <div className="flex">
-                  <Button 
-                    onClick={handleChatNav}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 w-full"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Project Chat
-                  </Button>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-6">
+                    <ProjectTasksPanel 
+                      projectId={id || ''} 
+                      tasks={tasks} 
+                      loading={loading} 
+                      isAdmin={true}
+                    />
+                    
+                    {/* Chat button */}
+                    <Button 
+                      onClick={handleChatNav}
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Project Chat
+                    </Button>
+                  </div>
+                  
+                  <ProjectNotesPanel 
+                    projectId={id || ''} 
+                    userId={user?.id}
+                    onNoteAdded={handleNoteAdded}
+                  />
                 </div>
-                
-                <ProjectTasksPanel 
-                  projectId={id || ''} 
-                  tasks={tasks} 
-                  loading={loading} 
-                  isAdmin={true}
-                />
-                
-                <ProjectNotesPanel projectId={id || ''} />
               </div>
             )}
           </div>
