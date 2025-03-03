@@ -205,9 +205,10 @@ export const updatePaymentStatus = async (projectId: string, status: string) => 
 
 export const fetchProjectMessages = async (projectId: string) => {
   try {
+    // Use the messages table directly without attempting to join with profiles
     const { data, error } = await supabase
-      .from('project_messages')
-      .select('*, user:profiles(id, email, profile_data)')
+      .from('messages')
+      .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
 
@@ -217,7 +218,8 @@ export const fetchProjectMessages = async (projectId: string) => {
       return [];
     }
 
-    return data || [];
+    // Map the data to our Message type
+    return (data || []).map(message => mapMessage(message));
   } catch (error: any) {
     toast.error(`Failed to fetch project messages: ${error.message}`);
     return [];

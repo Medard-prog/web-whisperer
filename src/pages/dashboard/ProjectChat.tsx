@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +16,7 @@ import {
 } from '@/integrations/supabase/client';
 import { Project, Message } from '@/types';
 import { toast } from 'sonner';
-import { FileIcon, PaperclipIcon, SendIcon, ArrowLeft } from 'lucide-react';
+import { FileIcon, PaperclipIcon, SendIcon, ArrowLeft, Loader2 } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import DashboardSidebar from '@/components/DashboardSidebar';
 
@@ -30,7 +31,6 @@ const ProjectChat = () => {
   const [sending, setSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -59,6 +59,11 @@ const ProjectChat = () => {
       console.log("Fetching project details for:", id);
       // Get project details
       const projectData = await fetchProjectById(id!);
+      if (!projectData) {
+        toast.error("Project not found");
+        navigate("/dashboard/projects");
+        return;
+      }
       setProject(projectData);
       
       console.log("Fetching messages for project:", id);
@@ -86,22 +91,24 @@ const ProjectChat = () => {
       }, payload => {
         console.log('Real-time message received:', payload);
         
-        // Add the new message to the chat
+        // Add the new message to the chat if it's not from the current user
+        // This prevents duplicate messages when the user sends a message
         const newMessage = payload.new as any;
-        
-        // Create a properly formatted message object
-        const formattedMessage: Message = {
-          id: newMessage.id,
-          projectId: newMessage.project_id,
-          content: newMessage.content,
-          createdAt: newMessage.created_at,
-          isAdmin: newMessage.is_admin,
-          userId: newMessage.user_id,
-          attachmentUrl: newMessage.attachment_url,
-          attachmentType: newMessage.attachment_type
-        };
-        
-        setMessages(prev => [...prev, formattedMessage]);
+        if (newMessage.user_id !== user?.id) {
+          // Create a properly formatted message object
+          const formattedMessage: Message = {
+            id: newMessage.id,
+            projectId: newMessage.project_id,
+            content: newMessage.content,
+            createdAt: newMessage.created_at,
+            isAdmin: newMessage.is_admin,
+            userId: newMessage.user_id,
+            attachmentUrl: newMessage.attachment_url,
+            attachmentType: newMessage.attachment_type
+          };
+          
+          setMessages(prev => [...prev, formattedMessage]);
+        }
       })
       .subscribe((status) => {
         console.log(`Subscription status:`, status);
@@ -150,6 +157,7 @@ const ProjectChat = () => {
       
       setNewMessage('');
       setSelectedFile(null);
+      scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -158,41 +166,12 @@ const ProjectChat = () => {
     }
   };
   
-  const handleFileUpload = async (file: File) => {
-    if (!file || !project?.id || !user?.id) return;
-    
-    try {
-      setUploading(true);
-      setUploadProgress(30);
-      
-      const fileData = await uploadFile(file, project.id, user.id);
-      
-      setUploadProgress(90);
-      
-      if (fileData) {
-        // Add the new message to the UI immediately without waiting for realtime
-        const sentMessage = await sendProjectMessage(
-          id!,
-          'Shared a file',
-          user.id,
-          false, // Not admin
-          fileData.url || '',
-          file.type || ''
-        );
-        
-        if (sentMessage) {
-          setMessages(prev => [...prev, sentMessage]);
-        }
-      }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error('Failed to upload file');
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
+  const formatMessageTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
+           ' ' + date.toLocaleDateString([], { day: 'numeric', month: 'short' });
   };
-  
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar />
@@ -203,126 +182,212 @@ const ProjectChat = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(`/project/${id}`)}
+                onClick={() => navigate(`/dashboard/project/${id}`)}
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Înapoi la Proiect
+                Back to Project
               </Button>
               <h1 className="text-xl font-bold">
-                {project ? `Chat: ${project.title}` : 'Încărcare...'}
+                {project ? `Chat: ${project.title}` : 'Loading...'}
               </h1>
             </div>
             
-            <Card className="mb-6">
-              <CardHeader className="pb-3">
-                <CardTitle>Mesaje Proiect</CardTitle>
+            <Card className="mb-6 border-0 shadow-lg">
+              <CardHeader className="pb-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-lg">
+                <CardTitle className="text-white">Project Messages</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col h-[65vh]">
-                  <ScrollArea className="flex-1 p-4 mb-4">
-                    <div className="space-y-4">
-                      {loading ? (
-                        <div className="text-center text-gray-500 py-4">
-                          Se încarcă mesajele...
-                        </div>
-                      ) : messages.length === 0 ? (
-                        <div className="text-center text-gray-500 py-4">
-                          Nu există mesaje. Începe conversația!
-                        </div>
-                      ) : (
-                        messages.map((message) => (
-                          <div 
-                            key={message.id} 
-                            className={`flex ${message.userId === user?.id ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div 
-                              className={`max-w-[80%] p-3 rounded-lg ${
-                                message.userId === user?.id 
-                                  ? 'bg-primary/10 text-primary-foreground' 
-                                  : 'bg-muted'
-                              }`}
-                            >
-                              <div className="flex items-center space-x-2 mb-1">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarFallback>
-                                    {message.isAdmin ? 'A' : 'C'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-xs font-medium">
-                                  {message.isAdmin ? 'Admin' : 'You'}
-                                </span>
-                              </div>
-                              
-                              <p>{message.content}</p>
-                              
-                              {message.attachmentUrl && (
-                                <a 
-                                  href={message.attachmentUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className="flex items-center mt-2 text-blue-600 hover:underline"
-                                >
-                                  <FileIcon className="h-4 w-4 mr-1" />
-                                  View Attachment
-                                </a>
-                              )}
-                              
-                              <div className="text-xs text-gray-500 mt-1">
-                                {new Date(message.createdAt).toLocaleString()}
-                              </div>
+              <CardContent className="p-0">
+                <div className="flex flex-col h-[70vh]">
+                  {loading ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-gray-500">Loading messages...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ScrollArea className="flex-1 p-4">
+                      <div className="space-y-6">
+                        {messages.length === 0 ? (
+                          <div className="text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            <div className="flex flex-col items-center gap-2">
+                              <MessageSquareIcon className="h-8 w-8 text-gray-400" />
+                              <h3 className="text-lg font-medium text-gray-700">No messages yet</h3>
+                              <p className="text-sm text-gray-500">
+                                Start the conversation by sending a message below.
+                              </p>
                             </div>
                           </div>
-                        ))
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </ScrollArea>
-                  
-                  <form onSubmit={handleSendMessage} className="mt-auto">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <Textarea
-                          placeholder="Type your message here..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          className="min-h-[80px]"
-                        />
-                        
-                        {selectedFile && (
-                          <div className="mt-2 text-sm text-gray-600 flex items-center">
-                            <FileIcon className="h-4 w-4 mr-1" />
-                            <span className="truncate">{selectedFile.name}</span>
-                          </div>
+                        ) : (
+                          messages.map((message) => (
+                            <MessageBubble 
+                              key={message.id} 
+                              message={message} 
+                              isCurrentUser={message.userId === user?.id}
+                              formatTime={formatMessageTime}
+                            />
+                          ))
                         )}
+                        <div ref={messagesEndRef} />
                       </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        <label className="cursor-pointer p-2 border rounded hover:bg-gray-100">
-                          <input
-                            type="file"
-                            className="hidden"
-                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    </ScrollArea>
+                  )}
+                  
+                  <div className="border-t p-4 bg-white rounded-b-lg">
+                    <form onSubmit={handleSendMessage} className="mt-auto">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 bg-gray-50 rounded-lg p-1">
+                          <Textarea
+                            placeholder="Type your message here..."
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            className="border-0 bg-transparent min-h-[60px] focus-visible:ring-0 resize-none"
                           />
-                          <PaperclipIcon className="h-5 w-5" />
-                        </label>
+                          
+                          {selectedFile && (
+                            <div className="mt-2 text-sm text-gray-600 flex items-center p-2 bg-white rounded-md">
+                              <FileIcon className="h-4 w-4 mr-1 text-blue-500" />
+                              <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="ml-2 h-5 w-5" 
+                                onClick={() => setSelectedFile(null)}
+                              >
+                                <XIcon className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                         
-                        <Button 
-                          type="submit" 
-                          size="icon"
-                          disabled={sending || (!newMessage.trim() && !selectedFile)}
-                        >
-                          <SendIcon className="h-5 w-5" />
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <label className="cursor-pointer p-2 border rounded-full bg-white hover:bg-gray-50 transition-colors">
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                            />
+                            <PaperclipIcon className="h-5 w-5 text-gray-600" />
+                          </label>
+                          
+                          <Button 
+                            type="submit" 
+                            size="icon"
+                            className="rounded-full bg-primary hover:bg-primary/90"
+                            disabled={sending || (!newMessage.trim() && !selectedFile)}
+                          >
+                            {sending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <SendIcon className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </PageTransition>
+    </div>
+  );
+};
+
+// Add these missing components
+const MessageSquareIcon = ({ className }: { className?: string }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+};
+
+const XIcon = ({ className }: { className?: string }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+};
+
+interface MessageBubbleProps {
+  message: Message;
+  isCurrentUser: boolean;
+  formatTime: (timestamp: string) => string;
+}
+
+const MessageBubble = ({ message, isCurrentUser, formatTime }: MessageBubbleProps) => {
+  return (
+    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`
+        max-w-[80%] 
+        rounded-2xl 
+        ${isCurrentUser 
+          ? 'bg-primary text-primary-foreground rounded-tr-none' 
+          : 'bg-gray-100 text-gray-800 rounded-tl-none'}
+        shadow-sm
+      `}>
+        <div className="p-4">
+          <div className="flex items-center space-x-2 mb-1">
+            <Avatar className={`h-6 w-6 ${isCurrentUser ? 'bg-white text-primary' : 'bg-gray-300 text-gray-700'}`}>
+              <AvatarFallback>
+                {message.isAdmin ? 'A' : isCurrentUser ? 'Y' : 'C'}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs font-medium">
+              {message.isAdmin ? 'Admin' : isCurrentUser ? 'You' : 'Client'}
+            </span>
+          </div>
+          
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          
+          {message.attachmentUrl && (
+            <div className="mt-3 bg-white/20 p-2 rounded">
+              <a 
+                href={message.attachmentUrl} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={`
+                  flex items-center 
+                  text-sm font-medium 
+                  ${isCurrentUser ? 'text-white hover:text-white/90' : 'text-blue-600 hover:text-blue-700'}
+                  hover:underline
+                `}
+              >
+                <FileIcon className="h-4 w-4 mr-2" />
+                View Attachment
+              </a>
+            </div>
+          )}
+          
+          <div className={`text-xs mt-2 ${isCurrentUser ? 'text-white/70' : 'text-gray-500'}`}>
+            {formatTime(message.createdAt)}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
