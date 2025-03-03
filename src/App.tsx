@@ -25,57 +25,8 @@ import AdminReports from "@/pages/admin/Reports";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminProjectDetails from "@/pages/admin/ProjectDetails";
 import AdminProjectChat from "@/pages/admin/ProjectChat";
-import { lazy, Suspense, Component, ReactNode } from "react";
+import { lazy, Suspense } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
-
-// Error boundary with proper type definitions
-interface ErrorBoundaryProps {
-  children: ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-}
-
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("Error caught by error boundary:", error, errorInfo);
-  }
-
-  render(): ReactNode {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
-            <p className="text-gray-600 mb-4">We're sorry, but an error occurred while rendering the application.</p>
-            <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto mb-4">
-              {this.state.error?.toString()}
-            </pre>
-            <button
-              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-              onClick={() => window.location.href = '/'}
-            >
-              Back to Home
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 // Move the Router outside of the App component to be used in main.tsx
 const AppRoutes = () => {
@@ -131,11 +82,9 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </ErrorBoundary>
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 };
 

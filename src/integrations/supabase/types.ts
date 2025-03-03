@@ -17,8 +17,9 @@ export type Database = {
           created_at: string | null
           id: string
           is_admin: boolean | null
-          project_id: string | null
-          user_id: string | null
+          project_id: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
           attachment_type?: string | null
@@ -27,8 +28,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_admin?: boolean | null
-          project_id?: string | null
-          user_id?: string | null
+          project_id: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
           attachment_type?: string | null
@@ -37,8 +39,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_admin?: boolean | null
-          project_id?: string | null
-          user_id?: string | null
+          project_id?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -72,6 +75,39 @@ export type Database = {
           name?: string | null
           phone?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      project_messages: {
+        Row: {
+          attachment_type: string | null
+          attachment_url: string | null
+          content: string
+          created_at: string | null
+          id: string
+          is_admin: boolean | null
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          project_id?: string
+          user_id?: string
         }
         Relationships: []
       }

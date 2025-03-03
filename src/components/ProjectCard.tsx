@@ -27,6 +27,21 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
     new: "Nou"
   };
 
+  // Safely format a date with fallback
+  const formatSafeDate = (dateStr: string) => {
+    try {
+      // Check if dateStr is valid by creating a date and checking if it's valid
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return "Data necunoscută";
+      }
+      return format(date, "dd.MM.yyyy");
+    } catch (error) {
+      console.error("Error formatting date:", dateStr, error);
+      return "Data necunoscută";
+    }
+  };
+
   return (
     <Card 
       className="h-full transition-all hover:shadow-md cursor-pointer"
@@ -45,12 +60,12 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
         <div className="space-y-1">
           <div className="flex items-center text-sm text-gray-500">
             <CalendarIcon className="w-4 h-4 mr-1" />
-            <span>Creat: {format(new Date(project.createdAt), "dd.MM.yyyy")}</span>
+            <span>Creat: {project.createdAt ? formatSafeDate(project.createdAt) : "Data necunoscută"}</span>
           </div>
           {project.dueDate && (
             <div className="flex items-center text-sm text-gray-500">
               <Clock className="w-4 h-4 mr-1" />
-              <span>Termen: {format(new Date(project.dueDate), "dd.MM.yyyy")}</span>
+              <span>Termen: {formatSafeDate(project.dueDate)}</span>
             </div>
           )}
         </div>
