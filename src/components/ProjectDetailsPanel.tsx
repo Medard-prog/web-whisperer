@@ -10,12 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Project } from "@/types";
+import { Project, PaymentStatus } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { updateProject } from "@/integrations/supabase/client";
 import { Calendar, Clock, DollarSign, Edit, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProjectDetailsPanelProps {
   project: Project | null;
@@ -44,6 +45,25 @@ const statusMap = {
   new: {
     label: "Nou",
     color: "bg-purple-100 text-purple-800 border-purple-200"
+  },
+};
+
+const paymentStatusMap = {
+  pending: {
+    label: "În așteptare",
+    color: "bg-yellow-100 text-yellow-800"
+  },
+  partial: {
+    label: "Parțial",
+    color: "bg-blue-100 text-blue-800"
+  },
+  paid: {
+    label: "Plătit",
+    color: "bg-green-100 text-green-800"
+  },
+  overdue: {
+    label: "Întârziat",
+    color: "bg-red-100 text-red-800"
   },
 };
 
@@ -87,6 +107,9 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
   }
 
   const status = statusMap[project.status as keyof typeof statusMap] || statusMap.pending;
+  const paymentStatus = project.paymentStatus ? 
+    (paymentStatusMap[project.paymentStatus as keyof typeof paymentStatusMap] || paymentStatusMap.pending) : 
+    paymentStatusMap.pending;
   
   const handleEditClick = () => {
     setEditedProject({...project});
@@ -140,9 +163,15 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
             <div className="flex items-center flex-wrap gap-2">
               <CardTitle className="text-2xl">{project.title}</CardTitle>
               <Badge className={`ml-2 ${status.color}`}>{status.label}</Badge>
+              {project.paymentStatus && (
+                <Badge className={`ml-2 ${paymentStatus.color}`}>{paymentStatus.label}</Badge>
+              )}
             </div>
             <CardDescription className="mt-1.5">
               Creat la {formatDate(project.createdAt)}
+              {project.dueDate && (
+                <span className="ml-2 text-muted-foreground">• Termen: {formatDate(project.dueDate)}</span>
+              )}
             </CardDescription>
           </div>
           {isAdmin && (
@@ -154,120 +183,162 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
             </div>
           )}
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Status cards with improved design */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {/* Due Date Card */}
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3">
-                <div className="flex items-center text-white">
-                  <Calendar className="h-5 w-5 mr-2" />
-                  <h3 className="font-medium">Data finalizare</h3>
+        <CardContent>
+          {/* Redesigned space-y-6 div */}
+          <div className="space-y-6">
+            {/* Project summary with responsive cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Project Details Card */}
+              <Card className="overflow-hidden border shadow-sm hover:shadow transition-shadow bg-gradient-to-br from-white to-purple-50">
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3">
+                  <div className="flex items-center text-white">
+                    <FileText className="h-5 w-5 mr-2" />
+                    <h3 className="font-medium">Detalii Proiect</h3>
+                  </div>
                 </div>
-              </div>
-              <CardContent className="p-4">
-                <p className="text-lg font-semibold">
-                  {project.dueDate ? formatDate(project.dueDate) : "Nespecificată"}
-                </p>
-              </CardContent>
-            </Card>
-            
-            {/* Status Card */}
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
-              <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-3">
-                <div className="flex items-center text-white">
-                  <Clock className="h-5 w-5 mr-2" />
-                  <h3 className="font-medium">Stadiu</h3>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-500">Tip Website</p>
+                      <p className="font-medium">{project.websiteType || "Nespecificat"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Număr Pagini</p>
+                      <p className="font-medium">{project.pageCount || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Complexitate</p>
+                      <p className="font-medium">{project.designComplexity || "Standard"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Status Card */}
+              <Card className="overflow-hidden border shadow-sm hover:shadow transition-shadow bg-gradient-to-br from-white to-indigo-50">
+                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-3">
+                  <div className="flex items-center text-white">
+                    <Clock className="h-5 w-5 mr-2" />
+                    <h3 className="font-medium">Stadiu Proiect</h3>
+                  </div>
                 </div>
-              </div>
-              <CardContent className="p-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold">
-                      {getCompletionPercentage(project.status)}%
-                    </span>
-                    {project.status === 'completed' && (
-                      <Badge className="bg-green-100 text-green-800">
-                        <Check className="h-3 w-3 mr-1" /> Finalizat
-                      </Badge>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-semibold">
+                        {getCompletionPercentage(project.status)}%
+                      </span>
+                      {project.status === 'completed' && (
+                        <Badge className="bg-green-100 text-green-800">
+                          <Check className="h-3 w-3 mr-1" /> Finalizat
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-indigo-500 rounded-full" 
+                        style={{ 
+                          width: `${getCompletionPercentage(project.status)}%`,
+                          transition: 'width 0.5s ease-in-out'
+                        }}
+                      ></div>
+                    </div>
+                    {project.dueDate && (
+                      <div className="pt-1">
+                        <div className="flex items-center text-sm">
+                          <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+                          <span>Termen: {formatDate(project.dueDate)}</span>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-indigo-500 rounded-full" 
-                      style={{ 
-                        width: `${getCompletionPercentage(project.status)}%`,
-                        transition: 'width 0.5s ease-in-out'
-                      }}
-                    ></div>
+                </CardContent>
+              </Card>
+              
+              {/* Price Card */}
+              <Card className="overflow-hidden border shadow-sm hover:shadow transition-shadow bg-gradient-to-br from-white to-green-50">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 p-3">
+                  <div className="flex items-center text-white">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    <h3 className="font-medium">Detalii Financiare</h3>
                   </div>
                 </div>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-500">Preț Total</p>
+                      <p className="text-lg font-semibold">{project.price.toLocaleString()} RON</p>
+                    </div>
+                    {typeof project.amountPaid === 'number' && (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-500">Plătit</p>
+                          <p className="font-medium">{project.amountPaid.toLocaleString()} RON</p>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-green-500 rounded-full" 
+                            style={{ 
+                              width: `${project.price > 0 ? (project.amountPaid / project.price) * 100 : 0}%`,
+                              transition: 'width 0.5s ease-in-out'
+                            }}
+                          ></div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Description Card */}
+            <Card className="border shadow-sm hover:shadow transition-shadow">
+              <CardHeader className="pb-2 bg-gray-50">
+                <CardTitle className="text-lg flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-gray-500" />
+                  Descriere proiect
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className={expandDescription ? "" : "max-h-32 overflow-hidden relative"}>
+                  <p className="text-gray-700 whitespace-pre-line">
+                    {project.description || "Nu există o descriere pentru acest proiect."}
+                  </p>
+                  {!expandDescription && project.description && project.description.length > 200 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent"></div>
+                  )}
+                </div>
+                {project.description && project.description.length > 200 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setExpandDescription(!expandDescription)}
+                    className="mt-2"
+                  >
+                    {expandDescription ? "Afișează mai puțin" : "Afișează mai mult"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
             
-            {/* Price Card */}
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
-              <div className="bg-gradient-to-r from-green-500 to-green-600 p-3">
-                <div className="flex items-center text-white">
-                  <DollarSign className="h-5 w-5 mr-2" />
-                  <h3 className="font-medium">Preț</h3>
-                </div>
-              </div>
-              <CardContent className="p-4">
-                <p className="text-lg font-semibold">
-                  {project.price.toLocaleString()} RON
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Description Card */}
-          <Card className="overflow-hidden border-0 shadow-sm hover:shadow transition-shadow">
-            <CardHeader className="pb-2 bg-gray-50">
-              <CardTitle className="text-lg flex items-center">
-                <FileText className="h-5 w-5 mr-2 text-gray-500" />
-                Descriere proiect
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className={expandDescription ? "" : "max-h-32 overflow-hidden relative"}>
-                <p className="text-gray-700 whitespace-pre-line">
-                  {project.description}
-                </p>
-                {!expandDescription && project.description && project.description.length > 200 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent"></div>
+            {/* Project Features */}
+            {(project.hasCMS || project.hasEcommerce || project.hasSEO || project.hasMaintenance) && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {project.hasCMS && (
+                  <Badge variant="outline" className="py-2 px-3 justify-center">CMS</Badge>
+                )}
+                {project.hasEcommerce && (
+                  <Badge variant="outline" className="py-2 px-3 justify-center">E-commerce</Badge>
+                )}
+                {project.hasSEO && (
+                  <Badge variant="outline" className="py-2 px-3 justify-center">SEO</Badge>
+                )}
+                {project.hasMaintenance && (
+                  <Badge variant="outline" className="py-2 px-3 justify-center">Mentenanță</Badge>
                 )}
               </div>
-              {project.description && project.description.length > 200 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setExpandDescription(!expandDescription)}
-                  className="mt-2"
-                >
-                  {expandDescription ? "Afișează mai puțin" : "Afișează mai mult"}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Project Features */}
-          {(project.hasCMS || project.hasEcommerce || project.hasSEO || project.hasMaintenance) && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {project.hasCMS && (
-                <Badge variant="outline" className="py-2 px-3 justify-center">CMS</Badge>
-              )}
-              {project.hasEcommerce && (
-                <Badge variant="outline" className="py-2 px-3 justify-center">E-commerce</Badge>
-              )}
-              {project.hasSEO && (
-                <Badge variant="outline" className="py-2 px-3 justify-center">SEO</Badge>
-              )}
-              {project.hasMaintenance && (
-                <Badge variant="outline" className="py-2 px-3 justify-center">Mentenanță</Badge>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
       
@@ -298,44 +369,79 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                 />
               </div>
               
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <select 
-                  id="status" 
-                  value={editedProject.status}
-                  onChange={e => setEditedProject({...editedProject, status: e.target.value as any})}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="new">Nou</option>
-                  <option value="pending">În așteptare</option>
-                  <option value="in_progress">În progres</option>
-                  <option value="completed">Finalizat</option>
-                  <option value="cancelled">Anulat</option>
-                </select>
-                
-                <div className="mt-2">
-                  <p className="text-sm text-gray-500 mb-1">Procentaj finalizare: {getCompletionPercentage(editedProject.status)}%</p>
-                  <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
-                    <div 
-                      className="h-full bg-indigo-500" 
-                      style={{ width: `${getCompletionPercentage(editedProject.status)}%` }}
-                    ></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="status">Status Proiect</Label>
+                  <Select
+                    value={editedProject.status}
+                    onValueChange={value => setEditedProject({...editedProject, status: value as any})}
+                  >
+                    <SelectTrigger id="status">
+                      <SelectValue placeholder="Selectează status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">Nou</SelectItem>
+                      <SelectItem value="pending">În așteptare</SelectItem>
+                      <SelectItem value="in_progress">În progres</SelectItem>
+                      <SelectItem value="completed">Finalizat</SelectItem>
+                      <SelectItem value="cancelled">Anulat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500 mb-1">Procentaj finalizare: {getCompletionPercentage(editedProject.status)}%</p>
+                    <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
+                      <div 
+                        className="h-full bg-indigo-500" 
+                        style={{ width: `${getCompletionPercentage(editedProject.status)}%` }}
+                      ></div>
+                    </div>
                   </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="paymentStatus">Status Plată</Label>
+                  <Select
+                    value={editedProject.paymentStatus || 'pending'}
+                    onValueChange={value => setEditedProject({...editedProject, paymentStatus: value as PaymentStatus})}
+                  >
+                    <SelectTrigger id="paymentStatus">
+                      <SelectValue placeholder="Selectează status plată" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">În așteptare</SelectItem>
+                      <SelectItem value="partial">Parțial</SelectItem>
+                      <SelectItem value="paid">Plătit</SelectItem>
+                      <SelectItem value="overdue">Întârziat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="price">Preț (RON)</Label>
+                  <Input 
+                    id="price" 
+                    type="number"
+                    value={editedProject.price}
+                    onChange={e => setEditedProject({...editedProject, price: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="amountPaid">Sumă Plătită (RON)</Label>
+                  <Input 
+                    id="amountPaid" 
+                    type="number"
+                    value={editedProject.amountPaid || 0}
+                    onChange={e => setEditedProject({...editedProject, amountPaid: Number(e.target.value)})}
+                  />
                 </div>
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="price">Preț (RON)</Label>
-                <Input 
-                  id="price" 
-                  type="number"
-                  value={editedProject.price}
-                  onChange={e => setEditedProject({...editedProject, price: Number(e.target.value)})}
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="dueDate">Data finalizare</Label>
+                <Label htmlFor="dueDate">Data Finalizare</Label>
                 <Input 
                   id="dueDate" 
                   type="date"
