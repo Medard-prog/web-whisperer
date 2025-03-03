@@ -33,13 +33,13 @@ const Projects = () => {
       if (!user) return;
       
       try {
-        console.log("Fetching projects for user:", user.id);
+        console.log("Dashboard: Fetching projects for user:", user.id);
         setIsLoading(true);
         setError(null);
         
-        // Fetch all projects (both regular and requests) for the user
+        // Fetch all projects for the user
         const userProjects = await fetchProjects(user.id);
-        console.log("Projects fetched:", userProjects);
+        console.log("Dashboard: Projects fetched:", userProjects);
         
         // Sort all projects by creation date
         userProjects.sort((a, b) => {

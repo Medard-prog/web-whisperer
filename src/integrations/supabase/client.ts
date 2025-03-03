@@ -77,10 +77,11 @@ export const fetchProjectRequests = async (userId?: string) => {
 
 export const fetchProjects = async (userId?: string) => {
   try {
+    console.log("Fetching projects, userId:", userId);
+    
     let query = supabase
       .from('projects')
       .select('*')
-      .eq('type', 'project')
       .order('created_at', { ascending: false });
     
     if (userId) {
@@ -95,6 +96,7 @@ export const fetchProjects = async (userId?: string) => {
       return [];
     }
 
+    console.log("Projects data from DB:", data);
     return data.map(mapProject) as Project[];
   } catch (error: any) {
     toast.error(`Failed to fetch projects: ${error.message}`);
@@ -505,4 +507,27 @@ export const sendSupportMessage = async (userId: string, message: string) => {
     toast.error(`Failed to send support message: ${error.message}`);
     return null;
   }
+};
+
+export const mapProject = (project: any): Project => {
+  return {
+    id: project.id,
+    title: project.title || project.project_name || '',
+    description: project.description || '',
+    status: project.status || 'pending',
+    websiteType: project.website_type || project.project_type || '',
+    pageCount: project.page_count || 0,
+    price: project.price || 0,
+    createdAt: project.created_at,
+    userId: project.user_id,
+    hasEcommerce: project.has_ecommerce || false,
+    hasCMS: project.has_cms || false,
+    hasSEO: project.has_seo || false,
+    hasMaintenance: project.has_maintenance || false,
+    designComplexity: project.design_complexity || 'standard',
+    paymentStatus: project.payment_status || 'pending',
+    amountPaid: project.amount_paid || 0,
+    dueDate: project.due_date,
+    type: project.type || 'project'
+  };
 };

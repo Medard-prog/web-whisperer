@@ -87,34 +87,35 @@ const RequestProject = () => {
     try {
       console.log("Starting submission with data:", formData);
       
-      // Map our form data to match the Supabase project_requests table structure
+      // Map our form data to match the Supabase projects table structure
       const requestData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        company: formData.company,
-        project_name: formData.projectName,
-        project_type: formData.projectType,
+        title: formData.projectName,
         description: formData.description,
-        budget: formData.budget || "medium",
-        timeline: formData.deadline ? "custom" : "2-3 months", // Set default or use custom timeline
-        communication_preference: "email", // Default communication preference
-        user_id: user?.id,
+        website_type: formData.projectType,
         status: 'new',
-        // Map the additional fields that were just added to the database
+        user_id: user?.id,
+        type: 'request',
+        // Map the additional fields
         design_complexity: formData.designComplexity || "standard",
         has_cms: formData.hasCms || false,
         has_ecommerce: formData.hasEcommerce || false,
         has_seo: formData.hasSeo || false,
         has_maintenance: formData.hasMaintenance || false,
         page_count: formData.pageCount || 5,
-        price: formData.price || 0
+        price: formData.price || 0,
+        // Client info
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        budget: formData.budget || "medium",
+        timeline: formData.deadline ? "custom" : "2-3 months"
       };
       
-      console.log("Prepared request data:", requestData);
+      console.log("Prepared project data:", requestData);
       
       const { data, error } = await supabase
-        .from('project_requests')
+        .from('projects')
         .insert([requestData]);
         
       if (error) {
