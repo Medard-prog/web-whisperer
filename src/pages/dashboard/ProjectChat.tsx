@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,7 +27,6 @@ const ProjectChat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load project and messages data
   useEffect(() => {
     if (!id || !user) return;
     
@@ -37,7 +35,6 @@ const ProjectChat = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch project data
         const projectData = await fetchProjectById(id);
         if (!projectData) {
           setError("Project not found");
@@ -46,7 +43,6 @@ const ProjectChat = () => {
         }
         setProject(projectData);
         
-        // Fetch project messages
         try {
           const messagesData = await fetchProjectMessages(id);
           setMessages(messagesData);
@@ -65,7 +61,6 @@ const ProjectChat = () => {
     
     loadProjectData();
     
-    // Set up real-time subscription for new messages
     const subscription = supabase
       .channel('messages')
       .on('postgres_changes', { 
@@ -74,15 +69,12 @@ const ProjectChat = () => {
         table: 'messages',
         filter: `project_id=eq.${id}`
       }, (payload) => {
-        // Check if message already exists to prevent duplicates
         const newMessage = payload.new as any;
         setMessages((current) => {
-          // Don't add if we already have this message
           if (current.some(msg => msg.id === newMessage.id)) {
             return current;
           }
           
-          // Transform to our Message type
           const formattedMessage: Message = {
             id: newMessage.id,
             projectId: newMessage.project_id,
@@ -104,7 +96,6 @@ const ProjectChat = () => {
     };
   }, [id, user]);
   
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -120,7 +111,6 @@ const ProjectChat = () => {
       let attachmentUrl = '';
       let attachmentType = '';
       
-      // Upload file if provided
       if (file) {
         const fileData = await uploadFile(file, id, user.id);
         if (fileData) {
@@ -129,7 +119,6 @@ const ProjectChat = () => {
         }
       }
       
-      // Create a local copy of the message for immediate display
       const tempMessage: Message = {
         id: `temp-${Date.now()}`,
         projectId: id,
@@ -141,10 +130,8 @@ const ProjectChat = () => {
         attachmentType
       };
       
-      // Add the message to state immediately for responsive UX
       setMessages(prevMessages => [...prevMessages, tempMessage]);
       
-      // Send message to the server
       const message = await sendProjectMessage(
         id,
         content,
@@ -153,8 +140,6 @@ const ProjectChat = () => {
         attachmentUrl,
         attachmentType
       );
-      
-      // The real-time subscription will handle adding the actual message
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast.error(`Failed to send message: ${err.message}`);

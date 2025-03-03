@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -151,7 +150,6 @@ const AdminProjectChat = () => {
         }
       }
       
-      // Create a local copy of the message for immediate display
       const tempMessage: Message = {
         id: `temp-${Date.now()}`,
         projectId: id,
@@ -163,10 +161,8 @@ const AdminProjectChat = () => {
         attachmentType
       };
       
-      // Add the message to state immediately for responsive UX
       setMessages(prevMessages => [...prevMessages, tempMessage]);
       
-      // Send message to server
       const message = await sendProjectMessage(
         id,
         content,
@@ -175,8 +171,6 @@ const AdminProjectChat = () => {
         attachmentUrl,
         attachmentType
       );
-      
-      // The real-time subscription will handle adding the actual message
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast.error(`Failed to send message: ${err.message}`);

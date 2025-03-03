@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Message } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileIcon, ImageIcon, Paperclip } from 'lucide-react';
