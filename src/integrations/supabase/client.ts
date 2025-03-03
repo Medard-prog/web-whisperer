@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProjectFile, mapProject } from '@/types';
@@ -205,12 +206,10 @@ export const updatePaymentStatus = async (projectId: string, status: string) => 
 
 export const fetchProjectMessages = async (projectId: string) => {
   try {
-    // Use the messages table directly without attempting to join with profiles
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
+    // Use our custom SQL function to fetch messages
+    const { data, error } = await supabase.rpc('fetch_messages', { 
+      p_project_id: projectId 
+    });
 
     if (error) {
       console.error("Error fetching project messages:", error);
@@ -218,9 +217,21 @@ export const fetchProjectMessages = async (projectId: string) => {
       return [];
     }
 
+    console.log("Messages fetched:", data);
+    
     // Map the data to our Message type
-    return (data || []).map(message => mapMessage(message));
+    return (data || []).map(msg => ({
+      id: msg.id,
+      projectId: msg.project_id,
+      content: msg.content,
+      createdAt: msg.created_at,
+      isAdmin: msg.is_admin,
+      userId: msg.user_id,
+      attachmentUrl: msg.attachment_url,
+      attachmentType: msg.attachment_type
+    } as Message));
   } catch (error: any) {
+    console.error("Error in fetchProjectMessages:", error);
     toast.error(`Failed to fetch project messages: ${error.message}`);
     return [];
   }

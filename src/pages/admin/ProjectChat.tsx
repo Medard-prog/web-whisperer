@@ -1,101 +1,112 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Message, User } from '@/types';
 import { 
   fetchProjectById, 
   fetchProjectMessages, 
+  fetchUsers,
   sendProjectMessage, 
-  uploadFile,
   supabase 
 } from '@/integrations/supabase/client';
-import { Project, Message } from '@/types';
+import { 
+  Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter 
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  AlertCircle, 
+  ArrowLeft, 
+  MessagesSquare,
+  UserIcon
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { FileIcon, PaperclipIcon, SendIcon, ArrowLeft, Loader2 } from 'lucide-react';
-import PageTransition from '@/components/PageTransition';
-import DashboardSidebar from '@/components/DashboardSidebar';
+import ChatMessage from '@/components/chat/ChatMessage';
+import ChatInput from '@/components/chat/ChatInput';
 
 const AdminProjectChat = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [project, setProject] = useState<Project | null>(null);
+  
+  const [project, setProject] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [projectOwner, setProjectOwner] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [newMessage, setNewMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load project, messages, and users data
   useEffect(() => {
-    if (id && user) {
-      loadProjectData();
-      
-      // Set up real-time subscription for new messages
-      const subscription = setupMessageSubscription();
-      
-      return () => {
-        if (subscription) {
-          subscription.unsubscribe();
+    if (!id || !user) return;
+    
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch project data
+        const projectData = await fetchProjectById(id);
+        if (!projectData) {
+          setError("Project not found");
+          setLoading(false);
+          return;
         }
-      };
-    }
-  }, [id, user]);
-  
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-  
-  const loadProjectData = async () => {
-    try {
-      setLoading(true);
-      
-      console.log("Admin: Fetching project details for:", id);
-      // Get project details
-      const projectData = await fetchProjectById(id!);
-      if (!projectData) {
-        toast.error("Project not found");
-        navigate("/admin/projects");
-        return;
+        setProject(projectData);
+        
+        // Fetch all users to get project owner's name
+        const usersData = await fetchUsers();
+        setUsers(usersData);
+        
+        if (projectData.userId) {
+          const owner = usersData.find(u => u.id === projectData.userId);
+          setProjectOwner(owner || null);
+        }
+        
+        // Fetch project messages
+        try {
+          const messagesData = await fetchProjectMessages(id);
+          setMessages(messagesData);
+        } catch (err: any) {
+          console.error("Error fetching project messages:", err);
+          setError(`Could not load messages: ${err.message}`);
+          setMessages([]);
+        }
+      } catch (err: any) {
+        console.error("Error loading project data:", err);
+        setError(`Failed to load project data: ${err.message}`);
+      } finally {
+        setLoading(false);
       }
-      setProject(projectData);
-      
-      console.log("Admin: Fetching messages for project:", id);
-      // Get project messages
-      const projectMessages = await fetchProjectMessages(id!);
-      console.log("Admin: Messages fetched:", projectMessages);
-      setMessages(projectMessages);
-    } catch (error) {
-      console.error('Error loading project chat data:', error);
-      toast.error('Failed to load chat data');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const setupMessageSubscription = () => {
-    console.log("Admin: Setting up realtime subscription for project messages");
+    };
+    
+    loadData();
+    
+    // Set up real-time subscription for new messages
     const subscription = supabase
-      .channel(`admin-messages-${id}`)
+      .channel('admin-messages')
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'messages',
-        filter: `project_id=eq.${id}` 
-      }, payload => {
-        console.log('Admin: Real-time message received:', payload);
-        
-        // Add the new message to the chat if it's not from the current user
-        // This prevents duplicate messages when the admin sends a message
+        filter: `project_id=eq.${id}`
+      }, (payload) => {
+        // Check if message already exists to prevent duplicates
         const newMessage = payload.new as any;
-        if (newMessage.user_id !== user?.id) {
-          // Create a properly formatted message object
+        setMessages((current) => {
+          // Don't add if we already have this message
+          if (current.some(msg => msg.id === newMessage.id)) {
+            return current;
+          }
+          
+          // Transform to our Message type
           const formattedMessage: Message = {
             id: newMessage.id,
             projectId: newMessage.project_id,
@@ -107,287 +118,245 @@ const AdminProjectChat = () => {
             attachmentType: newMessage.attachment_type
           };
           
-          setMessages(prev => [...prev, formattedMessage]);
-        }
+          return [...current, formattedMessage];
+        });
       })
-      .subscribe((status) => {
-        console.log(`Admin: Subscription status:`, status);
-      });
+      .subscribe();
       
-    return subscription;
-  };
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [id, user]);
   
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-  
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if ((!newMessage.trim() && !selectedFile) || !user?.id) {
-      return;
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
+  }, [messages]);
+  
+  const handleSendMessage = async (content: string, file?: File) => {
+    if (!id || !user || (!content.trim() && !file)) return;
     
     try {
-      setSending(true);
-      console.log("Admin: Sending message for project:", id);
+      setSendingMessage(true);
       
       let attachmentUrl = '';
+      let attachmentType = '';
       
-      if (selectedFile) {
-        const fileData = await uploadFile(selectedFile, id!, user.id);
+      // Upload file if provided
+      if (file) {
+        const fileData = await uploadFile(file, id, user.id);
         if (fileData) {
           attachmentUrl = fileData.url || '';
+          attachmentType = file.type;
         }
       }
       
-      const sentMessage = await sendProjectMessage(
-        id!,
-        newMessage.trim() || 'Shared a file',
+      // Send message as admin
+      const message = await sendProjectMessage(
+        id,
+        content,
         user.id,
-        true, // Admin
+        true, // isAdmin = true
         attachmentUrl,
-        selectedFile?.type || ''
+        attachmentType
       );
       
-      // Add the new message to the UI immediately without waiting for realtime
-      if (sentMessage) {
-        setMessages(prev => [...prev, sentMessage]);
+      if (message) {
+        // No need to update messages state, the subscription will handle it
+        toast.success("Message sent");
       }
-      
-      setNewMessage('');
-      setSelectedFile(null);
-      scrollToBottom();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+    } catch (err: any) {
+      console.error("Error sending message:", err);
+      toast.error(`Failed to send message: ${err.message}`);
     } finally {
-      setSending(false);
+      setSendingMessage(false);
     }
   };
   
-  const formatMessageTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
-           ' ' + date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  const uploadFile = async (file: File, projectId: string, userId: string) => {
+    try {
+      const fileName = `${Date.now()}_${file.name}`;
+      const filePath = `projects/${projectId}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('project_files')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('project_files')
+        .getPublicUrl(filePath);
+        
+      return {
+        url: urlData.publicUrl,
+        path: filePath,
+        type: file.type
+      };
+    } catch (err: any) {
+      console.error("Error uploading file:", err);
+      toast.error(`Failed to upload file: ${err.message}`);
+      return null;
+    }
   };
-
-  return (
-    <div className="flex min-h-screen bg-gray-50">
-      <DashboardSidebar isAdmin={true} />
-      <PageTransition>
-        <div className="flex-1 p-4 md:p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-4 flex justify-between items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/admin/project/${id}`)}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Project
-              </Button>
-              <h1 className="text-xl font-bold">
-                {project ? `Chat: ${project.title} (Admin)` : 'Loading...'}
-              </h1>
-            </div>
-            
-            <Card className="mb-6 border-0 shadow-lg">
-              <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
-                <CardTitle className="text-white">Project Messages (Admin View)</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="flex flex-col h-[70vh]">
-                  {loading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-sm text-gray-500">Loading messages...</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <ScrollArea className="flex-1 p-4">
-                      <div className="space-y-6">
-                        {messages.length === 0 ? (
-                          <div className="text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            <div className="flex flex-col items-center gap-2">
-                              <MessageSquareIcon className="h-8 w-8 text-gray-400" />
-                              <h3 className="text-lg font-medium text-gray-700">No messages yet</h3>
-                              <p className="text-sm text-gray-500">
-                                Start the conversation by sending a message below.
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          messages.map((message) => (
-                            <MessageBubble 
-                              key={message.id} 
-                              message={message} 
-                              isCurrentUser={message.isAdmin}
-                              formatTime={formatMessageTime}
-                            />
-                          ))
-                        )}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    </ScrollArea>
-                  )}
-                  
-                  <div className="border-t p-4 bg-white rounded-b-lg">
-                    <form onSubmit={handleSendMessage} className="mt-auto">
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 bg-gray-50 rounded-lg p-1">
-                          <Textarea
-                            placeholder="Type your message here..."
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            className="border-0 bg-transparent min-h-[60px] focus-visible:ring-0 resize-none"
-                          />
-                          
-                          {selectedFile && (
-                            <div className="mt-2 text-sm text-gray-600 flex items-center p-2 bg-white rounded-md">
-                              <FileIcon className="h-4 w-4 mr-1 text-blue-500" />
-                              <span className="truncate max-w-[200px]">{selectedFile.name}</span>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="ml-2 h-5 w-5" 
-                                onClick={() => setSelectedFile(null)}
-                              >
-                                <XIcon className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex flex-col gap-2">
-                          <label className="cursor-pointer p-2 border rounded-full bg-white hover:bg-gray-50 transition-colors">
-                            <input
-                              type="file"
-                              className="hidden"
-                              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                            />
-                            <PaperclipIcon className="h-5 w-5 text-gray-600" />
-                          </label>
-                          
-                          <Button 
-                            type="submit" 
-                            size="icon"
-                            className="rounded-full bg-primary hover:bg-primary/90"
-                            disabled={sending || (!newMessage.trim() && !selectedFile)}
-                          >
-                            {sending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <SendIcon className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </PageTransition>
-    </div>
-  );
-};
-
-// Add these missing components
-const MessageSquareIcon = ({ className }: { className?: string }) => {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-};
-
-const XIcon = ({ className }: { className?: string }) => {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  );
-};
-
-interface MessageBubbleProps {
-  message: Message;
-  isCurrentUser: boolean;
-  formatTime: (timestamp: string) => string;
-}
-
-const MessageBubble = ({ message, isCurrentUser, formatTime }: MessageBubbleProps) => {
-  return (
-    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`
-        max-w-[80%] 
-        rounded-2xl 
-        ${isCurrentUser 
-          ? 'bg-blue-600 text-white rounded-tr-none' 
-          : 'bg-gray-100 text-gray-800 rounded-tl-none'}
-        shadow-sm
-      `}>
-        <div className="p-4">
-          <div className="flex items-center space-x-2 mb-1">
-            <Avatar className={`h-6 w-6 ${isCurrentUser ? 'bg-white text-blue-600' : 'bg-gray-300 text-gray-700'}`}>
-              <AvatarFallback>
-                {message.isAdmin ? 'A' : 'C'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-xs font-medium">
-              {message.isAdmin ? 'Admin' : 'Client'}
-            </span>
-          </div>
-          
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
-          
-          {message.attachmentUrl && (
-            <div className="mt-3 bg-white/20 p-2 rounded">
-              <a 
-                href={message.attachmentUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className={`
-                  flex items-center 
-                  text-sm font-medium 
-                  ${isCurrentUser ? 'text-white hover:text-white/90' : 'text-blue-600 hover:text-blue-700'}
-                  hover:underline
-                `}
-              >
-                <FileIcon className="h-4 w-4 mr-2" />
-                View Attachment
-              </a>
-            </div>
-          )}
-          
-          <div className={`text-xs mt-2 ${isCurrentUser ? 'text-white/70' : 'text-gray-500'}`}>
-            {formatTime(message.createdAt)}
-          </div>
-        </div>
+  
+  // Function to get user name by ID
+  const getUserName = (userId: string) => {
+    const userFound = users.find(u => u.id === userId);
+    return userFound?.name || 'Unknown User';
+  };
+  
+  if (loading) {
+    return (
+      <div className="container py-6">
+        <Skeleton className="h-8 w-64 mb-4" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="h-[500px] flex flex-col justify-center items-center">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <Skeleton className="h-4 w-32 mt-4" />
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-10 w-full" />
+          </CardFooter>
+        </Card>
       </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container py-6">
+        <Breadcrumb>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink>Project Chat</BreadcrumbLink>
+          </BreadcrumbItem>
+        </Breadcrumb>
+        
+        <div className="flex justify-between items-center my-4">
+          <h1 className="text-2xl font-bold">Project Messages</h1>
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
+        
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+  
+  if (!project) {
+    return (
+      <div className="container py-6">
+        <Breadcrumb>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink>Project Chat</BreadcrumbLink>
+          </BreadcrumbItem>
+        </Breadcrumb>
+        
+        <div className="flex justify-between items-center my-4">
+          <h1 className="text-2xl font-bold">Project Messages</h1>
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
+        
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Project not found</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container py-6">
+      <Breadcrumb>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink href={`/admin/projects/${id}`}>{project.title}</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink>Project Chat</BreadcrumbLink>
+        </BreadcrumbItem>
+      </Breadcrumb>
+      
+      <div className="flex justify-between items-center my-4">
+        <h1 className="text-2xl font-bold">Project Messages</h1>
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+      </div>
+      
+      <Card className="shadow-md border">
+        <CardHeader className="bg-muted/50 pb-3">
+          <CardTitle className="text-lg flex items-center">
+            <MessagesSquare className="mr-2 h-5 w-5 text-primary" />
+            {project.title}
+          </CardTitle>
+          <CardDescription className="flex items-center">
+            <UserIcon className="h-3 w-3 mr-1" />
+            {projectOwner ? (
+              <span>Client: {projectOwner.name} ({projectOwner.email})</span>
+            ) : (
+              <span>Unassigned Project</span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="p-0">
+          <div 
+            ref={messagesContainerRef}
+            className="h-[500px] overflow-y-auto p-4 space-y-2 bg-background/80"
+          >
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
+                <MessagesSquare className="h-12 w-12 mb-2 opacity-20" />
+                <p>No messages yet</p>
+                <p className="text-sm">Start the conversation by sending a message below</p>
+              </div>
+            ) : (
+              <>
+                {messages.map((message) => (
+                  <ChatMessage 
+                    key={message.id}
+                    message={message}
+                    isCurrentUser={message.userId === user?.id}
+                    userName={
+                      message.isAdmin 
+                        ? "Admin" 
+                        : getUserName(message.userId)
+                    }
+                  />
+                ))}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+        </CardContent>
+        
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          isLoading={sendingMessage}
+          placeholder="Type a message as admin..."
+        />
+      </Card>
     </div>
   );
 };

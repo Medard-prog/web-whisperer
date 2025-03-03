@@ -368,6 +368,21 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      fetch_messages: {
+        Args: {
+          p_project_id: string
+        }
+        Returns: {
+          id: string
+          project_id: string
+          user_id: string
+          content: string
+          is_admin: boolean
+          created_at: string
+          attachment_url: string
+          attachment_type: string
+        }[]
+      }
       get_monthly_revenue: {
         Args: Record<PropertyKey, never>
         Returns: {
