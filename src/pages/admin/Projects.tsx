@@ -70,9 +70,7 @@ const AdminProjects = () => {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      console.log("Admin: Loading all projects");
       const data = await fetchProjects();
-      console.log("Admin: Projects loaded:", data);
       setProjects(data);
       setFilteredProjects(data);
     } catch (error) {

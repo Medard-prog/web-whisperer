@@ -87,35 +87,34 @@ const RequestProject = () => {
     try {
       console.log("Starting submission with data:", formData);
       
-      // Map our form data to match the Supabase projects table structure
+      // Map our form data to match the Supabase project_requests table structure
       const requestData = {
-        title: formData.projectName,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        project_name: formData.projectName,
+        project_type: formData.projectType,
         description: formData.description,
-        website_type: formData.projectType,
-        status: 'new',
+        budget: formData.budget || "medium",
+        timeline: formData.deadline ? "custom" : "2-3 months", // Set default or use custom timeline
+        communication_preference: "email", // Default communication preference
         user_id: user?.id,
-        type: 'request',
-        // Map the additional fields
+        status: 'new',
+        // Map the additional fields that were just added to the database
         design_complexity: formData.designComplexity || "standard",
         has_cms: formData.hasCms || false,
         has_ecommerce: formData.hasEcommerce || false,
         has_seo: formData.hasSeo || false,
         has_maintenance: formData.hasMaintenance || false,
         page_count: formData.pageCount || 5,
-        price: formData.price || 0,
-        // Client info
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        company: formData.company,
-        budget: formData.budget || "medium",
-        timeline: formData.deadline ? "custom" : "2-3 months"
+        price: formData.price || 0
       };
       
-      console.log("Prepared project data:", requestData);
+      console.log("Prepared request data:", requestData);
       
       const { data, error } = await supabase
-        .from('projects')
+        .from('project_requests')
         .insert([requestData]);
         
       if (error) {
