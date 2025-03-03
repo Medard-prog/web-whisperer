@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase, fetchProjects, fetchUsers } from "@/integrations/supabase/client";
+import { supabase, fetchProjects, fetchUsers, checkSupabaseConnection } from "@/integrations/supabase/client";
 import { Project, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/DashboardSidebar";
@@ -17,6 +16,7 @@ import { UsersRound, FolderKanban, CheckCircle, Clock, Users, LayoutDashboard, F
 import { Badge } from "@/components/ui/badge";
 import ProjectCard from "@/components/ProjectCard";
 import PageTransition from "@/components/PageTransition";
+import { toast } from "sonner";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -32,18 +32,66 @@ const AdminDashboard = () => {
       try {
         setLoading(true);
         
-        // Fetch projects and users using our helper functions
-        const projectsData = await fetchProjects();
-        const usersData = await fetchUsers();
+        // Check Supabase connection first
+        const isConnected = await checkSupabaseConnection();
+        
+        if (!isConnected) {
+          toast({
+            variant: "destructive",
+            title: "Eroare de conexiune",
+            description: "Nu s-a putut conecta la baza de date. Verificați conexiunea.",
+          });
+          return;
+        }
+        
+        // Fetch all projects, including both 'project' and 'request' types
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        console.log("All projects fetched in AdminDashboard:", data);
+        
+        // Map the raw data to Project objects
+        const projectsData = data.map(item => ({
+          id: item.id,
+          title: item.title || '',
+          description: item.description || '',
+          status: item.status || 'pending',
+          createdAt: item.created_at,
+          dueDate: item.due_date,
+          price: item.price || 0,
+          userId: item.user_id,
+          type: item.type || 'project',
+          hasEcommerce: item.has_ecommerce,
+          hasCMS: item.has_cms,
+          hasSEO: item.has_seo,
+          hasMaintenance: item.has_maintenance,
+          websiteType: item.website_type,
+          pageCount: item.page_count,
+          designComplexity: item.design_complexity,
+          exampleUrls: item.example_urls,
+          additionalInfo: item.additional_info,
+          amountPaid: item.amount_paid || 0,
+          paymentStatus: item.payment_status || 'pending',
+        }));
         
         setProjects(projectsData);
+        console.log("Combined projects in AdminDashboard:", projectsData);
+        
+        // Get users data
+        const usersData = await fetchUsers();
         setUsers(usersData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching data:', error);
         toast({
           variant: "destructive",
           title: "Eroare",
-          description: "Nu s-au putut încărca datele. Încearcă din nou.",
+          description: `Nu s-au putut încărca datele: ${error.message}`,
         });
       } finally {
         setLoading(false);

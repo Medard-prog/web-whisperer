@@ -7,6 +7,23 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1N
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
+export const checkSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('projects').select('count').limit(1);
+    
+    if (error) {
+      console.error("Supabase connection test failed:", error);
+      return false;
+    }
+    
+    console.log("Supabase connection successful");
+    return true;
+  } catch (error) {
+    console.error("Supabase connection test failed:", error);
+    return false;
+  }
+};
+
 export const fetchUserData = async (userId: string) => {
   try {
     const { data, error } = await supabase
@@ -50,10 +67,12 @@ export const fetchUsers = async () => {
 
 export const fetchProjectRequests = async (userId?: string) => {
   try {
+    console.log("Fetching project requests, userId:", userId);
+    
     let query = supabase
-      .from('projects')
+      .from('projects')  // Changed from project_requests to projects
       .select('*')
-      .eq('type', 'request')
+      .eq('type', 'request')  // Filter by type = 'request'
       .order('created_at', { ascending: false });
     
     if (userId) {
@@ -67,9 +86,11 @@ export const fetchProjectRequests = async (userId?: string) => {
       toast.error(`Failed to fetch project requests: ${error.message}`);
       return [];
     }
-
+    
+    console.log("Project requests fetched:", data);
     return data.map(mapProject) || [];
   } catch (error: any) {
+    console.error("Error in fetchProjectRequests:", error);
     toast.error(`Failed to fetch project requests: ${error.message}`);
     return [];
   }
@@ -77,6 +98,8 @@ export const fetchProjectRequests = async (userId?: string) => {
 
 export const fetchProjects = async (userId?: string) => {
   try {
+    console.log("Fetching projects, userId:", userId);
+    
     let query = supabase
       .from('projects')
       .select('*')
@@ -95,8 +118,10 @@ export const fetchProjects = async (userId?: string) => {
       return [];
     }
 
+    console.log("Projects fetched:", data);
     return data.map(mapProject) as Project[];
   } catch (error: any) {
+    console.error("Error in fetchProjects:", error);
     toast.error(`Failed to fetch projects: ${error.message}`);
     return [];
   }

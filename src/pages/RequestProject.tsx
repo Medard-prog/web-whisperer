@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,13 +15,10 @@ const RequestProject = () => {
   const [initialValues, setInitialValues] = useState<Partial<RequestFormValues> | null>(null);
   
   useEffect(() => {
-    // Parse URL search parameters
     const searchParams = new URLSearchParams(location.search);
     
-    // If we have URL parameters, prepare them for the form
     const urlParams: Partial<RequestFormValues> = {};
     
-    // Handle numeric parameters
     if (searchParams.has('pageCount')) {
       urlParams.pageCount = parseInt(searchParams.get('pageCount') || '0');
     }
@@ -31,12 +27,10 @@ const RequestProject = () => {
       urlParams.price = parseInt(searchParams.get('price') || '0');
     }
     
-    // Handle string parameters
     if (searchParams.has('designComplexity')) {
       urlParams.designComplexity = searchParams.get('designComplexity') || '';
     }
     
-    // Handle boolean parameters
     if (searchParams.has('hasCms')) {
       urlParams.hasCms = searchParams.get('hasCms') === 'true';
     }
@@ -53,7 +47,6 @@ const RequestProject = () => {
       urlParams.hasMaintenance = searchParams.get('hasMaintenance') === 'true';
     }
     
-    // Check if we have initial data from state (e.g., if navigated from home page)
     if (location.state?.initialData) {
       setInitialValues({
         ...urlParams,
@@ -64,7 +57,6 @@ const RequestProject = () => {
         company: user?.company || location.state.initialData.company || "",
       });
     } else if (user && !loading) {
-      // If no initial data but user is logged in, pre-fill with user data
       setInitialValues({
         ...urlParams,
         name: user.name || "",
@@ -73,11 +65,9 @@ const RequestProject = () => {
         company: user.company || "",
       });
     } else {
-      // Just use the URL parameters if nothing else is available
       if (Object.keys(urlParams).length > 0) {
         setInitialValues(urlParams);
       } else {
-        // Provide empty initial values to prevent form from waiting for values
         setInitialValues({});
       }
     }
@@ -87,34 +77,28 @@ const RequestProject = () => {
     try {
       console.log("Starting submission with data:", formData);
       
-      // Map our form data to match the Supabase project_requests table structure
       const requestData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        company: formData.company,
-        project_name: formData.projectName,
-        project_type: formData.projectType,
-        description: formData.description,
-        budget: formData.budget || "medium",
-        timeline: formData.deadline ? "custom" : "2-3 months", // Set default or use custom timeline
-        communication_preference: "email", // Default communication preference
+        title: formData.projectName,
+        description: formData.description || '',
+        website_type: formData.projectType || '',
         user_id: user?.id,
         status: 'new',
-        // Map the additional fields that were just added to the database
+        type: 'request',
         design_complexity: formData.designComplexity || "standard",
         has_cms: formData.hasCms || false,
         has_ecommerce: formData.hasEcommerce || false,
         has_seo: formData.hasSeo || false,
         has_maintenance: formData.hasMaintenance || false,
         page_count: formData.pageCount || 5,
-        price: formData.price || 0
+        price: formData.price || 0,
+        example_urls: formData.exampleUrls || [],
+        additional_info: formData.additionalInfo || ''
       };
       
-      console.log("Prepared request data:", requestData);
+      console.log("Prepared project data:", requestData);
       
       const { data, error } = await supabase
-        .from('project_requests')
+        .from('projects')
         .insert([requestData]);
         
       if (error) {
@@ -125,8 +109,6 @@ const RequestProject = () => {
         description: "Te vom contacta în curând pentru a discuta despre proiectul tău.",
       });
       
-      // Redirect to dashboard after successful submission if logged in,
-      // otherwise to home page
       if (user) {
         navigate("/dashboard");
       } else {

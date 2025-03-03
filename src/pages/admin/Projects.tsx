@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchProjects } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Button } from "@/components/ui/button";
@@ -70,12 +70,49 @@ const AdminProjects = () => {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const data = await fetchProjects();
-      setProjects(data);
-      setFilteredProjects(data);
-    } catch (error) {
+      
+      console.log("Loading projects in AdminProjects");
+      
+      // Fetch all projects directly from Supabase
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Map the raw data to Project objects
+      const mappedProjects = data.map(item => ({
+        id: item.id,
+        title: item.title || '',
+        description: item.description || '',
+        status: item.status || 'pending',
+        createdAt: item.created_at,
+        dueDate: item.due_date,
+        price: item.price || 0,
+        userId: item.user_id,
+        type: item.type || 'project',
+        hasEcommerce: item.has_ecommerce,
+        hasCMS: item.has_cms,
+        hasSEO: item.has_seo,
+        hasMaintenance: item.has_maintenance,
+        websiteType: item.website_type,
+        pageCount: item.page_count,
+        designComplexity: item.design_complexity,
+        exampleUrls: item.example_urls,
+        additionalInfo: item.additional_info,
+        amountPaid: item.amount_paid || 0,
+        paymentStatus: item.payment_status || 'pending',
+      }));
+      
+      console.log("Projects loaded in AdminProjects:", mappedProjects);
+      setProjects(mappedProjects);
+      setFilteredProjects(mappedProjects);
+    } catch (error: any) {
       console.error("Error loading projects:", error);
-      toast.error("Error loading projects");
+      toast.error(`Error loading projects: ${error.message}`);
     } finally {
       setLoading(false);
     }
