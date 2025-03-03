@@ -161,6 +161,121 @@ export const fetchProjectById = async (projectId: string) => {
   }
 };
 
+export const updateProject = async (id: string, projectData: Partial<Project>) => {
+  try {
+    console.log('Updating project with ID:', id, 'Data:', projectData);
+    
+    // First check if this is a project_request or a regular project
+    const { data: projectRequest, error: prError } = await supabase
+      .from('project_requests')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (prError && prError.code !== 'PGRST116') {
+      console.error('Error checking project request:', prError);
+      throw prError;
+    }
+    
+    let result;
+    
+    if (projectRequest) {
+      // It's a project request
+      console.log('Updating project_requests table');
+      const { data, error } = await supabase
+        .from('project_requests')
+        .update({
+          project_name: projectData.title,
+          description: projectData.description,
+          price: projectData.price,
+          status: projectData.status,
+          project_type: projectData.websiteType,
+          page_count: projectData.pageCount,
+          has_ecommerce: projectData.hasEcommerce,
+          has_cms: projectData.hasCms,
+          has_seo: projectData.hasSeo,
+          has_maintenance: projectData.hasMaintenance,
+          design_complexity: projectData.designComplexity
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      result = data;
+      
+      // Format the response to match Project structure
+      return {
+        id: result.id,
+        title: result.project_name,
+        description: result.description || '',
+        status: result.status || 'pending',
+        createdAt: result.created_at,
+        userId: result.user_id,
+        price: result.price || 0,
+        websiteType: result.project_type,
+        pageCount: result.page_count,
+        hasEcommerce: result.has_ecommerce,
+        hasCms: result.has_cms, 
+        hasSeo: result.has_seo,
+        hasMaintenance: result.has_maintenance,
+        designComplexity: result.design_complexity,
+        isRequest: true
+      };
+    } else {
+      // It's a regular project
+      console.log('Updating projects table');
+      const { data, error } = await supabase
+        .from('projects')
+        .update({
+          title: projectData.title,
+          description: projectData.description,
+          price: projectData.price,
+          status: projectData.status,
+          website_type: projectData.websiteType,
+          page_count: projectData.pageCount,
+          has_ecommerce: projectData.hasEcommerce,
+          has_cms: projectData.hasCms,
+          has_seo: projectData.hasSeo,
+          has_maintenance: projectData.hasMaintenance,
+          design_complexity: projectData.designComplexity,
+          payment_status: projectData.paymentStatus,
+          amount_paid: projectData.amountPaid,
+          due_date: projectData.dueDate
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      result = data;
+      
+      return {
+        id: result.id,
+        title: result.title,
+        description: result.description,
+        status: result.status,
+        createdAt: result.created_at,
+        userId: result.user_id,
+        price: result.price,
+        websiteType: result.website_type,
+        pageCount: result.page_count,
+        hasEcommerce: result.has_ecommerce,
+        hasCms: result.has_cms,
+        hasSeo: result.has_seo,
+        hasMaintenance: result.has_maintenance,
+        designComplexity: result.design_complexity,
+        paymentStatus: result.payment_status,
+        amountPaid: result.amount_paid,
+        dueDate: result.due_date
+      };
+    }
+  } catch (error) {
+    console.error('Error updating project:', error);
+    throw error;
+  }
+};
+
 export const updateProjectStatus = async (projectId: string, status: string) => {
   try {
     const { data, error } = await supabase

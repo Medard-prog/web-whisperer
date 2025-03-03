@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +9,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
   LayoutDashboard, 
   FolderKanban, 
-  MessageSquare, 
   CreditCard, 
   Settings, 
   Users, 
@@ -75,7 +73,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
   const userMenuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: FolderKanban, label: "Proiectele mele", href: "/dashboard/projects" },
-    { icon: MessageSquare, label: "Mesaje", href: "/dashboard/messages" },
     { icon: CreditCard, label: "Facturi", href: "/dashboard/invoices" },
     { icon: Settings, label: "Setări", href: "/dashboard/settings" },
   ];
@@ -84,7 +81,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
     { icon: FolderKanban, label: "Proiecte", href: "/admin/projects" },
     { icon: Users, label: "Clienți", href: "/admin/clients" },
-    { icon: MessageSquare, label: "Mesaje", href: "/admin/messages" },
     { icon: FileText, label: "Rapoarte", href: "/admin/reports" },
     { icon: Settings, label: "Setări", href: "/admin/settings" },
   ];
@@ -251,7 +247,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
   
   return (
     <>
-      {/* Mobile Menu Button */}
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden fixed top-4 left-4 z-40">
@@ -263,7 +258,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
         </SheetContent>
       </Sheet>
       
-      {/* Desktop Sidebar */}
       <div className="hidden md:block w-64 border-r bg-white/80 backdrop-blur-sm">
         {sidebar}
       </div>

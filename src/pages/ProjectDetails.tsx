@@ -5,14 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   fetchProjectById, 
   fetchProjectTasks, 
-  fetchProjectNotes, 
   fetchProjectFiles 
 } from "@/integrations/supabase/client";
-import { Project, ProjectTask, ProjectNote, ProjectFile } from "@/types";
+import { Project, ProjectTask, ProjectFile } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
 import ProjectTasksPanel from "@/components/ProjectTasksPanel";
-import ProjectNotesPanel from "@/components/ProjectNotesPanel";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -26,7 +24,6 @@ const ProjectDetails = () => {
   
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ProjectTask[] | null>(null);
-  const [notes, setNotes] = useState<ProjectNote[] | null>(null);
   const [files, setFiles] = useState<ProjectFile[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,15 +58,6 @@ const ProjectDetails = () => {
       } catch (tasksError) {
         console.error("Error loading tasks:", tasksError);
         // Don't fail the whole page for tasks
-      }
-      
-      // Load notes
-      try {
-        const notesData = await fetchProjectNotes(id!);
-        setNotes(notesData);
-      } catch (notesError) {
-        console.error("Error loading notes:", notesError);
-        // Don't fail the whole page for notes
       }
       
       // Load files
@@ -123,26 +111,6 @@ const ProjectDetails = () => {
                   <ArrowLeft className="h-4 w-4" />
                   Back to Projects
                 </Button>
-                
-                {user && id && (
-                  <ModificationRequestDialog projectId={id} userId={user.id}>
-                    <Button 
-                      variant="outline"
-                      className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50"
-                    >
-                      <FileEdit className="h-4 w-4" />
-                      Solicită modificări
-                    </Button>
-                  </ModificationRequestDialog>
-                )}
-                
-                <Button 
-                  onClick={handleChatNav}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Mesaje
-                </Button>
               </div>
             </div>
             
@@ -176,7 +144,27 @@ const ProjectDetails = () => {
                 </div>
                 
                 <div className="space-y-8">
-                  <ProjectNotesPanel projectId={id || ''} />
+                  <div className="flex flex-col gap-4">
+                    <Button 
+                      onClick={handleChatNav}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 w-full"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Mesaje
+                    </Button>
+                    
+                    {user && id && (
+                      <ModificationRequestDialog projectId={id} userId={user.id}>
+                        <Button 
+                          variant="outline"
+                          className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 w-full"
+                        >
+                          <FileEdit className="h-4 w-4" />
+                          Solicită modificări
+                        </Button>
+                      </ModificationRequestDialog>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

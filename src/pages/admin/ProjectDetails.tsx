@@ -160,6 +160,7 @@ const AdminProjectDetails = () => {
                     projectId={id || ''} 
                     tasks={tasks} 
                     loading={loading} 
+                    isAdmin={true}
                   />
                 </div>
                 

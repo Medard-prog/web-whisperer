@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Message } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileIcon, ImageIcon, Paperclip } from 'lucide-react';
 
@@ -15,7 +15,7 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message, isCurrentUser, userName = 'User' }: ChatMessageProps) => {
   const [imageError, setImageError] = useState(false);
-  const formattedTime = message.createdAt ? formatDistanceToNow(new Date(message.createdAt), { addSuffix: true }) : '';
+  const formattedTime = message.createdAt ? format(new Date(message.createdAt), 'HH:mm • dd MMM') : '';
   
   const hasAttachment = !!message.attachmentUrl;
   const isImage = message.attachmentType?.startsWith('image/') && !imageError;
@@ -23,25 +23,23 @@ const ChatMessage = ({ message, isCurrentUser, userName = 'User' }: ChatMessageP
   return (
     <div className={`flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
       {!isCurrentUser && (
-        <Avatar className="h-9 w-9 mr-2">
+        <Avatar className="h-9 w-9 mr-2 mt-1">
           <AvatarImage src={message.isAdmin ? "/lovable-uploads/2f905194-2593-457d-8702-354488b73410.png" : "/placeholder.svg"} />
-          <AvatarFallback>
+          <AvatarFallback className={message.isAdmin ? "bg-purple-600 text-white" : "bg-blue-600 text-white"}>
             {message.isAdmin ? 'A' : userName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       )}
       
-      <div className={`max-w-[80%] ${isCurrentUser ? 'order-1' : 'order-2'}`}>
-        <div className="flex items-center mb-1">
-          <span className={`text-xs text-gray-500 ${isCurrentUser ? 'ml-auto' : ''}`}>
-            {message.isAdmin ? 'Admin' : userName} • {formattedTime}
-          </span>
-        </div>
+      <div className={`max-w-[75%] ${isCurrentUser ? 'order-1' : 'order-2'} flex flex-col`}>
+        <span className={`text-xs text-gray-500 mb-1 ${isCurrentUser ? 'text-right' : 'text-left'}`}>
+          {isCurrentUser ? 'You' : (message.isAdmin ? 'Admin' : userName)} • {formattedTime}
+        </span>
         
-        <Card className={`p-3 shadow-sm ${
+        <div className={`rounded-lg p-3 ${
           isCurrentUser 
-            ? 'bg-primary text-primary-foreground rounded-tl-lg rounded-tr-lg rounded-bl-lg' 
-            : 'bg-muted rounded-tl-lg rounded-tr-lg rounded-br-lg'
+            ? 'bg-primary text-primary-foreground ml-auto rounded-tr-none' 
+            : 'bg-muted mr-auto rounded-tl-none'
         }`}>
           <div className="space-y-2">
             <p className="text-sm whitespace-pre-line">{message.content}</p>
@@ -86,12 +84,12 @@ const ChatMessage = ({ message, isCurrentUser, userName = 'User' }: ChatMessageP
               </div>
             )}
           </div>
-        </Card>
+        </div>
       </div>
       
       {isCurrentUser && (
-        <Avatar className="h-9 w-9 ml-2">
-          <AvatarFallback>
+        <Avatar className="h-9 w-9 ml-2 mt-1">
+          <AvatarFallback className="bg-blue-600 text-white">
             {userName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>

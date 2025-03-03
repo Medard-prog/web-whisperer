@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Message } from '@/types';
 import { fetchProjectById, fetchProjectMessages, sendProjectMessage, supabase } from '@/integrations/supabase/client';
@@ -129,7 +129,22 @@ const ProjectChat = () => {
         }
       }
       
-      // Send message
+      // Create a local copy of the message for immediate display
+      const tempMessage: Message = {
+        id: `temp-${Date.now()}`,
+        projectId: id,
+        content,
+        createdAt: new Date().toISOString(),
+        isAdmin: false,
+        userId: user.id,
+        attachmentUrl,
+        attachmentType
+      };
+      
+      // Add the message to state immediately for responsive UX
+      setMessages(prevMessages => [...prevMessages, tempMessage]);
+      
+      // Send message to the server
       const message = await sendProjectMessage(
         id,
         content,
@@ -139,10 +154,7 @@ const ProjectChat = () => {
         attachmentType
       );
       
-      if (message) {
-        // No need to update messages state, the subscription will handle it
-        toast.success("Message sent");
-      }
+      // The real-time subscription will handle adding the actual message
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast.error(`Failed to send message: ${err.message}`);
@@ -178,99 +190,98 @@ const ProjectChat = () => {
     }
   };
   
-  const content = (
-    <div className="container max-w-4xl py-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Project Chat</h1>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(`/project/${id}`)}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Project
-        </Button>
-      </div>
-      
-      {loading ? (
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-40 mb-2" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent className="h-[500px] flex flex-col justify-center items-center">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <Skeleton className="h-4 w-32 mt-4" />
-          </CardContent>
-          <CardFooter>
-            <Skeleton className="h-10 w-full" />
-          </CardFooter>
-        </Card>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : !project ? (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Project not found</AlertDescription>
-        </Alert>
-      ) : (
-        <Card className="shadow-md border">
-          <CardHeader className="bg-muted/50 pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <MessageSquare className="mr-2 h-5 w-5 text-primary" />
-              {project.title}
-            </CardTitle>
-            <CardDescription>
-              Use this chat to communicate about your project
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="p-0">
-            <div 
-              ref={messagesContainerRef}
-              className="h-[500px] overflow-y-auto p-4 space-y-2 bg-background/80"
-            >
-              {messages.length === 0 ? (
-                <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
-                  <MessageSquare className="h-12 w-12 mb-2 opacity-20" />
-                  <p>No messages yet</p>
-                  <p className="text-sm">Start the conversation by sending a message below</p>
-                </div>
-              ) : (
-                <>
-                  {messages.map((message) => (
-                    <ChatMessage 
-                      key={message.id}
-                      message={message}
-                      isCurrentUser={message.userId === user?.id}
-                      userName={message.isAdmin ? "Admin" : user?.name || "You"}
-                    />
-                  ))}
-                  <div ref={messagesEndRef} />
-                </>
-              )}
-            </div>
-          </CardContent>
-          
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            isLoading={sendingMessage}
-            placeholder="Type your message..."
-          />
-        </Card>
-      )}
-    </div>
-  );
-  
   return (
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar />
       <PageTransition>
         <main className="flex-1 p-4">
-          {content}
+          <div className="container max-w-4xl py-6">
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-2xl font-bold flex items-center">
+                <MessageSquare className="mr-2 h-5 w-5" />
+                {loading ? "Loading Chat..." : `Chat: ${project?.title || "Project"}`}
+              </h1>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate(`/project/${id}`)}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Project
+              </Button>
+            </div>
+            
+            {loading ? (
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-40 mb-2" />
+                  <Skeleton className="h-4 w-64" />
+                </CardHeader>
+                <CardContent className="h-[500px] flex flex-col justify-center items-center">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <Skeleton className="h-4 w-32 mt-4" />
+                </CardContent>
+                <CardFooter>
+                  <Skeleton className="h-10 w-full" />
+                </CardFooter>
+              </Card>
+            ) : error ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : !project ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Project not found</AlertDescription>
+              </Alert>
+            ) : (
+              <Card className="shadow-md border">
+                <CardHeader className="bg-muted/50 pb-3">
+                  <CardTitle className="text-lg flex items-center">
+                    <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+                    {project.title}
+                  </CardTitle>
+                  <CardDescription>
+                    Use this chat to communicate about your project
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="p-0">
+                  <div 
+                    ref={messagesContainerRef}
+                    className="h-[500px] overflow-y-auto p-4 space-y-2 bg-background/80"
+                  >
+                    {messages.length === 0 ? (
+                      <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
+                        <MessageSquare className="h-12 w-12 mb-2 opacity-20" />
+                        <p>No messages yet</p>
+                        <p className="text-sm">Start the conversation by sending a message below</p>
+                      </div>
+                    ) : (
+                      <>
+                        {messages.map((message) => (
+                          <ChatMessage 
+                            key={message.id}
+                            message={message}
+                            isCurrentUser={message.userId === user?.id}
+                            userName={message.isAdmin ? "Admin" : user?.name || "You"}
+                          />
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+                
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  isLoading={sendingMessage}
+                  placeholder="Type your message..."
+                />
+              </Card>
+            )}
+          </div>
         </main>
       </PageTransition>
     </div>

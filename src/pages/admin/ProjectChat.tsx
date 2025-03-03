@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -150,6 +151,22 @@ const AdminProjectChat = () => {
         }
       }
       
+      // Create a local copy of the message for immediate display
+      const tempMessage: Message = {
+        id: `temp-${Date.now()}`,
+        projectId: id,
+        content,
+        createdAt: new Date().toISOString(),
+        isAdmin: true,
+        userId: user.id,
+        attachmentUrl,
+        attachmentType
+      };
+      
+      // Add the message to state immediately for responsive UX
+      setMessages(prevMessages => [...prevMessages, tempMessage]);
+      
+      // Send message to server
       const message = await sendProjectMessage(
         id,
         content,
@@ -159,9 +176,7 @@ const AdminProjectChat = () => {
         attachmentType
       );
       
-      if (message) {
-        toast.success("Message sent");
-      }
+      // The real-time subscription will handle adding the actual message
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast.error(`Failed to send message: ${err.message}`);
@@ -213,7 +228,7 @@ const AdminProjectChat = () => {
                 <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbItem>
-                <BreadcrumbLink href={`/admin/projects/${id}`}>{project?.title || 'Project Details'}</BreadcrumbLink>
+                <BreadcrumbLink href={`/admin/project/${id}`}>{project?.title || 'Project Details'}</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbItem>
                 <BreadcrumbLink>Project Chat</BreadcrumbLink>
@@ -221,7 +236,10 @@ const AdminProjectChat = () => {
             </Breadcrumb>
             
             <div className="flex justify-between items-center my-4">
-              <h1 className="text-2xl font-bold">Project Messages</h1>
+              <h1 className="text-2xl font-bold flex items-center">
+                <MessagesSquare className="mr-2 h-5 w-5" />
+                Project Messages
+              </h1>
               <Button variant="outline" onClick={() => navigate(-1)}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>

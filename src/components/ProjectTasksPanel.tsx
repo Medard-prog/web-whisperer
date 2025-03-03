@@ -1,244 +1,352 @@
+
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { supabase, fetchProjectTasks, addProjectTask } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { ProjectTask, mapProjectTask } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import { formatDate } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { ProjectTask } from "@/types";
+import { 
+  PlusCircle, 
+  Trash2, 
+  Loader2, 
+  CalendarIcon, 
+  CheckCircle2,
+  ClipboardList, 
+  AlertCircle
+} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Clock, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 interface ProjectTasksPanelProps {
   projectId: string;
-  tasks: ProjectTask[] | null;
-  loading: boolean;
+  tasks?: ProjectTask[] | null;
+  loading?: boolean;
+  isAdmin?: boolean;
 }
 
-const ProjectTasksPanel = ({ projectId, tasks: initialTasks, loading: initialLoading }: ProjectTasksPanelProps) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(initialLoading);
-  const [tasks, setTasks] = useState<ProjectTask[] | null>(initialTasks);
+const ProjectTasksPanel = ({ 
+  projectId, 
+  tasks: initialTasks = null, 
+  loading = false,
+  isAdmin = false
+}: ProjectTasksPanelProps) => {
+  const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [loadingTaskState, setLoadingTaskState] = useState<{ [key: string]: boolean }>({});
+  const [error, setError] = useState<string | null>(null);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
   
+  // Initialize tasks from props
   useEffect(() => {
     if (initialTasks) {
       setTasks(initialTasks);
-    } else if (projectId && !initialLoading) {
-      loadTasks();
     }
-  }, [initialTasks, projectId, initialLoading]);
+  }, [initialTasks]);
   
-  const loadTasks = async () => {
-    try {
-      setLoading(true);
-      const loadedTasks = await fetchProjectTasks(projectId);
-      setTasks(loadedTasks);
-    } catch (error) {
-      console.error('Error loading tasks:', error);
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-au putut încărca sarcinile. Încearcă din nou.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Calculate completion percentage
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    
+    const completedTasks = tasks.filter(task => task.isCompleted).length;
+    const percentage = Math.round((completedTasks / tasks.length) * 100);
+    setCompletionPercentage(percentage);
+  }, [tasks]);
   
-  const addTask = async () => {
-    if (!newTaskTitle.trim() || !user?.id) return;
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return;
     
     try {
-      setIsSubmitting(true);
+      setIsAddingTask(true);
       
-      const newTask = await addProjectTask(projectId, newTaskTitle);
-      setTasks(prev => prev ? [newTask, ...prev] : [newTask]);
+      const { data, error } = await supabase
+        .from("project_tasks")
+        .insert([
+          {
+            project_id: projectId,
+            title: newTaskTitle,
+            description: newTaskDescription,
+            is_completed: false,
+          },
+        ])
+        .select("*")
+        .single();
+        
+      if (error) throw error;
+      
+      const newTask: ProjectTask = {
+        id: data.id,
+        projectId: data.project_id,
+        title: data.title,
+        description: data.description,
+        isCompleted: data.is_completed,
+        createdAt: data.created_at,
+      };
+      
+      setTasks([...tasks, newTask]);
       setNewTaskTitle("");
+      setNewTaskDescription("");
+      setShowAddForm(false);
       
-      toast({
-        title: "Sarcină adăugată",
-        description: "Sarcina a fost adăugată cu succes.",
-      });
-    } catch (error) {
-      console.error('Error adding task:', error);
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut adăuga sarcina. Încearcă din nou.",
-      });
+      toast.success("Task added successfully");
+    } catch (error: any) {
+      console.error("Error adding task:", error);
+      toast.error("Failed to add task");
+      setError(error.message);
     } finally {
-      setIsSubmitting(false);
+      setIsAddingTask(false);
     }
   };
   
-  const toggleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
+  const handleToggleTask = async (taskId: string, currentState: boolean) => {
     try {
-      setTasks(prev => 
-        prev ? prev.map(task => 
-          task.id === taskId ? { ...task, isCompleted: !isCompleted } : task
-        ) : null
-      );
+      // Set loading state for this specific task
+      setLoadingTaskState({ ...loadingTaskState, [taskId]: true });
       
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ is_completed: !isCompleted })
-        .eq('id', taskId);
+      const { data, error } = await supabase
+        .from("project_tasks")
+        .update({ is_completed: !currentState })
+        .eq("id", taskId)
+        .select();
         
       if (error) throw error;
-    } catch (error) {
-      console.error('Error toggling task:', error);
       
-      setTasks(prev => 
-        prev ? prev.map(task => 
-          task.id === taskId ? { ...task, isCompleted: isCompleted } : task
-        ) : null
+      // Update local state
+      setTasks(
+        tasks.map((task) =>
+          task.id === taskId ? { ...task, isCompleted: !currentState } : task
+        )
       );
       
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut actualiza sarcina. Încearcă din nou.",
-      });
+    } catch (error: any) {
+      console.error("Error toggling task:", error);
+      toast.error("Failed to update task status");
+    } finally {
+      // Clear loading state for this task
+      const newLoadingState = { ...loadingTaskState };
+      delete newLoadingState[taskId];
+      setLoadingTaskState(newLoadingState);
     }
   };
   
-  const deleteTask = async (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
     try {
-      setTasks(prev => prev ? prev.filter(task => task.id !== taskId) : null);
+      setLoadingTaskState({ ...loadingTaskState, [taskId]: true });
       
       const { error } = await supabase
-        .from('project_tasks')
+        .from("project_tasks")
         .delete()
-        .eq('id', taskId);
+        .eq("id", taskId);
         
       if (error) throw error;
       
-      toast({
-        title: "Sarcină ștearsă",
-        description: "Sarcina a fost ștearsă cu succes.",
-      });
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      
-      loadTasks();
-      
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut șterge sarcina. Încearcă din nou.",
-      });
+      // Update local state
+      setTasks(tasks.filter((task) => task.id !== taskId));
+      toast.success("Task deleted successfully");
+    } catch (error: any) {
+      console.error("Error deleting task:", error);
+      toast.error("Failed to delete task");
+    } finally {
+      const newLoadingState = { ...loadingTaskState };
+      delete newLoadingState[taskId];
+      setLoadingTaskState(newLoadingState);
     }
   };
   
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <Skeleton className="h-7 w-40 mb-2" />
-          <Skeleton className="h-4 w-64" />
+        <CardHeader className="pb-3">
+          <Skeleton className="h-7 w-[200px] mb-2" />
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
+        <CardContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center space-x-2">
+                <Skeleton className="h-5 w-5 rounded-sm" />
+                <Skeleton className="h-5 flex-1" />
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     );
   }
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center">
-            <CheckCircle2 className="h-5 w-5 mr-2 text-purple-500" />
-            Sarcini proiect
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center">
+            <ClipboardList className="mr-2 h-5 w-5 text-primary" />
+            Tasks
           </CardTitle>
-          <CardDescription>
-            Gestionează sarcinile asociate acestui proiect
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Adaugă o sarcină nouă..."
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
-            />
-            <Button 
-              onClick={addTask} 
-              disabled={isSubmitting || !newTaskTitle.trim()}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
           
-          {tasks && tasks.length > 0 ? (
-            <div className="space-y-2">
-              {tasks.map((task) => (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`p-3 border rounded-md flex items-start gap-3 ${
-                    task.isCompleted ? 'bg-gray-50' : 'bg-white'
-                  }`}
-                >
-                  <div className="mt-0.5">
+          {isAdmin && (
+            <div className="flex items-center space-x-2">
+              <Progress value={completionPercentage} className="w-24" />
+              <span className="text-sm font-medium">{completionPercentage}%</span>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        {error && (
+          <div className="bg-red-50 text-red-800 p-3 rounded-md mb-4 flex items-center">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            {error}
+          </div>
+        )}
+        
+        {tasks.length === 0 && !showAddForm ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <ClipboardList className="h-12 w-12 mx-auto opacity-20" />
+            <p className="mt-2">No tasks yet</p>
+            {(isAdmin) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => setShowAddForm(true)}
+              >
+                <PlusCircle className="mr-1 h-4 w-4" />
+                Add Task
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className={`flex items-start justify-between p-3 rounded-md ${
+                  task.isCompleted
+                    ? "bg-green-50 border border-green-100"
+                    : "bg-gray-50 border border-gray-100"
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  {loadingTaskState[task.id] ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  ) : (
                     <Checkbox
                       checked={task.isCompleted}
-                      onCheckedChange={() => toggleTaskCompletion(task.id, task.isCompleted)}
-                      className="h-5 w-5"
+                      onCheckedChange={() =>
+                        handleToggleTask(task.id, task.isCompleted)
+                      }
+                      disabled={!isAdmin && task.isCompleted}
                     />
-                  </div>
-                  <div className="flex-1">
-                    <p className={`${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                  )}
+                  
+                  <div>
+                    <div className="font-medium text-sm flex items-center">
                       {task.title}
-                    </p>
-                    {task.dueDate && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Termen: {formatDate(task.dueDate)}</span>
+                      {task.isCompleted && (
+                        <Badge variant="secondary" className="ml-2 bg-green-100 text-green-800 text-xs">
+                          Completed
+                        </Badge>
+                      )}
+                    </div>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {task.description}
+                      </p>
+                    )}
+                    {task.createdAt && (
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                        <CalendarIcon className="h-3 w-3 mr-1" />
+                        {new Date(task.createdAt).toLocaleDateString()}
                       </div>
                     )}
                   </div>
-                  <Button 
-                    variant="ghost" 
+                </div>
+                
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
                     size="icon"
-                    onClick={() => deleteTask(task.id)}
-                    className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                    onClick={() => handleDeleteTask(task.id)}
+                    disabled={loadingTaskState[task.id]}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {loadingTaskState[task.id] ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <Circle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">Nu există sarcini pentru acest proiect</p>
-              <p className="text-sm text-gray-400">Adaugă o sarcină nouă pentru a începe</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
+                )}
+              </div>
+            ))}
+            
+            {showAddForm && (
+              <div className="p-3 border border-dashed rounded-md bg-muted/50 space-y-3">
+                <Input
+                  placeholder="Task title"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                />
+                <Textarea
+                  placeholder="Task description (optional)"
+                  value={newTaskDescription}
+                  onChange={(e) => setNewTaskDescription(e.target.value)}
+                  rows={2}
+                />
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewTaskTitle("");
+                      setNewTaskDescription("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddTask}
+                    disabled={!newTaskTitle.trim() || isAddingTask}
+                  >
+                    {isAddingTask ? (
+                      <>
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="mr-1 h-4 w-4" />
+                        Add Task
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {!showAddForm && isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setShowAddForm(true)}
+              >
+                <PlusCircle className="mr-1 h-4 w-4" />
+                Add Task
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

@@ -95,6 +95,18 @@ export interface AdminNote {
   createdAt: string;
 }
 
+export interface ProjectModificationRequest {
+  id: string;
+  projectId: string;
+  userId: string;
+  description: string;
+  budget: string;
+  timeline: string;
+  priority: string;
+  status: string;
+  createdAt: string;
+}
+
 // Mapper functions to convert snake_case from database to camelCase
 export function mapProject(data: any): Project {
   return {
