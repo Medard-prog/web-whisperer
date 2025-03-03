@@ -16,7 +16,8 @@ import ProjectNotesPanel from "@/components/ProjectNotesPanel";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, MessageSquare, RefreshCw } from "lucide-react";
+import { ArrowLeft, MessageSquare, RefreshCw, FileEdit } from "lucide-react";
+import ModificationRequestDialog from "@/components/ModificationRequestDialog";
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -123,12 +124,24 @@ const ProjectDetails = () => {
                   Back to Projects
                 </Button>
                 
+                {user && id && (
+                  <ModificationRequestDialog projectId={id} userId={user.id}>
+                    <Button 
+                      variant="outline"
+                      className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50"
+                    >
+                      <FileEdit className="h-4 w-4" />
+                      Solicită modificări
+                    </Button>
+                  </ModificationRequestDialog>
+                )}
+                
                 <Button 
                   onClick={handleChatNav}
                   className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
                 >
                   <MessageSquare className="h-4 w-4" />
-                  Project Chat
+                  Mesaje
                 </Button>
               </div>
             </div>

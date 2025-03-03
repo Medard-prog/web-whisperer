@@ -26,6 +26,8 @@ import {
 import { toast } from 'sonner';
 import ChatMessage from '@/components/chat/ChatMessage';
 import ChatInput from '@/components/chat/ChatInput';
+import PageTransition from '@/components/PageTransition';
+import DashboardSidebar from '@/components/DashboardSidebar';
 
 const AdminProjectChat = () => {
   const { id } = useParams<{ id: string }>();
@@ -208,89 +210,14 @@ const AdminProjectChat = () => {
     return userFound?.name || 'Unknown User';
   };
   
-  if (loading) {
-    return (
-      <div className="container py-6">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-40 mb-2" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent className="h-[500px] flex flex-col justify-center items-center">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <Skeleton className="h-4 w-32 mt-4" />
-          </CardContent>
-          <CardFooter>
-            <Skeleton className="h-10 w-full" />
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div className="container py-6">
-        <Breadcrumb>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbItem>
-            <BreadcrumbLink>Project Chat</BreadcrumbLink>
-          </BreadcrumbItem>
-        </Breadcrumb>
-        
-        <div className="flex justify-between items-center my-4">
-          <h1 className="text-2xl font-bold">Project Messages</h1>
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-        </div>
-        
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-  
-  if (!project) {
-    return (
-      <div className="container py-6">
-        <Breadcrumb>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbItem>
-            <BreadcrumbLink>Project Chat</BreadcrumbLink>
-          </BreadcrumbItem>
-        </Breadcrumb>
-        
-        <div className="flex justify-between items-center my-4">
-          <h1 className="text-2xl font-bold">Project Messages</h1>
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-        </div>
-        
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Project not found</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-  
-  return (
+  const content = (
     <div className="container py-6">
       <Breadcrumb>
         <BreadcrumbItem>
           <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem>
-          <BreadcrumbLink href={`/admin/projects/${id}`}>{project.title}</BreadcrumbLink>
+          <BreadcrumbLink href={`/admin/projects/${id}`}>{project?.title || 'Project Details'}</BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem>
           <BreadcrumbLink>Project Chat</BreadcrumbLink>
@@ -304,59 +231,96 @@ const AdminProjectChat = () => {
         </Button>
       </div>
       
-      <Card className="shadow-md border">
-        <CardHeader className="bg-muted/50 pb-3">
-          <CardTitle className="text-lg flex items-center">
-            <MessagesSquare className="mr-2 h-5 w-5 text-primary" />
-            {project.title}
-          </CardTitle>
-          <CardDescription className="flex items-center">
-            <UserIcon className="h-3 w-3 mr-1" />
-            {projectOwner ? (
-              <span>Client: {projectOwner.name} ({projectOwner.email})</span>
-            ) : (
-              <span>Unassigned Project</span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          <div 
-            ref={messagesContainerRef}
-            className="h-[500px] overflow-y-auto p-4 space-y-2 bg-background/80"
-          >
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
-                <MessagesSquare className="h-12 w-12 mb-2 opacity-20" />
-                <p>No messages yet</p>
-                <p className="text-sm">Start the conversation by sending a message below</p>
-              </div>
-            ) : (
-              <>
-                {messages.map((message) => (
-                  <ChatMessage 
-                    key={message.id}
-                    message={message}
-                    isCurrentUser={message.userId === user?.id}
-                    userName={
-                      message.isAdmin 
-                        ? "Admin" 
-                        : getUserName(message.userId)
-                    }
-                  />
-                ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
-        </CardContent>
-        
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          isLoading={sendingMessage}
-          placeholder="Type a message as admin..."
-        />
-      </Card>
+      {loading ? (
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="h-[500px] flex flex-col justify-center items-center">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <Skeleton className="h-4 w-32 mt-4" />
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-10 w-full" />
+          </CardFooter>
+        </Card>
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : !project ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Project not found</AlertDescription>
+        </Alert>
+      ) : (
+        <Card className="shadow-md border">
+          <CardHeader className="bg-muted/50 pb-3">
+            <CardTitle className="text-lg flex items-center">
+              <MessagesSquare className="mr-2 h-5 w-5 text-primary" />
+              {project.title}
+            </CardTitle>
+            <CardDescription className="flex items-center">
+              <UserIcon className="h-3 w-3 mr-1" />
+              {projectOwner ? (
+                <span>Client: {projectOwner.name} ({projectOwner.email})</span>
+              ) : (
+                <span>Unassigned Project</span>
+              )}
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="p-0">
+            <div 
+              ref={messagesContainerRef}
+              className="h-[500px] overflow-y-auto p-4 space-y-2 bg-background/80"
+            >
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
+                  <MessagesSquare className="h-12 w-12 mb-2 opacity-20" />
+                  <p>No messages yet</p>
+                  <p className="text-sm">Start the conversation by sending a message below</p>
+                </div>
+              ) : (
+                <>
+                  {messages.map((message) => (
+                    <ChatMessage 
+                      key={message.id}
+                      message={message}
+                      isCurrentUser={message.userId === user?.id}
+                      userName={
+                        message.isAdmin 
+                          ? "Admin" 
+                          : getUserName(message.userId)
+                      }
+                    />
+                  ))}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+          </CardContent>
+          
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            isLoading={sendingMessage}
+            placeholder="Type a message as admin..."
+          />
+        </Card>
+      )}
+    </div>
+  );
+  
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <DashboardSidebar isAdmin={true} />
+      <PageTransition>
+        <main className="flex-1 p-4">
+          {content}
+        </main>
+      </PageTransition>
     </div>
   );
 };
