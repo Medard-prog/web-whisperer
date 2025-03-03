@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
+import { fetchProjects } from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectCard from "@/components/ProjectCard";
 import { Button } from "@/components/ui/button";
@@ -33,32 +34,17 @@ const Dashboard = () => {
       
       console.log("Loading projects in Dashboard for user:", user.id);
       
-      // Collect projects from both sources
-      let combinedProjects: Project[] = [];
-      
-      try {
-        const requests = await fetchProjectRequests(user.id);
-        console.log("Project requests fetched in Dashboard:", requests);
-        combinedProjects = [...combinedProjects, ...requests];
-      } catch (requestsError) {
-        console.error("Error fetching project requests in Dashboard:", requestsError);
-      }
-      
-      try {
-        const regularProjects = await fetchProjects(user.id);
-        console.log("Regular projects fetched in Dashboard:", regularProjects);
-        combinedProjects = [...combinedProjects, ...regularProjects];
-      } catch (projectsError) {
-        console.error("Error fetching regular projects in Dashboard:", projectsError);
-      }
+      // Load projects from the combined projects table
+      const allProjects = await fetchProjects(user.id);
+      console.log("All projects fetched in Dashboard:", allProjects);
       
       // Sort by creation date (newest first)
-      combinedProjects.sort((a, b) => {
+      allProjects.sort((a, b) => {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
-      console.log("Combined projects in Dashboard:", combinedProjects);
-      setProjects(combinedProjects);
+      console.log("Combined projects in Dashboard:", allProjects);
+      setProjects(allProjects);
       
     } catch (error) {
       console.error("Error loading projects in Dashboard:", error);
@@ -113,7 +99,7 @@ const Dashboard = () => {
       
       <main className="flex-1 p-6 overflow-y-auto">
         <PageTransition>
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-[1400px] mx-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>

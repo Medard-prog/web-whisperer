@@ -322,7 +322,15 @@ export type Database = {
           project_id?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
@@ -343,6 +351,7 @@ export type Database = {
           price: number | null
           status: string | null
           title: string
+          type: string
           user_id: string | null
           website_type: string | null
         }
@@ -364,6 +373,7 @@ export type Database = {
           price?: number | null
           status?: string | null
           title: string
+          type?: string
           user_id?: string | null
           website_type?: string | null
         }
@@ -385,6 +395,7 @@ export type Database = {
           price?: number | null
           status?: string | null
           title?: string
+          type?: string
           user_id?: string | null
           website_type?: string | null
         }

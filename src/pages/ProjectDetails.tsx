@@ -72,7 +72,7 @@ const ProjectDetails = () => {
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar />
       <PageTransition>
-        <div className="flex-1 p-6 lg:p-8 w-full">
+        <div className="flex-1 p-6 lg:p-8 w-full max-w-[1400px] mx-auto">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-2xl font-bold">
               {loading ? "Loading Project..." : project?.title || "Project Details"}

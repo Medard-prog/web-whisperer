@@ -20,7 +20,7 @@ export interface Project {
   dueDate?: string;
   price: number;
   userId?: string;
-  type: ProjectType; // Modified this to be required
+  type: ProjectType; 
   hasEcommerce?: boolean;
   hasCMS?: boolean;
   hasSEO?: boolean;

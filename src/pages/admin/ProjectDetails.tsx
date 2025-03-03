@@ -1,36 +1,29 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { 
-  fetchProjectById, 
-  fetchProjectTasks, 
-  fetchProjectNotes
-} from "@/integrations/supabase/client";
-import { Project, ProjectTask, ProjectNote, PaymentStatus } from "@/types";
+import { fetchProjectById, fetchProjectNotes, fetchProjectTasks } from "@/integrations/supabase/client";
+import { Project, ProjectNote, ProjectTask } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
-import ProjectTasksPanel from "@/components/ProjectTasksPanel";
 import ProjectNotesPanel from "@/components/ProjectNotesPanel";
+import ProjectTasksPanel from "@/components/ProjectTasksPanel";
 import PageTransition from "@/components/PageTransition";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, MessageSquare, RefreshCw } from "lucide-react";
 
 const AdminProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
   const navigate = useNavigate();
-  
   const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<ProjectTask[] | null>(null);
-  const [notes, setNotes] = useState<ProjectNote[] | null>(null);
+  const [notes, setNotes] = useState<ProjectNote[]>([]);
+  const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!id) return;
-    
     loadProjectData();
   }, [id]);
   
@@ -39,42 +32,25 @@ const AdminProjectDetails = () => {
       setLoading(true);
       setError(null);
       
-      console.log("Admin: Loading project data for ID:", id);
-      
       // Load project details
       const projectData = await fetchProjectById(id!);
       if (!projectData) {
-        console.error("Admin: Project not found for ID:", id);
-        throw new Error("Project not found. It may have been deleted.");
+        throw new Error("Project not found");
       }
-      
-      console.log("Admin: Project data loaded successfully:", projectData);
       setProject(projectData);
       
-      // Load tasks
-      try {
-        const tasksData = await fetchProjectTasks(id!);
-        setTasks(tasksData);
-      } catch (tasksError) {
-        console.error("Error loading tasks:", tasksError);
-        // Don't fail the whole page for tasks
-      }
+      // Load project notes
+      const notesData = await fetchProjectNotes(id!);
+      setNotes(notesData);
       
-      // Load notes
-      try {
-        const notesData = await fetchProjectNotes(id!);
-        setNotes(notesData);
-      } catch (notesError) {
-        console.error("Error loading notes:", notesError);
-        // Don't fail the whole page for notes
-      }
+      // Load project tasks
+      const tasksData = await fetchProjectTasks(id!);
+      setTasks(tasksData);
       
     } catch (err) {
-      console.error("Admin: Error loading project data:", err);
+      console.error("Error loading project data:", err);
       setError(err instanceof Error ? err.message : "Failed to load project data");
-      toast.error("Error loading project data", {
-        description: err instanceof Error ? err.message : "Please try again later."
-      });
+      toast.error("Error loading project data");
     } finally {
       setLoading(false);
     }
@@ -85,17 +61,17 @@ const AdminProjectDetails = () => {
     toast.success("Project updated successfully");
   };
   
+  const handleNotesUpdate = (updatedNotes: ProjectNote[]) => {
+    setNotes(updatedNotes);
+  };
+  
+  const handleTasksUpdate = (updatedTasks: ProjectTask[]) => {
+    setTasks(updatedTasks);
+  };
+  
   const handleChatNav = () => {
     if (id) {
       navigate(`/admin/project/${id}/chat`);
-    }
-  };
-  
-  const handleNoteAdded = (newNote: ProjectNote) => {
-    if (notes) {
-      setNotes([newNote, ...notes]);
-    } else {
-      setNotes([newNote]);
     }
   };
   
@@ -103,13 +79,13 @@ const AdminProjectDetails = () => {
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar isAdmin={true} />
       <PageTransition>
-        <div className="flex-1 p-6 lg:p-8 w-full">
+        <div className="flex-1 p-6 lg:p-8 w-full max-w-[1400px] mx-auto">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-2xl font-bold">
               {loading ? "Loading Project..." : project?.title || "Project Details"}
             </h1>
             
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline"
                 onClick={() => navigate("/admin/projects")}
@@ -117,6 +93,14 @@ const AdminProjectDetails = () => {
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Projects
+              </Button>
+              
+              <Button
+                onClick={handleChatNav}
+                className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Messages
               </Button>
             </div>
           </div>
@@ -135,40 +119,42 @@ const AdminProjectDetails = () => {
               </Button>
             </div>
           ) : (
-            <div className="space-y-8">
-              <ProjectDetailsPanel 
-                project={project} 
-                loading={loading} 
-                isAdmin={true}
-                onProjectUpdate={handleProjectUpdate}
-              />
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="mb-6">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              </TabsList>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <ProjectTasksPanel 
-                    projectId={id || ''} 
-                    tasks={tasks} 
-                    loading={loading} 
-                    isAdmin={true}
-                  />
-                  
-                  {/* Chat button */}
-                  <Button 
-                    onClick={handleChatNav}
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Project Chat
-                  </Button>
-                </div>
-                
-                <ProjectNotesPanel 
-                  projectId={id || ''} 
-                  userId={user?.id}
-                  onNoteAdded={handleNoteAdded}
+              <TabsContent value="details">
+                <ProjectDetailsPanel 
+                  project={project} 
+                  loading={loading} 
+                  onProjectUpdate={handleProjectUpdate}
+                  isAdmin={true}
                 />
-              </div>
-            </div>
+              </TabsContent>
+              
+              <TabsContent value="notes">
+                <ProjectNotesPanel 
+                  projectId={id!} 
+                  notes={notes} 
+                  loading={loading}
+                  onNotesUpdate={handleNotesUpdate}
+                  isAdmin={true}
+                />
+              </TabsContent>
+              
+              <TabsContent value="tasks">
+                <ProjectTasksPanel 
+                  projectId={id!} 
+                  tasks={tasks} 
+                  loading={loading}
+                  onTasksUpdate={handleTasksUpdate}
+                  isAdmin={true}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </div>
       </PageTransition>
