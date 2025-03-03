@@ -4,13 +4,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   fetchProjectById, 
-  fetchProjectTasks, 
-  fetchProjectFiles 
+  fetchProjectTasks
 } from "@/integrations/supabase/client";
-import { Project, ProjectTask, ProjectFile } from "@/types";
+import { Project, ProjectTask } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
-import ProjectTasksPanel from "@/components/ProjectTasksPanel";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -23,8 +21,6 @@ const ProjectDetails = () => {
   const navigate = useNavigate();
   
   const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<ProjectTask[] | null>(null);
-  const [files, setFiles] = useState<ProjectFile[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -50,24 +46,6 @@ const ProjectDetails = () => {
       
       console.log("Project data loaded successfully:", projectData);
       setProject(projectData);
-      
-      // Load tasks
-      try {
-        const tasksData = await fetchProjectTasks(id!);
-        setTasks(tasksData);
-      } catch (tasksError) {
-        console.error("Error loading tasks:", tasksError);
-        // Don't fail the whole page for tasks
-      }
-      
-      // Load files
-      try {
-        const filesData = await fetchProjectFiles(id!);
-        setFiles(filesData);
-      } catch (filesError) {
-        console.error("Error loading files:", filesError);
-        // Don't fail the whole page for files
-      }
       
     } catch (err) {
       console.error("Error loading project data:", err);
@@ -128,43 +106,34 @@ const ProjectDetails = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                  <ProjectDetailsPanel 
-                    project={project} 
-                    loading={loading} 
-                    onProjectUpdate={handleProjectUpdate}
-                  />
-                  
-                  <ProjectTasksPanel 
-                    projectId={id || ''} 
-                    tasks={tasks} 
-                    loading={loading} 
-                  />
-                </div>
+              <div>
+                <ProjectDetailsPanel 
+                  project={project} 
+                  loading={loading} 
+                  onProjectUpdate={handleProjectUpdate}
+                />
                 
-                <div className="space-y-8">
-                  <div className="flex flex-col gap-4">
-                    <Button 
-                      onClick={handleChatNav}
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 w-full"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Mesaje
-                    </Button>
-                    
-                    {user && id && (
-                      <ModificationRequestDialog projectId={id} userId={user.id}>
-                        <Button 
-                          variant="outline"
-                          className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 w-full"
-                        >
-                          <FileEdit className="h-4 w-4" />
-                          Solicită modificări
-                        </Button>
-                      </ModificationRequestDialog>
-                    )}
-                  </div>
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                  <Button 
+                    onClick={handleChatNav}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 flex-1"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Mesaje
+                  </Button>
+                  
+                  {user && id && (
+                    <ModificationRequestDialog projectId={id} userId={user.id}>
+                      <Button 
+                        variant="outline"
+                        className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 flex-1"
+                      >
+                        <FileEdit className="h-4 w-4" />
+                        Solicită modificări
+                      </Button>
+                    </ModificationRequestDialog>
+                  )}
                 </div>
               </div>
             )}

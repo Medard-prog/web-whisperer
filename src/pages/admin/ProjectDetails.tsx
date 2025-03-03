@@ -5,10 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   fetchProjectById, 
   fetchProjectTasks, 
-  fetchProjectNotes, 
-  fetchProjectFiles 
+  fetchProjectNotes
 } from "@/integrations/supabase/client";
-import { Project, ProjectTask, ProjectNote, ProjectFile } from "@/types";
+import { Project, ProjectTask, ProjectNote } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
 import ProjectTasksPanel from "@/components/ProjectTasksPanel";
@@ -26,7 +25,6 @@ const AdminProjectDetails = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ProjectTask[] | null>(null);
   const [notes, setNotes] = useState<ProjectNote[] | null>(null);
-  const [files, setFiles] = useState<ProjectFile[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -71,15 +69,6 @@ const AdminProjectDetails = () => {
         // Don't fail the whole page for notes
       }
       
-      // Load files
-      try {
-        const filesData = await fetchProjectFiles(id!);
-        setFiles(filesData);
-      } catch (filesError) {
-        console.error("Error loading files:", filesError);
-        // Don't fail the whole page for files
-      }
-      
     } catch (err) {
       console.error("Admin: Error loading project data:", err);
       setError(err instanceof Error ? err.message : "Failed to load project data");
@@ -122,14 +111,6 @@ const AdminProjectDetails = () => {
                   <ArrowLeft className="h-4 w-4" />
                   Back to Projects
                 </Button>
-                
-                <Button 
-                  onClick={handleChatNav}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Project Chat
-                </Button>
               </div>
             </div>
             
@@ -147,26 +128,33 @@ const AdminProjectDetails = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                  <ProjectDetailsPanel 
-                    project={project} 
-                    loading={loading} 
-                    isAdmin={true}
-                    onProjectUpdate={handleProjectUpdate}
-                  />
-                  
-                  <ProjectTasksPanel 
-                    projectId={id || ''} 
-                    tasks={tasks} 
-                    loading={loading} 
-                    isAdmin={true}
-                  />
+              <div className="space-y-8">
+                <ProjectDetailsPanel 
+                  project={project} 
+                  loading={loading} 
+                  isAdmin={true}
+                  onProjectUpdate={handleProjectUpdate}
+                />
+                
+                {/* Chat button */}
+                <div className="flex">
+                  <Button 
+                    onClick={handleChatNav}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 w-full"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Project Chat
+                  </Button>
                 </div>
                 
-                <div className="space-y-8">
-                  <ProjectNotesPanel projectId={id || ''} />
-                </div>
+                <ProjectTasksPanel 
+                  projectId={id || ''} 
+                  tasks={tasks} 
+                  loading={loading} 
+                  isAdmin={true}
+                />
+                
+                <ProjectNotesPanel projectId={id || ''} />
               </div>
             )}
           </div>

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Project } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Clock, DollarSign, Edit, FileText, MessageSquare } from "lucide-react";
+import { Calendar, Clock, DollarSign, Edit, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProjectDetailsPanelProps {
@@ -51,7 +51,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
   const [editedProject, setEditedProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
-  
+
   if (loading) {
     return (
       <Card>
@@ -86,14 +86,6 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
 
   const status = statusMap[project.status as keyof typeof statusMap] || statusMap.pending;
   
-  const handleMessageClick = () => {
-    if (isAdmin) {
-      navigate(`/admin/project/${project.id}/chat`);
-    } else {
-      navigate(`/dashboard/project/${project.id}/chat`);
-    }
-  };
-  
   const handleEditClick = () => {
     setEditedProject({...project});
     setShowEditDialog(true);
@@ -121,7 +113,6 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
         })
         .eq('id', editedProject.id);
         
-      // If we get an error, maybe it's in the projects table instead
       if (error) {
         console.log("Not found in project_requests, trying projects table...");
         const { error: projectsError } = await supabase
@@ -196,49 +187,67 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-purple-50 border-none">
-              <CardContent className="p-4 flex items-center">
-                <Calendar className="h-10 w-10 text-purple-500 mr-4" />
-                <div>
-                  <p className="text-sm text-gray-500">Data finalizare</p>
-                  <p className="font-semibold">
-                    {project.dueDate ? formatDate(project.dueDate) : "Nespecificată"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-indigo-50 border-none">
-              <CardContent className="p-4 flex items-center">
-                <Clock className="h-10 w-10 text-indigo-500 mr-4" />
-                <div>
-                  <p className="text-sm text-gray-500">Stadiu</p>
-                  <div className="flex items-center">
-                    <div className="w-32 h-2 bg-gray-200 rounded overflow-hidden mt-1">
-                      <div 
-                        className="h-full bg-indigo-500" 
-                        style={{ 
-                          width: `${getCompletionPercentage(project.status)}%`
-                        }}
-                      ></div>
-                    </div>
-                    <span className="ml-2 font-semibold">
-                      {getCompletionPercentage(project.status)}%
-                    </span>
+            <div className="relative overflow-hidden rounded-lg border bg-white p-2">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center">
+                  <div className="bg-purple-100 rounded-md p-2">
+                    <Calendar className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-700">Data finalizare</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="text-lg font-semibold pl-2">
+                {project.dueDate ? formatDate(project.dueDate) : "Nespecificată"}
+              </p>
+              <div className="absolute top-0 right-0 h-full w-1.5 bg-purple-400"></div>
+            </div>
             
-            <Card className="bg-green-50 border-none">
-              <CardContent className="p-4 flex items-center">
-                <DollarSign className="h-10 w-10 text-green-500 mr-4" />
-                <div>
-                  <p className="text-sm text-gray-500">Preț</p>
-                  <p className="font-semibold">{project.price.toLocaleString()} RON</p>
+            <div className="relative overflow-hidden rounded-lg border bg-white p-2">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center">
+                  <div className="bg-indigo-100 rounded-md p-2">
+                    <Clock className="h-5 w-5 text-indigo-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-700">Stadiu</p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="pl-2">
+                <div className="flex items-center mt-1">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden w-full max-w-32">
+                    <div 
+                      className="h-full bg-indigo-500" 
+                      style={{ 
+                        width: `${getCompletionPercentage(project.status)}%`,
+                        transition: 'width 0.5s ease-in-out'
+                      }}
+                    ></div>
+                  </div>
+                  <span className="ml-2 font-semibold text-lg">
+                    {getCompletionPercentage(project.status)}%
+                  </span>
+                </div>
+              </div>
+              <div className="absolute top-0 right-0 h-full w-1.5 bg-indigo-400"></div>
+            </div>
+            
+            <div className="relative overflow-hidden rounded-lg border bg-white p-2">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center">
+                  <div className="bg-green-100 rounded-md p-2">
+                    <DollarSign className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-700">Preț</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-lg font-semibold pl-2">{project.price.toLocaleString()} RON</p>
+              <div className="absolute top-0 right-0 h-full w-1.5 bg-green-400"></div>
+            </div>
           </div>
           
           <Card>
@@ -269,25 +278,9 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
               )}
             </CardContent>
           </Card>
-          
-          <div className="flex justify-between">
-            <Button variant="outline" className="gap-2" onClick={handleMessageClick}>
-              <MessageSquare className="h-4 w-4" />
-              <span>Mesaje</span>
-            </Button>
-            {!isAdmin && (
-              <Button 
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                onClick={handleMessageClick}
-              >
-                Solicită modificări
-              </Button>
-            )}
-          </div>
         </CardContent>
       </Card>
       
-      {/* Edit Project Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
