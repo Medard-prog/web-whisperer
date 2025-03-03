@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProjectFile, mapProject } from '@/types';
+import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProject, mapProjectFile } from '@/types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kadoutdcicucjyqvjihn.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthZG91dGRjaWN1Y2p5cXZqaWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NTk4MzYsImV4cCI6MjA1NjMzNTgzNn0.275ggz_qZkQo4MvW2Rm75JbYixKje8vaWfZ_6RfNXr0';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthZG91dGRjaWN1Y2p5cXZqaWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NTk4MzYsImV4cCI6MjA1NjMzNTgzNn0.275ggz_qZKQo4MvW2Rm75JbYixKje8vaWfZ_6RfNXr0';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -296,7 +296,7 @@ export const fetchProjectTasks = async (projectId: string) => {
       dueDate: task.due_date,
       createdAt: task.created_at,
       projectId: task.project_id,
-      createdBy: task.created_by
+      createdBy: task.created_by || 'system'
     })) as ProjectTask[];
   } catch (error: any) {
     toast.error(`Failed to fetch project tasks: ${error.message}`);
@@ -311,7 +311,8 @@ export const addProjectTask = async (projectId: string, title: string) => {
       .insert([{ 
         project_id: projectId, 
         title: title,
-        is_completed: false
+        is_completed: false,
+        created_by: 'system'
       }])
       .select('*')
       .single();
@@ -326,7 +327,7 @@ export const addProjectTask = async (projectId: string, title: string) => {
       dueDate: data.due_date,
       createdAt: data.created_at,
       projectId: data.project_id,
-      createdBy: data.created_by
+      createdBy: data.created_by || 'system'
     } as ProjectTask;
   } catch (error: any) {
     toast.error(`Failed to add task: ${error.message}`);
@@ -507,27 +508,4 @@ export const sendSupportMessage = async (userId: string, message: string) => {
     toast.error(`Failed to send support message: ${error.message}`);
     return null;
   }
-};
-
-export const mapProject = (project: any): Project => {
-  return {
-    id: project.id,
-    title: project.title || project.project_name || '',
-    description: project.description || '',
-    status: project.status || 'pending',
-    websiteType: project.website_type || project.project_type || '',
-    pageCount: project.page_count || 0,
-    price: project.price || 0,
-    createdAt: project.created_at,
-    userId: project.user_id,
-    hasEcommerce: project.has_ecommerce || false,
-    hasCMS: project.has_cms || false,
-    hasSEO: project.has_seo || false,
-    hasMaintenance: project.has_maintenance || false,
-    designComplexity: project.design_complexity || 'standard',
-    paymentStatus: project.payment_status || 'pending',
-    amountPaid: project.amount_paid || 0,
-    dueDate: project.due_date,
-    type: project.type || 'project'
-  };
 };

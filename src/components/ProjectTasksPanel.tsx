@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +25,7 @@ interface ProjectTasksPanelProps {
   tasks?: ProjectTask[] | null;
   loading?: boolean;
   isAdmin?: boolean;
-  onTasksUpdate?: (updatedTasks: ProjectTask[]) => void; // Added to match how it's used
+  onTasksUpdate?: (updatedTasks: ProjectTask[]) => void;
 }
 
 const ProjectTasksPanel = ({ 
@@ -45,14 +44,12 @@ const ProjectTasksPanel = ({
   const [error, setError] = useState<string | null>(null);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   
-  // Initialize tasks from props
   useEffect(() => {
     if (initialTasks) {
       setTasks(initialTasks);
     }
   }, [initialTasks]);
   
-  // Calculate completion percentage
   useEffect(() => {
     if (tasks.length === 0) return;
     
@@ -75,6 +72,7 @@ const ProjectTasksPanel = ({
             title: newTaskTitle,
             description: newTaskDescription,
             is_completed: false,
+            created_by: 'system'
           },
         ])
         .select("*")
@@ -89,6 +87,7 @@ const ProjectTasksPanel = ({
         description: data.description,
         isCompleted: data.is_completed,
         createdAt: data.created_at,
+        createdBy: data.created_by || 'system'
       };
       
       const updatedTasks = [...tasks, newTask];
@@ -113,7 +112,6 @@ const ProjectTasksPanel = ({
   
   const handleToggleTask = async (taskId: string, currentState: boolean) => {
     try {
-      // Set loading state for this specific task
       setLoadingTaskState({ ...loadingTaskState, [taskId]: true });
       
       const { data, error } = await supabase
@@ -124,7 +122,6 @@ const ProjectTasksPanel = ({
         
       if (error) throw error;
       
-      // Update local state
       const updatedTasks = tasks.map((task) =>
         task.id === taskId ? { ...task, isCompleted: !currentState } : task
       );
@@ -139,7 +136,6 @@ const ProjectTasksPanel = ({
       console.error("Error toggling task:", error);
       toast.error("Failed to update task status");
     } finally {
-      // Clear loading state for this task
       const newLoadingState = { ...loadingTaskState };
       delete newLoadingState[taskId];
       setLoadingTaskState(newLoadingState);
@@ -157,7 +153,6 @@ const ProjectTasksPanel = ({
         
       if (error) throw error;
       
-      // Update local state
       const updatedTasks = tasks.filter((task) => task.id !== taskId);
       setTasks(updatedTasks);
       
