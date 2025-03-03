@@ -1,10 +1,13 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProject, mapProjectFile } from '@/types';
 
+// Use the correct Supabase URL and key from config.toml or environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kadoutdcicucjyqvjihn.supabase.co';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthZG91dGRjaWN1Y2p5cXZqaWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NTk4MzYsImV4cCI6MjA1NjMzNTgzNn0.275ggz_qZKQo4MvW2Rm75JbYixKje8vaWfZ_6RfNXr0';
 
+// Initialize the Supabase client with the correct API key
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const fetchUserData = async (userId: string) => {
@@ -68,8 +71,11 @@ export const fetchProjectRequests = async (userId?: string) => {
       return [];
     }
 
+    // Add more detailed logging for debugging
+    console.log("Project requests data from DB:", data);
     return data.map(mapProject) || [];
   } catch (error: any) {
+    console.error("Exception in fetchProjectRequests:", error);
     toast.error(`Failed to fetch project requests: ${error.message}`);
     return [];
   }
@@ -99,6 +105,7 @@ export const fetchProjects = async (userId?: string) => {
     console.log("Projects data from DB:", data);
     return data.map(mapProject) as Project[];
   } catch (error: any) {
+    console.error("Exception in fetchProjects:", error);
     toast.error(`Failed to fetch projects: ${error.message}`);
     return [];
   }
