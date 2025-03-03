@@ -111,6 +111,42 @@ export type Database = {
         }
         Relationships: []
       }
+      project_modification_requests: {
+        Row: {
+          budget: string
+          created_at: string | null
+          description: string
+          id: string
+          priority: string
+          project_id: string
+          status: string
+          timeline: string
+          user_id: string
+        }
+        Insert: {
+          budget: string
+          created_at?: string | null
+          description: string
+          id?: string
+          priority?: string
+          project_id: string
+          status?: string
+          timeline: string
+          user_id: string
+        }
+        Update: {
+          budget?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          priority?: string
+          project_id?: string
+          status?: string
+          timeline?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_notes: {
         Row: {
           content: string
