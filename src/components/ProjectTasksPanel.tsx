@@ -26,13 +26,15 @@ interface ProjectTasksPanelProps {
   tasks?: ProjectTask[] | null;
   loading?: boolean;
   isAdmin?: boolean;
+  onTasksUpdate?: (updatedTasks: ProjectTask[]) => void; // Added to match how it's used
 }
 
 const ProjectTasksPanel = ({ 
   projectId, 
   tasks: initialTasks = null, 
   loading = false,
-  isAdmin = false
+  isAdmin = false,
+  onTasksUpdate
 }: ProjectTasksPanelProps) => {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -89,10 +91,15 @@ const ProjectTasksPanel = ({
         createdAt: data.created_at,
       };
       
-      setTasks([...tasks, newTask]);
+      const updatedTasks = [...tasks, newTask];
+      setTasks(updatedTasks);
       setNewTaskTitle("");
       setNewTaskDescription("");
       setShowAddForm(false);
+      
+      if (onTasksUpdate) {
+        onTasksUpdate(updatedTasks);
+      }
       
       toast.success("Task added successfully");
     } catch (error: any) {
@@ -118,11 +125,15 @@ const ProjectTasksPanel = ({
       if (error) throw error;
       
       // Update local state
-      setTasks(
-        tasks.map((task) =>
-          task.id === taskId ? { ...task, isCompleted: !currentState } : task
-        )
+      const updatedTasks = tasks.map((task) =>
+        task.id === taskId ? { ...task, isCompleted: !currentState } : task
       );
+      
+      setTasks(updatedTasks);
+      
+      if (onTasksUpdate) {
+        onTasksUpdate(updatedTasks);
+      }
       
     } catch (error: any) {
       console.error("Error toggling task:", error);
@@ -147,7 +158,13 @@ const ProjectTasksPanel = ({
       if (error) throw error;
       
       // Update local state
-      setTasks(tasks.filter((task) => task.id !== taskId));
+      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+      setTasks(updatedTasks);
+      
+      if (onTasksUpdate) {
+        onTasksUpdate(updatedTasks);
+      }
+      
       toast.success("Task deleted successfully");
     } catch (error: any) {
       console.error("Error deleting task:", error);

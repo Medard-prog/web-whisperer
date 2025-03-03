@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,22 +23,36 @@ interface ProjectNotesPanelProps {
   projectId: string;
   userId?: string;
   onNoteAdded?: (note: ProjectNote) => void;
+  notes?: ProjectNote[];
+  loading?: boolean;
+  onNotesUpdate?: (updatedNotes: ProjectNote[]) => void;
+  isAdmin?: boolean;
 }
 
-const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanelProps) => {
+const ProjectNotesPanel = ({ 
+  projectId, 
+  userId, 
+  onNoteAdded,
+  notes: initialNotes,
+  loading: isLoading = false,
+  onNotesUpdate,
+  isAdmin = false
+}: ProjectNotesPanelProps) => {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isLoading);
   const [isSaving, setIsSaving] = useState(false);
-  const [notes, setNotes] = useState<ProjectNote[]>([]);
+  const [notes, setNotes] = useState<ProjectNote[]>(initialNotes || []);
   const [activeTab, setActiveTab] = useState('all');
   
   useEffect(() => {
-    if (projectId) {
+    if (initialNotes) {
+      setNotes(initialNotes);
+    } else if (projectId) {
       fetchNotes();
     }
-  }, [projectId]);
+  }, [projectId, initialNotes]);
   
   const fetchNotes = async () => {
     try {
@@ -114,13 +127,18 @@ const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanel
         createdBy: data.created_by
       };
       
-      setNotes([newNote, ...notes]);
+      const updatedNotes = [newNote, ...notes];
+      setNotes(updatedNotes);
       setNoteContent('');
       setIsPrivate(false);
       toast.success('Note added successfully');
       
       if (onNoteAdded) {
         onNoteAdded(newNote);
+      }
+      
+      if (onNotesUpdate) {
+        onNotesUpdate(updatedNotes);
       }
       
     } catch (error: any) {
