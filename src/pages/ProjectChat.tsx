@@ -1,26 +1,25 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Message, User } from '@/types';
+import { Message } from '@/types';
 import { 
   fetchProjectById, 
   fetchProjectMessages, 
-  fetchUsers,
   sendProjectMessage, 
   supabase 
 } from '@/integrations/supabase/client';
 import { 
-  Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter 
+  Card, CardContent, CardHeader, CardTitle, CardDescription 
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   AlertCircle, 
   ArrowLeft, 
   MessagesSquare,
-  UserIcon
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatMessage from '@/components/chat/ChatMessage';
@@ -28,15 +27,13 @@ import ChatInput from '@/components/chat/ChatInput';
 import PageTransition from '@/components/PageTransition';
 import DashboardSidebar from '@/components/DashboardSidebar';
 
-const AdminProjectChat = () => {
+const ProjectChat = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   
   const [project, setProject] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [projectOwner, setProjectOwner] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -44,6 +41,7 @@ const AdminProjectChat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Load project and messages data
   useEffect(() => {
     if (!id || !user) return;
     
@@ -52,33 +50,19 @@ const AdminProjectChat = () => {
         setLoading(true);
         setError(null);
         
+        // Fetch project data
         const projectData = await fetchProjectById(id);
         if (!projectData) {
-          setError("Project not found");
-          setLoading(false);
-          return;
+          throw new Error("Project not found");
         }
         setProject(projectData);
         
-        const usersData = await fetchUsers();
-        setUsers(usersData);
-        
-        if (projectData.userId) {
-          const owner = usersData.find(u => u.id === projectData.userId);
-          setProjectOwner(owner || null);
-        }
-        
-        try {
-          const messagesData = await fetchProjectMessages(id);
-          setMessages(messagesData);
-        } catch (err: any) {
-          console.error("Error fetching project messages:", err);
-          setError(`Could not load messages: ${err.message}`);
-          setMessages([]);
-        }
+        // Fetch project messages
+        const messagesData = await fetchProjectMessages(id);
+        setMessages(messagesData);
       } catch (err: any) {
-        console.error("Error loading project data:", err);
-        setError(`Failed to load project data: ${err.message}`);
+        console.error("Error loading data:", err);
+        setError(err.message || "Failed to load chat data");
       } finally {
         setLoading(false);
       }
@@ -86,20 +70,24 @@ const AdminProjectChat = () => {
     
     loadData();
     
+    // Set up real-time subscription for new messages
     const channel = supabase
-      .channel('admin-messages')
+      .channel('project-messages')
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'messages',
         filter: `project_id=eq.${id}`
       }, (payload) => {
+        // Check if message already exists to prevent duplicates
         const newMessage = payload.new as any;
         setMessages((current) => {
+          // Don't add if we already have this message
           if (current.some(msg => msg.id === newMessage.id)) {
             return current;
           }
           
+          // Transform to our Message type
           const formattedMessage: Message = {
             id: newMessage.id,
             projectId: newMessage.project_id,
@@ -114,6 +102,7 @@ const AdminProjectChat = () => {
           return [...current, formattedMessage];
         });
         
+        // Auto scroll to bottom on new message
         setTimeout(() => {
           if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -127,6 +116,7 @@ const AdminProjectChat = () => {
     };
   }, [id, user]);
   
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -142,26 +132,24 @@ const AdminProjectChat = () => {
       let attachmentUrl = '';
       let attachmentType = '';
       
+      // Upload file if provided
       if (file) {
-        const fileData = await uploadFile(file, id, user.id);
-        if (fileData) {
-          attachmentUrl = fileData.url || '';
+        const uploadResult = await uploadFile(file);
+        if (uploadResult) {
+          attachmentUrl = uploadResult.url;
           attachmentType = file.type;
         }
       }
       
-      const message = await sendProjectMessage(
+      await sendProjectMessage(
         id,
         content,
         user.id,
-        true,
+        false, // isAdmin = false for client messages
         attachmentUrl,
         attachmentType
       );
       
-      if (message) {
-        toast.success("Message sent");
-      }
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast.error(`Failed to send message: ${err.message}`);
@@ -170,10 +158,10 @@ const AdminProjectChat = () => {
     }
   };
   
-  const uploadFile = async (file: File, projectId: string, userId: string) => {
+  const uploadFile = async (file: File) => {
     try {
       const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `projects/${projectId}/${fileName}`;
+      const filePath = `projects/${id}/${fileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('project_files')
@@ -187,8 +175,7 @@ const AdminProjectChat = () => {
         
       return {
         url: urlData.publicUrl,
-        path: filePath,
-        type: file.type
+        path: filePath
       };
     } catch (err: any) {
       console.error("Error uploading file:", err);
@@ -197,33 +184,24 @@ const AdminProjectChat = () => {
     }
   };
   
-  const getUserName = (userId: string) => {
-    const userFound = users.find(u => u.id === userId);
-    return userFound?.name || 'Unknown User';
-  };
-  
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <DashboardSidebar isAdmin={true} />
+      <DashboardSidebar />
       <PageTransition>
-        <main className="flex-1 p-4">
-          <div className="container py-6">
-            <Breadcrumb>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/admin/projects">Projects</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem>
-                <BreadcrumbLink href={`/admin/projects/${id}`}>{project?.title || 'Project Details'}</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem>
-                <BreadcrumbLink>Project Chat</BreadcrumbLink>
-              </BreadcrumbItem>
-            </Breadcrumb>
-            
-            <div className="flex justify-between items-center my-4">
-              <h1 className="text-2xl font-bold">Project Messages</h1>
-              <Button variant="outline" onClick={() => navigate(-1)}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        <div className="flex-1 p-6 lg:p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold">
+                {loading ? "Loading..." : `${project?.title || "Project"} Chat`}
+              </h1>
+              
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/dashboard/project/${id}`)}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Project
               </Button>
             </div>
             
@@ -237,19 +215,11 @@ const AdminProjectChat = () => {
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <Skeleton className="h-4 w-32 mt-4" />
                 </CardContent>
-                <CardFooter>
-                  <Skeleton className="h-10 w-full" />
-                </CardFooter>
               </Card>
             ) : error ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : !project ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Project not found</AlertDescription>
               </Alert>
             ) : (
               <Card className="shadow-md border">
@@ -259,12 +229,8 @@ const AdminProjectChat = () => {
                     {project.title}
                   </CardTitle>
                   <CardDescription className="flex items-center">
-                    <UserIcon className="h-3 w-3 mr-1" />
-                    {projectOwner ? (
-                      <span>Client: {projectOwner.name} ({projectOwner.email})</span>
-                    ) : (
-                      <span>Unassigned Project</span>
-                    )}
+                    <Clock className="h-3 w-3 mr-1" />
+                    Status: {statusMap[project.status as keyof typeof statusMap]?.label || project.status}
                   </CardDescription>
                 </CardHeader>
                 
@@ -286,11 +252,7 @@ const AdminProjectChat = () => {
                             key={message.id}
                             message={message}
                             isCurrentUser={message.userId === user?.id}
-                            userName={
-                              message.isAdmin 
-                                ? "Admin" 
-                                : getUserName(message.userId)
-                            }
+                            userName={message.isAdmin ? "Admin" : "You"}
                           />
                         ))}
                         <div ref={messagesEndRef} />
@@ -302,15 +264,24 @@ const AdminProjectChat = () => {
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   isLoading={sendingMessage}
-                  placeholder="Type a message as admin..."
+                  placeholder="Type your message..."
                 />
               </Card>
             )}
           </div>
-        </main>
+        </div>
       </PageTransition>
     </div>
   );
 };
 
-export default AdminProjectChat;
+// Helper for status mapping
+const statusMap = {
+  pending: { label: "În așteptare", color: "bg-yellow-100 text-yellow-800" },
+  in_progress: { label: "În lucru", color: "bg-blue-100 text-blue-800" },
+  completed: { label: "Finalizat", color: "bg-green-100 text-green-800" },
+  cancelled: { label: "Anulat", color: "bg-red-100 text-red-800" },
+  new: { label: "Nou", color: "bg-purple-100 text-purple-800" }
+};
+
+export default ProjectChat;

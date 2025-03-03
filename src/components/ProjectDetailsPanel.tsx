@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -158,6 +157,17 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
     }
   };
   
+  const getCompletionPercentage = (status: string) => {
+    switch (status) {
+      case 'new': return 0;
+      case 'pending': return 10;
+      case 'in_progress': return 50;
+      case 'completed': return 100;
+      case 'cancelled': return 0;
+      default: return 0;
+    }
+  };
+  
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -208,24 +218,12 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                       <div 
                         className="h-full bg-indigo-500" 
                         style={{ 
-                          width: project.status === 'completed' 
-                            ? '100%' 
-                            : project.status === 'in_progress' 
-                              ? '50%' 
-                              : project.status === 'pending' 
-                                ? '10%' 
-                                : '0%'
+                          width: `${getCompletionPercentage(project.status)}%`
                         }}
                       ></div>
                     </div>
                     <span className="ml-2 font-semibold">
-                      {project.status === 'completed' 
-                        ? '100%' 
-                        : project.status === 'in_progress' 
-                          ? '50%' 
-                          : project.status === 'pending' 
-                            ? '10%' 
-                            : '0%'}
+                      {getCompletionPercentage(project.status)}%
                     </span>
                   </div>
                 </div>
@@ -331,6 +329,16 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                   <option value="completed">Finalizat</option>
                   <option value="cancelled">Anulat</option>
                 </select>
+                
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-1">Procentaj finalizare: {getCompletionPercentage(editedProject.status)}%</p>
+                  <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-500" 
+                      style={{ width: `${getCompletionPercentage(editedProject.status)}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
               
               <div className="grid gap-2">
