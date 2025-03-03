@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,9 +14,23 @@ import { Project, PaymentStatus } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { updateProject } from "@/integrations/supabase/client";
-import { Calendar, Clock, DollarSign, Edit, FileText, Check } from "lucide-react";
+import { 
+  Calendar, 
+  Clock, 
+  DollarSign, 
+  Edit, 
+  FileText, 
+  Check, 
+  PanelTop, 
+  ShoppingCart, 
+  CalendarClock,
+  BarChart3,
+  Users,
+  Briefcase
+} from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from "@/components/ui/progress";
 
 interface ProjectDetailsPanelProps {
   project: Project | null;
@@ -76,7 +90,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
 
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-md border">
         <CardHeader>
           <Skeleton className="h-8 w-64 mb-2" />
           <Skeleton className="h-5 w-40" />
@@ -95,7 +109,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
   
   if (!project) {
     return (
-      <Card>
+      <Card className="shadow-md border">
         <CardHeader>
           <CardTitle>Proiect negăsit</CardTitle>
           <CardDescription>
@@ -150,6 +164,9 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
       default: return 0;
     }
   };
+
+  const completionPercentage = getCompletionPercentage(project.status);
+  const paymentPercentage = project.price > 0 ? Math.round((project.amountPaid || 0) / project.price * 100) : 0;
   
   return (
     <motion.div
@@ -157,187 +174,311 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <Card>
-        <CardHeader className="flex flex-col md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="flex items-center flex-wrap gap-2">
-              <CardTitle className="text-2xl">{project.title}</CardTitle>
-              <Badge className={`ml-2 ${status.color}`}>{status.label}</Badge>
-              {project.paymentStatus && (
-                <Badge className={`ml-2 ${paymentStatus.color}`}>{paymentStatus.label}</Badge>
-              )}
+      <Card className="shadow-lg border border-gray-200 overflow-hidden bg-white">
+        {/* Header with background gradient */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">{project.title}</h2>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <Badge className="bg-white/20 text-white hover:bg-white/30">
+                  {project.websiteType || "Website"}
+                </Badge>
+                {project.hasCMS && (
+                  <Badge className="bg-white/20 text-white hover:bg-white/30">
+                    CMS
+                  </Badge>
+                )}
+                {project.hasEcommerce && (
+                  <Badge className="bg-white/20 text-white hover:bg-white/30">
+                    E-commerce
+                  </Badge>
+                )}
+                {project.hasSEO && (
+                  <Badge className="bg-white/20 text-white hover:bg-white/30">
+                    SEO
+                  </Badge>
+                )}
+                {project.hasMaintenance && (
+                  <Badge className="bg-white/20 text-white hover:bg-white/30">
+                    Mentenanță
+                  </Badge>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm opacity-90">
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Creat: {formatDate(project.createdAt)}
+                </div>
+                {project.dueDate && (
+                  <div className="flex items-center">
+                    <CalendarClock className="h-4 w-4 mr-1" />
+                    Termen: {formatDate(project.dueDate)}
+                  </div>
+                )}
+              </div>
             </div>
-            <CardDescription className="mt-1.5">
-              Creat la {formatDate(project.createdAt)}
-              {project.dueDate && (
-                <span className="ml-2 text-muted-foreground">• Termen: {formatDate(project.dueDate)}</span>
-              )}
-            </CardDescription>
-          </div>
-          {isAdmin && (
-            <div className="mt-4 md:mt-0">
-              <Button variant="outline" size="sm" onClick={handleEditClick}>
+            
+            {isAdmin && (
+              <Button 
+                onClick={handleEditClick}
+                variant="outline"
+                size="sm"
+                className="mt-4 md:mt-0 bg-white text-indigo-600 hover:bg-gray-100 border-transparent"
+              >
                 <Edit className="h-4 w-4 mr-2" />
                 Editează
               </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {/* Redesigned space-y-6 div */}
-          <div className="space-y-6">
-            {/* Project summary with responsive cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Project Details Card */}
-              <Card className="overflow-hidden border shadow-sm hover:shadow transition-shadow bg-gradient-to-br from-white to-purple-50">
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3">
-                  <div className="flex items-center text-white">
-                    <FileText className="h-5 w-5 mr-2" />
-                    <h3 className="font-medium">Detalii Proiect</h3>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-gray-500">Tip Website</p>
-                      <p className="font-medium">{project.websiteType || "Nespecificat"}</p>
+            )}
+          </div>
+        </div>
+
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left column - Main info */}
+            <div className="lg:col-span-8 space-y-6">
+              {/* Status and Progress */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="shadow-sm border">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-base flex items-center">
+                        <BarChart3 className="h-4 w-4 mr-2 text-indigo-500" />
+                        Status Proiect
+                      </CardTitle>
+                      <Badge className={status.color}>
+                        {status.label}
+                      </Badge>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Număr Pagini</p>
-                      <p className="font-medium">{project.pageCount || 0}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progres</span>
+                        <span className="font-medium">{completionPercentage}%</span>
+                      </div>
+                      <Progress value={completionPercentage} className="h-2" />
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Complexitate</p>
-                      <p className="font-medium">{project.designComplexity || "Standard"}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Status Card */}
-              <Card className="overflow-hidden border shadow-sm hover:shadow transition-shadow bg-gradient-to-br from-white to-indigo-50">
-                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-3">
-                  <div className="flex items-center text-white">
-                    <Clock className="h-5 w-5 mr-2" />
-                    <h3 className="font-medium">Stadiu Proiect</h3>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-semibold">
-                        {getCompletionPercentage(project.status)}%
-                      </span>
-                      {project.status === 'completed' && (
-                        <Badge className="bg-green-100 text-green-800">
-                          <Check className="h-3 w-3 mr-1" /> Finalizat
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-base flex items-center">
+                        <DollarSign className="h-4 w-4 mr-2 text-green-500" />
+                        Status Plată
+                      </CardTitle>
+                      {project.paymentStatus && (
+                        <Badge className={paymentStatus.color}>
+                          {paymentStatus.label}
                         </Badge>
                       )}
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 rounded-full" 
-                        style={{ 
-                          width: `${getCompletionPercentage(project.status)}%`,
-                          transition: 'width 0.5s ease-in-out'
-                        }}
-                      ></div>
-                    </div>
-                    {project.dueDate && (
-                      <div className="pt-1">
-                        <div className="flex items-center text-sm">
-                          <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                          <span>Termen: {formatDate(project.dueDate)}</span>
-                        </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Plătit</span>
+                        <span className="font-medium">{paymentPercentage}%</span>
                       </div>
+                      <Progress value={paymentPercentage} className="h-2" />
+                      <div className="flex justify-between text-sm pt-1">
+                        <span>{project.amountPaid || 0} RON</span>
+                        <span>{project.price} RON</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Description */}
+              <Card className="shadow-sm border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center">
+                    <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                    Descriere Proiect
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={expandDescription ? "" : "max-h-32 overflow-hidden relative"}>
+                    <p className="text-gray-700 whitespace-pre-line">
+                      {project.description || "Nu există o descriere pentru acest proiect."}
+                    </p>
+                    {!expandDescription && project.description && project.description.length > 200 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent"></div>
                     )}
                   </div>
+                  {project.description && project.description.length > 200 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setExpandDescription(!expandDescription)}
+                      className="mt-2"
+                    >
+                      {expandDescription ? "Afișează mai puțin" : "Afișează mai mult"}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-              
-              {/* Price Card */}
-              <Card className="overflow-hidden border shadow-sm hover:shadow transition-shadow bg-gradient-to-br from-white to-green-50">
-                <div className="bg-gradient-to-r from-green-500 to-green-600 p-3">
-                  <div className="flex items-center text-white">
-                    <DollarSign className="h-5 w-5 mr-2" />
-                    <h3 className="font-medium">Detalii Financiare</h3>
-                  </div>
-                </div>
+
+              {/* Example URLs if available */}
+              {project.exampleUrls && project.exampleUrls.length > 0 && (
+                <Card className="shadow-sm border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center">
+                      <PanelTop className="h-4 w-4 mr-2 text-indigo-500" />
+                      Website-uri de Referință
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {project.exampleUrls.map((url, index) => (
+                        <li key={index} className="text-indigo-600 hover:underline">
+                          <a href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer">
+                            {url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Additional Info if available */}
+              {project.additionalInfo && (
+                <Card className="shadow-sm border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center">
+                      <Briefcase className="h-4 w-4 mr-2 text-amber-500" />
+                      Informații Suplimentare
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700 whitespace-pre-line">
+                      {project.additionalInfo}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Right column - Details */}
+            <div className="lg:col-span-4 space-y-4">
+              {/* Project Specifications */}
+              <Card className="shadow-sm border">
+                <CardHeader className="pb-2 bg-gray-50">
+                  <CardTitle className="text-base flex items-center">
+                    <Briefcase className="h-4 w-4 mr-2 text-gray-500" />
+                    Specificații Proiect
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-gray-500">Preț Total</p>
-                      <p className="text-lg font-semibold">{project.price.toLocaleString()} RON</p>
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-gray-500">Tip Website:</dt>
+                      <dd className="font-medium">{project.websiteType || "Nespecificat"}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-gray-500">Număr Pagini:</dt>
+                      <dd className="font-medium">{project.pageCount || 0}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-gray-500">Complexitate:</dt>
+                      <dd className="font-medium">{project.designComplexity || "Standard"}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-gray-500">Preț Total:</dt>
+                      <dd className="font-medium">{project.price.toLocaleString()} RON</dd>
                     </div>
                     {typeof project.amountPaid === 'number' && (
-                      <>
-                        <div>
-                          <p className="text-sm text-gray-500">Plătit</p>
-                          <p className="font-medium">{project.amountPaid.toLocaleString()} RON</p>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-500 rounded-full" 
-                            style={{ 
-                              width: `${project.price > 0 ? (project.amountPaid / project.price) * 100 : 0}%`,
-                              transition: 'width 0.5s ease-in-out'
-                            }}
-                          ></div>
-                        </div>
-                      </>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-500">Suma Plătită:</dt>
+                        <dd className="font-medium">{project.amountPaid.toLocaleString()} RON</dd>
+                      </div>
                     )}
+                    <div className="pt-1 border-t">
+                      <h4 className="font-medium mb-2">Funcționalități:</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center">
+                          <div className={`h-3 w-3 rounded-full ${project.hasCMS ? 'bg-green-500' : 'bg-gray-300'} mr-2`}></div>
+                          <span>CMS</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className={`h-3 w-3 rounded-full ${project.hasEcommerce ? 'bg-green-500' : 'bg-gray-300'} mr-2`}></div>
+                          <span>E-commerce</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className={`h-3 w-3 rounded-full ${project.hasSEO ? 'bg-green-500' : 'bg-gray-300'} mr-2`}></div>
+                          <span>SEO</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className={`h-3 w-3 rounded-full ${project.hasMaintenance ? 'bg-green-500' : 'bg-gray-300'} mr-2`}></div>
+                          <span>Mentenanță</span>
+                        </div>
+                      </div>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+
+              {/* Timeline */}
+              <Card className="shadow-sm border">
+                <CardHeader className="pb-2 bg-gray-50">
+                  <CardTitle className="text-base flex items-center">
+                    <CalendarClock className="h-4 w-4 mr-2 text-gray-500" />
+                    Timeline
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex flex-col items-center mr-4">
+                        <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">
+                          <Check className="h-3 w-3" />
+                        </div>
+                        <div className="h-10 w-0.5 bg-gray-200"></div>
+                      </div>
+                      <div>
+                        <p className="font-medium">Creare Proiect</p>
+                        <p className="text-xs text-gray-500">{formatDate(project.createdAt)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="flex flex-col items-center mr-4">
+                        <div className={`h-6 w-6 rounded-full ${project.status === 'in_progress' || project.status === 'completed' ? 'bg-green-500' : 'bg-gray-300'} flex items-center justify-center text-white text-xs`}>
+                          {project.status === 'in_progress' || project.status === 'completed' ? <Check className="h-3 w-3" /> : '2'}
+                        </div>
+                        <div className="h-10 w-0.5 bg-gray-200"></div>
+                      </div>
+                      <div>
+                        <p className="font-medium">Începere Implementare</p>
+                        <p className="text-xs text-gray-500">{project.status === 'in_progress' || project.status === 'completed' ? 'În progres' : 'În așteptare'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="flex flex-col items-center mr-4">
+                        <div className={`h-6 w-6 rounded-full ${project.status === 'completed' ? 'bg-green-500' : 'bg-gray-300'} flex items-center justify-center text-white text-xs`}>
+                          {project.status === 'completed' ? <Check className="h-3 w-3" /> : '3'}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium">Finalizare</p>
+                        {project.dueDate ? (
+                          <p className="text-xs text-gray-500">
+                            {project.status === 'completed' ? 'Complet' : `Termen: ${formatDate(project.dueDate)}`}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500">Termen nedefinit</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
-            
-            {/* Description Card */}
-            <Card className="border shadow-sm hover:shadow transition-shadow">
-              <CardHeader className="pb-2 bg-gray-50">
-                <CardTitle className="text-lg flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-gray-500" />
-                  Descriere proiect
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className={expandDescription ? "" : "max-h-32 overflow-hidden relative"}>
-                  <p className="text-gray-700 whitespace-pre-line">
-                    {project.description || "Nu există o descriere pentru acest proiect."}
-                  </p>
-                  {!expandDescription && project.description && project.description.length > 200 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent"></div>
-                  )}
-                </div>
-                {project.description && project.description.length > 200 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setExpandDescription(!expandDescription)}
-                    className="mt-2"
-                  >
-                    {expandDescription ? "Afișează mai puțin" : "Afișează mai mult"}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-            
-            {/* Project Features */}
-            {(project.hasCMS || project.hasEcommerce || project.hasSEO || project.hasMaintenance) && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {project.hasCMS && (
-                  <Badge variant="outline" className="py-2 px-3 justify-center">CMS</Badge>
-                )}
-                {project.hasEcommerce && (
-                  <Badge variant="outline" className="py-2 px-3 justify-center">E-commerce</Badge>
-                )}
-                {project.hasSEO && (
-                  <Badge variant="outline" className="py-2 px-3 justify-center">SEO</Badge>
-                )}
-                {project.hasMaintenance && (
-                  <Badge variant="outline" className="py-2 px-3 justify-center">Mentenanță</Badge>
-                )}
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -449,6 +590,56 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                   onChange={e => setEditedProject({...editedProject, dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined})}
                 />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="websiteType">Tip Website</Label>
+                  <Select
+                    value={editedProject.websiteType || ''}
+                    onValueChange={value => setEditedProject({...editedProject, websiteType: value})}
+                  >
+                    <SelectTrigger id="websiteType">
+                      <SelectValue placeholder="Selectează tip" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="landing">Landing Page</SelectItem>
+                      <SelectItem value="business">Business</SelectItem>
+                      <SelectItem value="ecommerce">E-commerce</SelectItem>
+                      <SelectItem value="blog">Blog</SelectItem>
+                      <SelectItem value="portfolio">Portfolio</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="designComplexity">Complexitate Design</Label>
+                  <Select
+                    value={editedProject.designComplexity || 'standard'}
+                    onValueChange={value => setEditedProject({...editedProject, designComplexity: value})}
+                  >
+                    <SelectTrigger id="designComplexity">
+                      <SelectValue placeholder="Selectează complexitate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="pageCount">Număr Pagini</Label>
+                <Input 
+                  id="pageCount" 
+                  type="number"
+                  value={editedProject.pageCount || 1}
+                  onChange={e => setEditedProject({...editedProject, pageCount: Number(e.target.value)})}
+                />
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
@@ -494,6 +685,16 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                   />
                   <Label htmlFor="hasMaintenance">Include Mentenanță</Label>
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="additionalInfo">Informații Suplimentare</Label>
+                <Textarea 
+                  id="additionalInfo" 
+                  value={editedProject.additionalInfo || ''}
+                  onChange={e => setEditedProject({...editedProject, additionalInfo: e.target.value})}
+                  rows={3}
+                />
               </div>
             </div>
           )}
