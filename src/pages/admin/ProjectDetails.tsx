@@ -103,8 +103,8 @@ const AdminProjectDetails = () => {
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar isAdmin={true} />
       <PageTransition>
-        <div className="flex-1 p-6 lg:p-8">
-          <div className="max-w-6xl mx-auto">
+        <div className="flex-1 p-6 lg:p-8 w-full">
+          <div className="mx-auto max-w-full">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h1 className="text-2xl font-bold">
                 {loading ? "Loading Project..." : project?.title || "Project Details"}

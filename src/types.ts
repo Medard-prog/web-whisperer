@@ -1,6 +1,7 @@
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 export type PaymentStatus = "pending" | "partial" | "paid" | "overdue";
+export type ProjectType = "project" | "request";
 
 export interface PaymentRecord {
   date: string;
@@ -18,6 +19,7 @@ export interface Project {
   dueDate?: string;
   price: number;
   userId?: string;
+  type?: ProjectType; // Added this to distinguish between projects and requests
   hasEcommerce?: boolean;
   hasCMS?: boolean;
   hasSEO?: boolean;
@@ -111,22 +113,23 @@ export interface ProjectModificationRequest {
 export function mapProject(data: any): Project {
   return {
     id: data.id,
-    title: data.title,
+    title: data.title || data.project_name || '',
     description: data.description || '',
     status: data.status || 'pending',
     createdAt: data.created_at,
     dueDate: data.due_date,
     price: data.price || 0,
     userId: data.user_id,
+    type: data.type || 'project',
     hasEcommerce: data.has_ecommerce,
     hasCMS: data.has_cms,
     hasSEO: data.has_seo,
     hasMaintenance: data.has_maintenance,
     // Website details
-    websiteType: data.website_type,
+    websiteType: data.website_type || data.project_type,
     pageCount: data.page_count,
     designComplexity: data.design_complexity,
-    exampleUrls: data.example_urls,
+    exampleUrls: data.example_urls || data.file_urls,
     additionalInfo: data.additional_info,
     // Payment details
     amountPaid: data.amount_paid || 0,

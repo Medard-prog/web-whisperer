@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
+import { fetchProjects } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import PageTransition from "@/components/PageTransition";
@@ -37,36 +37,20 @@ const Projects = () => {
         setIsLoading(true);
         setError(null);
         
-        // Try to fetch from both tables
-        let combinedProjects: Project[] = [];
-        
-        try {
-          const requests = await fetchProjectRequests(user.id);
-          console.log("Project requests fetched:", requests);
-          combinedProjects = [...combinedProjects, ...requests];
-        } catch (requestsError) {
-          console.error("Error fetching project requests:", requestsError);
-        }
-        
-        try {
-          const regularProjects = await fetchProjects(user.id);
-          console.log("Regular projects fetched:", regularProjects);
-          combinedProjects = [...combinedProjects, ...regularProjects];
-        } catch (projectsError) {
-          console.error("Error fetching regular projects:", projectsError);
-        }
+        // Fetch all projects (both regular and requests) for the user
+        const userProjects = await fetchProjects(user.id);
+        console.log("Projects fetched:", userProjects);
         
         // Sort all projects by creation date
-        combinedProjects.sort((a, b) => {
+        userProjects.sort((a, b) => {
           const dateA = new Date(a.createdAt).getTime();
           const dateB = new Date(b.createdAt).getTime();
           return dateB - dateA; // Descending order
         });
         
-        console.log("Combined projects:", combinedProjects);
-        setProjects(combinedProjects);
+        setProjects(userProjects);
         
-        if (combinedProjects.length === 0) {
+        if (userProjects.length === 0) {
           console.log("No projects found");
         }
       } catch (error) {
@@ -87,7 +71,7 @@ const Projects = () => {
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar />
       <PageTransition>
-        <div className="flex-1 p-6 lg:p-10">
+        <div className="flex-1 p-6 lg:p-10 w-full">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">Proiectele Mele</h1>
@@ -134,8 +118,8 @@ const Projects = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map(project => (
-                <Card key={project.id} className="overflow-hidden">
-                  <CardHeader className="pb-3">
+                <Card key={project.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-indigo-50">
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-xl">{project.title}</CardTitle>
                       <Badge className={statusTranslations[project.status]?.color || "bg-gray-100"}>
@@ -147,7 +131,7 @@ const Projects = () => {
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent>
+                  <CardContent className="p-4">
                     <p className="text-gray-600 mb-4 line-clamp-3">
                       {project.description || "Fără descriere"}
                     </p>
@@ -178,8 +162,8 @@ const Projects = () => {
                     </div>
                   </CardContent>
                   
-                  <CardFooter className="border-t pt-4">
-                    <Button asChild variant="outline" className="w-full">
+                  <CardFooter className="border-t pt-4 p-4">
+                    <Button asChild variant="default" className="w-full">
                       <Link to={`/project/${project.id}`}>
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Vezi Detalii

@@ -51,8 +51,9 @@ export const fetchUsers = async () => {
 export const fetchProjectRequests = async (userId?: string) => {
   try {
     let query = supabase
-      .from('project_requests')
+      .from('projects')
       .select('*')
+      .eq('type', 'request')
       .order('created_at', { ascending: false });
     
     if (userId) {
@@ -67,7 +68,7 @@ export const fetchProjectRequests = async (userId?: string) => {
       return [];
     }
 
-    return data || [];
+    return data.map(mapProject) || [];
   } catch (error: any) {
     toast.error(`Failed to fetch project requests: ${error.message}`);
     return [];
@@ -79,6 +80,7 @@ export const fetchProjects = async (userId?: string) => {
     let query = supabase
       .from('projects')
       .select('*')
+      .eq('type', 'project')
       .order('created_at', { ascending: false });
     
     if (userId) {
@@ -93,7 +95,7 @@ export const fetchProjects = async (userId?: string) => {
       return [];
     }
 
-    return data as Project[];
+    return data.map(mapProject) as Project[];
   } catch (error: any) {
     toast.error(`Failed to fetch projects: ${error.message}`);
     return [];
@@ -102,59 +104,18 @@ export const fetchProjects = async (userId?: string) => {
 
 export const fetchProjectById = async (projectId: string) => {
   try {
-    // First try to find the project in the projects table
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', projectId)
       .single();
 
-    if (projectError && projectError.code === 'PGRST116') {
-      console.log("Project not found in projects table, checking project_requests...");
-      
-      // If not found in projects table, try the project_requests table
-      const { data: requestData, error: requestError } = await supabase
-        .from('project_requests')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-        
-      if (requestError) {
-        console.error("Error fetching project from both tables:", requestError);
-        return null;
-      }
-      
-      if (requestData) {
-        // Map project_requests data to Project type
-        return {
-          id: requestData.id,
-          title: requestData.project_name,
-          description: requestData.description || '',
-          status: requestData.status || 'new',
-          createdAt: requestData.created_at,
-          price: requestData.price || 0,
-          userId: requestData.user_id,
-          hasEcommerce: requestData.has_ecommerce,
-          hasCMS: requestData.has_cms,
-          hasSEO: requestData.has_seo,
-          hasMaintenance: requestData.has_maintenance,
-          // Website details
-          websiteType: requestData.project_type,
-          pageCount: requestData.page_count,
-          designComplexity: requestData.design_complexity,
-          exampleUrls: requestData.example_urls,
-          additionalInfo: requestData.additional_info,
-        } as Project;
-      }
-      return null;
-    }
-
     if (projectError) {
       console.error("Error fetching project by ID:", projectError);
       return null;
     }
 
-    return projectData;
+    return mapProject(projectData);
   } catch (error: any) {
     console.error("Exception in fetchProjectById:", error);
     return null;
@@ -165,111 +126,31 @@ export const updateProject = async (id: string, projectData: Partial<Project>) =
   try {
     console.log('Updating project with ID:', id, 'Data:', projectData);
     
-    // First check if this is a project_request or a regular project
-    const { data: projectRequest, error: prError } = await supabase
-      .from('project_requests')
-      .select('id')
+    const { data, error } = await supabase
+      .from('projects')
+      .update({
+        title: projectData.title,
+        description: projectData.description,
+        price: projectData.price,
+        status: projectData.status,
+        website_type: projectData.websiteType,
+        page_count: projectData.pageCount,
+        has_ecommerce: projectData.hasEcommerce,
+        has_cms: projectData.hasCMS,
+        has_seo: projectData.hasSEO,
+        has_maintenance: projectData.hasMaintenance,
+        design_complexity: projectData.designComplexity,
+        payment_status: projectData.paymentStatus,
+        amount_paid: projectData.amountPaid,
+        due_date: projectData.dueDate
+      })
       .eq('id', id)
+      .select()
       .single();
     
-    if (prError && prError.code !== 'PGRST116') {
-      console.error('Error checking project request:', prError);
-      throw prError;
-    }
+    if (error) throw error;
     
-    let result;
-    
-    if (projectRequest) {
-      // It's a project request
-      console.log('Updating project_requests table');
-      const { data, error } = await supabase
-        .from('project_requests')
-        .update({
-          project_name: projectData.title,
-          description: projectData.description,
-          price: projectData.price,
-          status: projectData.status,
-          project_type: projectData.websiteType,
-          page_count: projectData.pageCount,
-          has_ecommerce: projectData.hasEcommerce,
-          has_cms: projectData.hasCMS,
-          has_seo: projectData.hasSEO,
-          has_maintenance: projectData.hasMaintenance,
-          design_complexity: projectData.designComplexity
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      result = data;
-      
-      // Format the response to match Project structure
-      return {
-        id: result.id,
-        title: result.project_name,
-        description: result.description || '',
-        status: result.status || 'pending',
-        createdAt: result.created_at,
-        userId: result.user_id,
-        price: result.price || 0,
-        websiteType: result.project_type,
-        pageCount: result.page_count,
-        hasEcommerce: result.has_ecommerce,
-        hasCMS: result.has_cms, 
-        hasSEO: result.has_seo,
-        hasMaintenance: result.has_maintenance,
-        designComplexity: result.design_complexity,
-        isRequest: true
-      };
-    } else {
-      // It's a regular project
-      console.log('Updating projects table');
-      const { data, error } = await supabase
-        .from('projects')
-        .update({
-          title: projectData.title,
-          description: projectData.description,
-          price: projectData.price,
-          status: projectData.status,
-          website_type: projectData.websiteType,
-          page_count: projectData.pageCount,
-          has_ecommerce: projectData.hasEcommerce,
-          has_cms: projectData.hasCMS,
-          has_seo: projectData.hasSEO,
-          has_maintenance: projectData.hasMaintenance,
-          design_complexity: projectData.designComplexity,
-          payment_status: projectData.paymentStatus,
-          amount_paid: projectData.amountPaid,
-          due_date: projectData.dueDate
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      result = data;
-      
-      return {
-        id: result.id,
-        title: result.title,
-        description: result.description,
-        status: result.status,
-        createdAt: result.created_at,
-        userId: result.user_id,
-        price: result.price,
-        websiteType: result.website_type,
-        pageCount: result.page_count,
-        hasEcommerce: result.has_ecommerce,
-        hasCMS: result.has_cms,
-        hasSEO: result.has_seo,
-        hasMaintenance: result.has_maintenance,
-        designComplexity: result.design_complexity,
-        paymentStatus: result.payment_status,
-        amountPaid: result.amount_paid,
-        dueDate: result.due_date
-      };
-    }
+    return mapProject(data);
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;
@@ -278,61 +159,20 @@ export const updateProject = async (id: string, projectData: Partial<Project>) =
 
 export const updateProjectStatus = async (projectId: string, status: string) => {
   try {
-    // First check if this is a project request or regular project
-    const { data: projectRequest, error: checkError } = await supabase
-      .from('project_requests')
-      .select('id, status')
+    const { data, error } = await supabase
+      .from('projects')
+      .update({ status: status })
       .eq('id', projectId)
+      .select('*')
       .single();
-      
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error("Error checking project type:", checkError);
-      toast.error(`Failed to update project status: ${checkError.message}`);
+
+    if (error) {
+      console.error("Error updating project status:", error);
+      toast.error(`Failed to update project status: ${error.message}`);
       return null;
     }
-    
-    // If it's a project request being moved from 'new' or 'pending' to another status
-    if (projectRequest && (projectRequest.status === 'new' || projectRequest.status === 'pending') && 
-        (status !== 'new' && status !== 'pending')) {
-      
-      // Import the transition function only when needed
-      const { transitionProjectToActive } = await import('./projectTransition');
-      return await transitionProjectToActive(projectId, status);
-    }
-    
-    // Otherwise just update the status in the appropriate table
-    if (projectRequest) {
-      const { data, error } = await supabase
-        .from('project_requests')
-        .update({ status: status })
-        .eq('id', projectId)
-        .select('*')
-        .single();
 
-      if (error) {
-        console.error("Error updating project request status:", error);
-        toast.error(`Failed to update project status: ${error.message}`);
-        return null;
-      }
-      
-      return data;
-    } else {
-      // Regular project update
-      const { data, error } = await supabase
-        .from('projects')
-        .update({ status: status })
-        .eq('id', projectId)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error("Error updating project status:", error);
-        toast.error(`Failed to update project status: ${error.message}`);
-        return null;
-      }
-
-      return data;
-    }
+    return mapProject(data);
   } catch (error: any) {
     toast.error(`Failed to update project status: ${error.message}`);
     return null;
@@ -363,7 +203,6 @@ export const updatePaymentStatus = async (projectId: string, status: string) => 
 
 export const fetchProjectMessages = async (projectId: string) => {
   try {
-    // Use our custom SQL function to fetch messages
     const { data, error } = await supabase.rpc('fetch_messages', { 
       p_project_id: projectId 
     });
@@ -376,7 +215,6 @@ export const fetchProjectMessages = async (projectId: string) => {
 
     console.log("Messages fetched:", data);
     
-    // Map the data to our Message type
     return (data || []).map(msg => ({
       id: msg.id,
       projectId: msg.project_id,
@@ -422,7 +260,6 @@ export const sendProjectMessage = async (
       return null;
     }
 
-    // Format the message according to our Message type
     return {
       id: data.id,
       projectId: data.project_id,
@@ -521,8 +358,6 @@ export const fetchProjectNotes = async (projectId: string) => {
 
 export const fetchProjectFiles = async (projectId: string) => {
   try {
-    // For now, return an empty array
-    // In real implementation, this would fetch files from storage
     return [] as ProjectFile[];
   } catch (error: any) {
     toast.error(`Failed to fetch project files: ${error.message}`);
@@ -547,7 +382,6 @@ export const uploadFile = async (file: File, projectId: string, userId: string) 
       
     const publicUrl = urlData.publicUrl;
     
-    // Create a properly formatted ProjectFile object
     return {
       id: Math.random().toString(36).substring(2, 9),
       projectId: projectId,
@@ -568,7 +402,6 @@ export const uploadFile = async (file: File, projectId: string, userId: string) 
 
 export const getProjectStatusChartData = async (dateRange?: { from?: Date, to?: Date }) => {
   try {
-    // Mock data for development
     return [
       { name: 'New', value: 10 },
       { name: 'In Progress', value: 5 },
@@ -582,7 +415,6 @@ export const getProjectStatusChartData = async (dateRange?: { from?: Date, to?: 
 
 export const getProjectsByPaymentStatus = async (dateRange?: { from?: Date, to?: Date }) => {
   try {
-    // Mock data for development
     return [
       { name: 'Paid', value: 12 },
       { name: 'Partial', value: 3 },
@@ -596,7 +428,6 @@ export const getProjectsByPaymentStatus = async (dateRange?: { from?: Date, to?:
 
 export const getTotalRevenueData = async (dateRange?: { from?: Date, to?: Date }) => {
   try {
-    // Mock data for development
     return [
       { month: 'Jan', revenue: 2300 },
       { month: 'Feb', revenue: 3200 },
@@ -613,7 +444,6 @@ export const getTotalRevenueData = async (dateRange?: { from?: Date, to?: Date }
 
 export const getPopularFeaturesData = async () => {
   try {
-    // Mock data for development
     return [
       { name: 'E-commerce', value: 15 },
       { name: 'CMS', value: 22 },
@@ -628,7 +458,6 @@ export const getPopularFeaturesData = async () => {
 
 export const fetchProjectsForReports = async (dateRange?: { from?: Date, to?: Date }) => {
   try {
-    // Mock implementation for reports
     const { data, error } = await supabase
       .from('project_requests')
       .select('*');
@@ -643,7 +472,6 @@ export const fetchProjectsForReports = async (dateRange?: { from?: Date, to?: Da
 
 export const fetchSupportMessages = async (userId: string) => {
   try {
-    // Mock implementation
     const { data, error } = await supabase
       .from('support_messages')
       .select('*')

@@ -77,6 +77,19 @@ const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanel
     try {
       setIsSaving(true);
       
+      // First check if the project exists in the projects table
+      const { data: projectExists, error: checkError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', projectId)
+        .single();
+        
+      if (checkError) {
+        console.error('Project not found:', checkError);
+        toast.error('Cannot add note: Project not found in database');
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('project_notes')
         .insert([{
@@ -126,8 +139,8 @@ const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanel
       : notes.filter(note => note.isAdminOnly);
   
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
+    <Card className="h-full shadow-md border">
+      <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-indigo-50">
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center">
             <FileText className="mr-2 h-5 w-5 text-primary" /> 
@@ -150,7 +163,7 @@ const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanel
           </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4">
         {isAddingNote && (
           <div className="mb-6 space-y-3 bg-muted/50 p-3 rounded-md">
             <Textarea
@@ -172,6 +185,7 @@ const ProjectNotesPanel = ({ projectId, userId, onNoteAdded }: ProjectNotesPanel
                 size="sm" 
                 onClick={addNote} 
                 disabled={!noteContent.trim() || isSaving || !userId}
+                className="bg-primary"
               >
                 {isSaving ? (
                   <>
@@ -300,7 +314,7 @@ const NoteItem = ({ note }: NoteItemProps) => {
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="border rounded-md"
+      className="border rounded-md hover:shadow-sm transition-shadow"
     >
       <div className="flex items-start p-3">
         <div className="grow">
