@@ -7,6 +7,7 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
 import ProjectNotesPanel from "@/components/ProjectNotesPanel";
 import ProjectTasksPanel from "@/components/ProjectTasksPanel";
+import ModificationRequestsPanel from "@/components/ModificationRequestsPanel";
 import PageTransition from "@/components/PageTransition";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,7 @@ const AdminProjectDetails = () => {
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                <TabsTrigger value="modifications">Cereri modificări</TabsTrigger>
               </TabsList>
               
               <TabsContent value="details">
@@ -151,6 +153,13 @@ const AdminProjectDetails = () => {
                   tasks={tasks} 
                   loading={loading}
                   onTasksUpdate={handleTasksUpdate}
+                  isAdmin={true}
+                />
+              </TabsContent>
+              
+              <TabsContent value="modifications">
+                <ModificationRequestsPanel 
+                  projectId={id!}
                   isAdmin={true}
                 />
               </TabsContent>

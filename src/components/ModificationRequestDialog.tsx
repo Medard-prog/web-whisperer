@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,12 +56,14 @@ interface ModificationRequestDialogProps {
   children: React.ReactNode;
   projectId: string;
   userId: string;
+  onRequestComplete?: () => void;
 }
 
 const ModificationRequestDialog = ({
   children,
   projectId,
   userId,
+  onRequestComplete,
 }: ModificationRequestDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +111,10 @@ const ModificationRequestDialog = ({
       
       form.reset();
       setOpen(false);
+      
+      if (onRequestComplete) {
+        onRequestComplete();
+      }
     } catch (error) {
       console.error("Error submitting modification request:", error);
       toast.error("Nu s-a putut trimite cererea", {

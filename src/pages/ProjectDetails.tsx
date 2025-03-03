@@ -8,7 +8,9 @@ import {
 import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
+import ModificationRequestsPanel from "@/components/ModificationRequestsPanel";
 import PageTransition from "@/components/PageTransition";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, MessageSquare, RefreshCw, FileEdit } from "lucide-react";
@@ -22,6 +24,7 @@ const ProjectDetails = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("details");
   
   useEffect(() => {
     if (!id) return;
@@ -67,6 +70,15 @@ const ProjectDetails = () => {
       navigate(`/dashboard/project/${id}/chat`);
     }
   };
+
+  const handleModificationRequestComplete = () => {
+    // Reload modification requests when a new one is submitted
+    if (activeTab === "modifications") {
+      loadProjectData();
+    } else {
+      setActiveTab("modifications");
+    }
+  };
   
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -104,36 +116,71 @@ const ProjectDetails = () => {
               </Button>
             </div>
           ) : (
-            <div>
-              <ProjectDetailsPanel 
-                project={project} 
-                loading={loading} 
-                onProjectUpdate={handleProjectUpdate}
-              />
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-6">
+                <TabsTrigger value="details">Detalii proiect</TabsTrigger>
+                <TabsTrigger value="modifications">Cereri modificări</TabsTrigger>
+              </TabsList>
               
-              {/* Action buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-8">
-                <Button 
-                  onClick={handleChatNav}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 flex-1"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Mesaje
-                </Button>
+              <TabsContent value="details">
+                <ProjectDetailsPanel 
+                  project={project} 
+                  loading={loading} 
+                  onProjectUpdate={handleProjectUpdate}
+                />
+                
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                  <Button 
+                    onClick={handleChatNav}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 flex-1"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Mesaje
+                  </Button>
+                  
+                  {user && id && (
+                    <ModificationRequestDialog 
+                      projectId={id} 
+                      userId={user.id}
+                      onRequestComplete={handleModificationRequestComplete}
+                    >
+                      <Button 
+                        variant="outline"
+                        className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 flex-1"
+                      >
+                        <FileEdit className="h-4 w-4" />
+                        Solicită modificări
+                      </Button>
+                    </ModificationRequestDialog>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="modifications">
+                <ModificationRequestsPanel 
+                  projectId={id!}
+                  isAdmin={false}
+                />
                 
                 {user && id && (
-                  <ModificationRequestDialog projectId={id} userId={user.id}>
-                    <Button 
-                      variant="outline"
-                      className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 flex-1"
+                  <div className="mt-6">
+                    <ModificationRequestDialog 
+                      projectId={id} 
+                      userId={user.id}
+                      onRequestComplete={handleModificationRequestComplete}
                     >
-                      <FileEdit className="h-4 w-4" />
-                      Solicită modificări
-                    </Button>
-                  </ModificationRequestDialog>
+                      <Button 
+                        className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      >
+                        <FileEdit className="h-4 w-4" />
+                        Solicită o nouă modificare
+                      </Button>
+                    </ModificationRequestDialog>
+                  </div>
                 )}
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
         </div>
       </PageTransition>
