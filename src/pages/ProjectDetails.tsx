@@ -73,70 +73,68 @@ const ProjectDetails = () => {
       <DashboardSidebar />
       <PageTransition>
         <div className="flex-1 p-6 lg:p-8 w-full">
-          <div className="mx-auto max-w-full">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold">
-                {loading ? "Loading Project..." : project?.title || "Project Details"}
-              </h1>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold">
+              {loading ? "Loading Project..." : project?.title || "Project Details"}
+            </h1>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => navigate("/dashboard/projects")}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Projects
+              </Button>
+            </div>
+          </div>
+          
+          {error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center text-red-800">
+              <p className="font-medium text-xl mb-2">Error</p>
+              <p className="mb-4">{error}</p>
+              <Button 
+                variant="outline" 
+                className="mt-2 gap-2" 
+                onClick={() => loadProjectData()}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <ProjectDetailsPanel 
+                project={project} 
+                loading={loading} 
+                onProjectUpdate={handleProjectUpdate}
+              />
               
-              <div className="flex gap-2">
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mt-8">
                 <Button 
-                  variant="outline"
-                  onClick={() => navigate("/dashboard/projects")}
-                  className="gap-2"
+                  onClick={handleChatNav}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 flex-1"
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Projects
+                  <MessageSquare className="h-4 w-4" />
+                  Mesaje
                 </Button>
+                
+                {user && id && (
+                  <ModificationRequestDialog projectId={id} userId={user.id}>
+                    <Button 
+                      variant="outline"
+                      className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 flex-1"
+                    >
+                      <FileEdit className="h-4 w-4" />
+                      Solicită modificări
+                    </Button>
+                  </ModificationRequestDialog>
+                )}
               </div>
             </div>
-            
-            {error ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center text-red-800">
-                <p className="font-medium text-xl mb-2">Error</p>
-                <p className="mb-4">{error}</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-2 gap-2" 
-                  onClick={() => loadProjectData()}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Try Again
-                </Button>
-              </div>
-            ) : (
-              <div>
-                <ProjectDetailsPanel 
-                  project={project} 
-                  loading={loading} 
-                  onProjectUpdate={handleProjectUpdate}
-                />
-                
-                {/* Action buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 mt-8">
-                  <Button 
-                    onClick={handleChatNav}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2 flex-1"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Mesaje
-                  </Button>
-                  
-                  {user && id && (
-                    <ModificationRequestDialog projectId={id} userId={user.id}>
-                      <Button 
-                        variant="outline"
-                        className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50 flex-1"
-                      >
-                        <FileEdit className="h-4 w-4" />
-                        Solicită modificări
-                      </Button>
-                    </ModificationRequestDialog>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </PageTransition>
     </div>

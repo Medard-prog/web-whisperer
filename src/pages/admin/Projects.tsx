@@ -26,8 +26,8 @@ const statusTranslations: Record<string, { label: string; color: string }> = {
 const AdminProjects = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectRequests, setProjectRequests] = useState<any[]>([]);
-  const [allItems, setAllItems] = useState<any[]>([]);
+  const [projectRequests, setProjectRequests] = useState<Project[]>([]);
+  const [allItems, setAllItems] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("all");
@@ -45,23 +45,9 @@ const AdminProjects = () => {
           fetchProjectRequests(undefined)
         ]);
         
-        // Format project requests to match Project structure for display
-        const formattedRequests = requestsData.map(req => ({
-          id: req.id,
-          title: req.project_name,
-          description: req.description || '',
-          status: req.status || 'new',
-          createdAt: req.created_at,
-          userId: req.user_id,
-          price: req.price || 0,
-          websiteType: req.project_type,
-          pageCount: req.page_count,
-          isRequest: true // Flag to identify as request
-        }));
-        
         setProjects(projectsData);
-        setProjectRequests(formattedRequests);
-        setAllItems([...projectsData, ...formattedRequests]);
+        setProjectRequests(requestsData);
+        setAllItems([...projectsData, ...requestsData]);
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Nu s-au putut încărca proiectele");
@@ -100,14 +86,14 @@ const AdminProjects = () => {
     setAllItems(filtered);
   }, [activeTab, searchQuery, projects, projectRequests]);
 
-  const renderProjectCard = (item: any) => (
-    <Card key={item.id} className={`overflow-hidden ${item.isRequest ? 'border-dashed border-purple-200' : ''}`}>
+  const renderProjectCard = (item: Project) => (
+    <Card key={item.id} className={`overflow-hidden ${item.type === 'request' ? 'border-dashed border-purple-200' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div>
             <CardTitle className="text-xl">
               {item.title}
-              {item.isRequest && (
+              {item.type === 'request' && (
                 <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 border-purple-200">
                   Cerere
                 </Badge>
@@ -169,7 +155,7 @@ const AdminProjects = () => {
     <div className="flex min-h-screen bg-gray-50">
       <DashboardSidebar isAdmin={true} />
       <PageTransition>
-        <div className="flex-1 p-6 lg:p-10">
+        <div className="flex-1 p-6 lg:p-10 w-full">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">Proiecte</h1>

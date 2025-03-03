@@ -1,3 +1,4 @@
+
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 export type PaymentStatus = "pending" | "partial" | "paid" | "overdue";
@@ -19,7 +20,7 @@ export interface Project {
   dueDate?: string;
   price: number;
   userId?: string;
-  type?: ProjectType; // Added this to distinguish between projects and requests
+  type: ProjectType; // Modified this to be required
   hasEcommerce?: boolean;
   hasCMS?: boolean;
   hasSEO?: boolean;

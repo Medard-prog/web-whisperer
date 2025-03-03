@@ -104,74 +104,72 @@ const AdminProjectDetails = () => {
       <DashboardSidebar isAdmin={true} />
       <PageTransition>
         <div className="flex-1 p-6 lg:p-8 w-full">
-          <div className="mx-auto max-w-full">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold">
-                {loading ? "Loading Project..." : project?.title || "Project Details"}
-              </h1>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold">
+              {loading ? "Loading Project..." : project?.title || "Project Details"}
+            </h1>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => navigate("/admin/projects")}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Projects
+              </Button>
+            </div>
+          </div>
+          
+          {error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center text-red-800">
+              <p className="font-medium text-xl mb-2">Error</p>
+              <p className="mb-4">{error}</p>
+              <Button 
+                variant="outline" 
+                className="mt-2 gap-2" 
+                onClick={() => loadProjectData()}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <ProjectDetailsPanel 
+                project={project} 
+                loading={loading} 
+                isAdmin={true}
+                onProjectUpdate={handleProjectUpdate}
+              />
               
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate("/admin/projects")}
-                  className="gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Projects
-                </Button>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <ProjectTasksPanel 
+                    projectId={id || ''} 
+                    tasks={tasks} 
+                    loading={loading} 
+                    isAdmin={true}
+                  />
+                  
+                  {/* Chat button */}
+                  <Button 
+                    onClick={handleChatNav}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Project Chat
+                  </Button>
+                </div>
+                
+                <ProjectNotesPanel 
+                  projectId={id || ''} 
+                  userId={user?.id}
+                  onNoteAdded={handleNoteAdded}
+                />
               </div>
             </div>
-            
-            {error ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center text-red-800">
-                <p className="font-medium text-xl mb-2">Error</p>
-                <p className="mb-4">{error}</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-2 gap-2" 
-                  onClick={() => loadProjectData()}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Try Again
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                <ProjectDetailsPanel 
-                  project={project} 
-                  loading={loading} 
-                  isAdmin={true}
-                  onProjectUpdate={handleProjectUpdate}
-                />
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-6">
-                    <ProjectTasksPanel 
-                      projectId={id || ''} 
-                      tasks={tasks} 
-                      loading={loading} 
-                      isAdmin={true}
-                    />
-                    
-                    {/* Chat button */}
-                    <Button 
-                      onClick={handleChatNav}
-                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 gap-2"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Project Chat
-                    </Button>
-                  </div>
-                  
-                  <ProjectNotesPanel 
-                    projectId={id || ''} 
-                    userId={user?.id}
-                    onNoteAdded={handleNoteAdded}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </PageTransition>
     </div>
