@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects } from "@/integrations/supabase/client";
+import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import PageTransition from "@/components/PageTransition";
@@ -37,20 +37,31 @@ const Projects = () => {
         setIsLoading(true);
         setError(null);
         
-        // Fetch all projects (both regular and requests) for the user
-        const userProjects = await fetchProjects(user.id);
-        console.log("Projects fetched:", userProjects);
+        // Fetch projects (both types: 'project' and 'request')
+        const projectsData = await fetchProjects(user.id);
+        console.log("Projects fetched:", projectsData);
+        
+        // Fetch project requests
+        const requestsData = await fetchProjectRequests(user.id);
+        console.log("Project requests fetched:", requestsData);
+        
+        // Combine both arrays and remove any duplicates by ID
+        const allProjects = [...projectsData, ...requestsData];
+        const uniqueProjects = allProjects.filter((project, index, self) => 
+          index === self.findIndex(p => p.id === project.id)
+        );
         
         // Sort all projects by creation date
-        userProjects.sort((a, b) => {
+        uniqueProjects.sort((a, b) => {
           const dateA = new Date(a.createdAt).getTime();
           const dateB = new Date(b.createdAt).getTime();
           return dateB - dateA; // Descending order
         });
         
-        setProjects(userProjects);
+        console.log("Combined unique projects:", uniqueProjects);
+        setProjects(uniqueProjects);
         
-        if (userProjects.length === 0) {
+        if (uniqueProjects.length === 0) {
           console.log("No projects found");
         }
       } catch (error) {

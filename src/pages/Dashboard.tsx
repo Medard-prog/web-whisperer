@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects } from "@/integrations/supabase/client";
+import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectCard from "@/components/ProjectCard";
 import { Button } from "@/components/ui/button";
@@ -34,17 +34,27 @@ const Dashboard = () => {
       
       console.log("Loading projects in Dashboard for user:", user.id);
       
-      // Load projects from the combined projects table
-      const allProjects = await fetchProjects(user.id);
-      console.log("All projects fetched in Dashboard:", allProjects);
+      // Load both project types
+      const projectsData = await fetchProjects(user.id);
+      console.log("Projects fetched in Dashboard:", projectsData);
+      
+      // Load project requests
+      const requestsData = await fetchProjectRequests(user.id);
+      console.log("Project requests fetched in Dashboard:", requestsData);
+      
+      // Combine both arrays and remove any duplicates by ID
+      const allProjects = [...projectsData, ...requestsData];
+      const uniqueProjects = allProjects.filter((project, index, self) => 
+        index === self.findIndex(p => p.id === project.id)
+      );
       
       // Sort by creation date (newest first)
-      allProjects.sort((a, b) => {
+      uniqueProjects.sort((a, b) => {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
-      console.log("Combined projects in Dashboard:", allProjects);
-      setProjects(allProjects);
+      console.log("Combined projects in Dashboard:", uniqueProjects);
+      setProjects(uniqueProjects);
       
     } catch (error) {
       console.error("Error loading projects in Dashboard:", error);

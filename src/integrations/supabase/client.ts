@@ -70,9 +70,9 @@ export const fetchProjectRequests = async (userId?: string) => {
     console.log("Fetching project requests, userId:", userId);
     
     let query = supabase
-      .from('projects')  // Changed from project_requests to projects
+      .from('projects')
       .select('*')
-      .eq('type', 'request')  // Filter by type = 'request'
+      .eq('type', 'request')
       .order('created_at', { ascending: false });
     
     if (userId) {
@@ -103,7 +103,6 @@ export const fetchProjects = async (userId?: string) => {
     let query = supabase
       .from('projects')
       .select('*')
-      .eq('type', 'project')
       .order('created_at', { ascending: false });
     
     if (userId) {
