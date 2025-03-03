@@ -1,7 +1,6 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProjectFile } from '@/types';
+import { ProjectTask, Project, Message, User, ProjectNote, ProjectFile, mapProjectFile, mapProject } from '@/types';
 
 // Use the actual Supabase project URL and anon key from the configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kadoutdcicucjyqvjihn.supabase.co';
@@ -10,6 +9,7 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1N
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Export all required functions that are used in the codebase
+
 export const fetchUserData = async (userId: string) => {
   try {
     const { data, error } = await supabase
@@ -100,21 +100,61 @@ export const fetchProjects = async (userId?: string) => {
 
 export const fetchProjectById = async (projectId: string) => {
   try {
-    const { data, error } = await supabase
+    // First try to find the project in the projects table
+    const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', projectId)
       .single();
 
-    if (error) {
-      console.error("Error fetching project by ID:", error);
-      toast.error(`Failed to fetch project: ${error.message}`);
+    if (projectError && projectError.code === 'PGRST116') {
+      console.log("Project not found in projects table, checking project_requests...");
+      
+      // If not found in projects table, try the project_requests table
+      const { data: requestData, error: requestError } = await supabase
+        .from('project_requests')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+        
+      if (requestError) {
+        console.error("Error fetching project from both tables:", requestError);
+        return null;
+      }
+      
+      if (requestData) {
+        // Map project_requests data to Project type
+        return {
+          id: requestData.id,
+          title: requestData.project_name,
+          description: requestData.description || '',
+          status: requestData.status || 'new',
+          createdAt: requestData.created_at,
+          price: requestData.price || 0,
+          userId: requestData.user_id,
+          hasEcommerce: requestData.has_ecommerce,
+          hasCMS: requestData.has_cms,
+          hasSEO: requestData.has_seo,
+          hasMaintenance: requestData.has_maintenance,
+          // Website details
+          websiteType: requestData.project_type,
+          pageCount: requestData.page_count,
+          designComplexity: requestData.design_complexity,
+          exampleUrls: requestData.example_urls,
+          additionalInfo: requestData.additional_info,
+        } as Project;
+      }
       return null;
     }
 
-    return data;
+    if (projectError) {
+      console.error("Error fetching project by ID:", projectError);
+      return null;
+    }
+
+    return projectData;
   } catch (error: any) {
-    toast.error(`Failed to fetch project: ${error.message}`);
+    console.error("Exception in fetchProjectById:", error);
     return null;
   }
 };

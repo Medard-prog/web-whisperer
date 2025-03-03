@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,7 +47,7 @@ const AdminProjectDetails = () => {
       const projectData = await fetchProjectById(id!);
       if (!projectData) {
         console.error("Admin: Project not found for ID:", id);
-        throw new Error("Project not found");
+        throw new Error("Project not found. It may have been deleted.");
       }
       
       console.log("Admin: Project data loaded successfully:", projectData);
@@ -83,7 +84,7 @@ const AdminProjectDetails = () => {
       console.error("Admin: Error loading project data:", err);
       setError(err instanceof Error ? err.message : "Failed to load project data");
       toast.error("Error loading project data", {
-        description: "Please try again later."
+        description: err instanceof Error ? err.message : "Please try again later."
       });
     } finally {
       setLoading(false);

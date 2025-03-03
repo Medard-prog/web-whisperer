@@ -47,7 +47,7 @@ const ProjectDetails = () => {
       const projectData = await fetchProjectById(id!);
       if (!projectData) {
         console.error("Project not found for ID:", id);
-        throw new Error("Project not found");
+        throw new Error("Project not found. It may have been deleted or you don't have access to it.");
       }
       
       console.log("Project data loaded successfully:", projectData);
@@ -84,7 +84,7 @@ const ProjectDetails = () => {
       console.error("Error loading project data:", err);
       setError(err instanceof Error ? err.message : "Failed to load project data");
       toast.error("Error loading project data", {
-        description: "Please try again later."
+        description: err instanceof Error ? err.message : "Please try again later."
       });
     } finally {
       setLoading(false);
