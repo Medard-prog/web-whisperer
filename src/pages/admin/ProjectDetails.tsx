@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +7,7 @@ import {
   fetchProjectTasks, 
   fetchProjectNotes
 } from "@/integrations/supabase/client";
-import { Project, ProjectTask, ProjectNote } from "@/types";
+import { Project, ProjectTask, ProjectNote, PaymentStatus } from "@/types";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectDetailsPanel from "@/components/ProjectDetailsPanel";
 import ProjectTasksPanel from "@/components/ProjectTasksPanel";
@@ -203,7 +204,7 @@ const AdminProjectDetails = () => {
                         if (project?.id) {
                           const updatedProject = await updateProjectStatus(project.id, value);
                           if (updatedProject) {
-                            onProjectUpdate(updatedProject);
+                            handleProjectUpdate(updatedProject);
                           }
                         }
                       }}
@@ -225,14 +226,14 @@ const AdminProjectDetails = () => {
                     <Label className="font-medium text-gray-700">Status Plată</Label>
                     <Select
                       value={project?.paymentStatus || 'pending'}
-                      onValueChange={async (value) => {
+                      onValueChange={async (value: string) => {
                         if (project?.id) {
                           const updatedProject = await updateProject(project.id, {
                             ...project,
-                            paymentStatus: value
+                            paymentStatus: value as PaymentStatus
                           });
                           if (updatedProject) {
-                            onProjectUpdate(updatedProject);
+                            handleProjectUpdate(updatedProject);
                           }
                         }
                       }}
@@ -275,7 +276,7 @@ const AdminProjectDetails = () => {
                                 dueDate: date.toISOString()
                               });
                               if (updatedProject) {
-                                onProjectUpdate(updatedProject);
+                                handleProjectUpdate(updatedProject);
                               }
                             }
                           }}
@@ -300,7 +301,7 @@ const AdminProjectDetails = () => {
                             price: parseFloat(e.target.value) || 0
                           });
                           if (updatedProject) {
-                            onProjectUpdate(updatedProject);
+                            handleProjectUpdate(updatedProject);
                           }
                         }
                       }}
@@ -320,7 +321,7 @@ const AdminProjectDetails = () => {
                             amountPaid: parseFloat(e.target.value) || 0
                           });
                           if (updatedProject) {
-                            onProjectUpdate(updatedProject);
+                            handleProjectUpdate(updatedProject);
                           }
                         }
                       }}
@@ -341,7 +342,7 @@ const AdminProjectDetails = () => {
                           description: e.target.value
                         });
                         if (updatedProject) {
-                          onProjectUpdate(updatedProject);
+                          handleProjectUpdate(updatedProject);
                         }
                       }
                     }}
