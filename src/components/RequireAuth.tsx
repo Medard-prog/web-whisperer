@@ -14,10 +14,11 @@ const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
   const { user, loading, session, refreshUser } = useAuth();
   const location = useLocation();
   const [longLoading, setLongLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  // Set a timer to detect long loading times
+  // Set a timer to detect long loading times, but only on initial load
   useEffect(() => {
-    if (loading) {
+    if (loading && initialLoad) {
       const timer = setTimeout(() => {
         setLongLoading(true);
       }, 5000);
@@ -25,8 +26,11 @@ const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
       return () => clearTimeout(timer);
     } else {
       setLongLoading(false);
+      if (!loading) {
+        setInitialLoad(false);
+      }
     }
-  }, [loading]);
+  }, [loading, initialLoad]);
 
   // Handle retry action
   const handleRetry = () => {
@@ -34,8 +38,8 @@ const RequireAuth = ({ children, adminOnly = false }: RequireAuthProps) => {
     window.location.reload();
   };
 
-  // Show loading screen while checking auth state
-  if (loading) {
+  // Show loading screen while checking auth state, but only on initial load
+  if (loading && initialLoad) {
     return <LoadingScreen 
       isLoading={true} 
       timeout={5000} 

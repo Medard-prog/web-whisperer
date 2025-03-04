@@ -1,6 +1,6 @@
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface LoadingScreenProps {
@@ -18,22 +18,32 @@ const LoadingScreen = ({
 }: LoadingScreenProps) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
+  const initialLoadRef = useRef(true);
   
   useEffect(() => {
-    // Only show loading screen if tab is active and loading is true
+    // Initial state - only show on first load, not when switching tabs
+    if (isLoading && !document.hidden && initialLoadRef.current) {
+      setShouldRender(true);
+      initialLoadRef.current = false;
+    } else if (!isLoading) {
+      setShouldRender(false);
+      // Reset initial load ref when loading is complete
+      initialLoadRef.current = true;
+    }
+    
+    // Handle visibility changes, but don't show loading screen when coming back to tab
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        setShouldRender(false);
-      } else if (isLoading) {
+        // Do nothing when tab is hidden
+      } else if (isLoading && initialLoadRef.current) {
+        // Only show loading when genuinely loading and not just returning to tab
         setShouldRender(true);
+        initialLoadRef.current = false;
       }
     };
     
     // Add visibility change listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    
-    // Initial state
-    setShouldRender(isLoading && !document.hidden);
     
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -55,7 +65,7 @@ const LoadingScreen = ({
   }, [isLoading, timeout, shouldRender]);
   
   // Don't render anything if not loading or tab is inactive
-  if (!isLoading || !shouldRender) return null;
+  if (!shouldRender) return null;
   
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
