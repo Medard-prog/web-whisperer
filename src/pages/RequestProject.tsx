@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,21 +72,16 @@ const RequestProject = () => {
       }
     }
   }, [user, loading, location.state, location.search]);
-
-  // Re-check for user data before submission
+  
   const handleSubmit = async (formData: RequestFormValues) => {
     try {
       console.log("Starting submission with data:", formData);
-      
-      // Get the current user again to ensure we have the latest state
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      console.log("Current user at submission time:", currentUser);
       
       const requestData = {
         title: formData.projectName,
         description: formData.description || '',
         website_type: formData.projectType || '',
-        user_id: currentUser?.id || user?.id, // Use current user ID from auth check or component state
+        user_id: user?.id,
         status: 'new',
         type: 'request',
         design_complexity: formData.designComplexity || "standard",
@@ -115,7 +109,7 @@ const RequestProject = () => {
         description: "Te vom contacta în curând pentru a discuta despre proiectul tău.",
       });
       
-      if (currentUser || user) {
+      if (user) {
         navigate("/dashboard");
       } else {
         navigate("/");

@@ -1,4 +1,3 @@
-
 import { supabase } from '../core/client';
 import { toast } from 'sonner';
 import { Project, mapProject } from '@/types';
@@ -66,12 +65,6 @@ export const fetchProjects = async (userId?: string) => {
 
 export const fetchProjectById = async (projectId: string) => {
   try {
-    // Validate projectId to prevent SQL injection
-    if (!projectId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
-      console.error("Invalid project ID format");
-      return null;
-    }
-    
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
@@ -93,17 +86,6 @@ export const fetchProjectById = async (projectId: string) => {
 export const updateProject = async (id: string, projectData: Partial<Project>) => {
   try {
     console.log('Updating project with ID:', id, 'Data:', projectData);
-    
-    // Sanitize and validate inputs
-    if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-      throw new Error("Invalid project ID format");
-    }
-    
-    // Get current auth status to ensure user is still authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error("You must be logged in to update a project");
-    }
     
     const { data, error } = await supabase
       .from('projects')
@@ -138,15 +120,6 @@ export const updateProject = async (id: string, projectData: Partial<Project>) =
 
 export const updateProjectStatus = async (projectId: string, status: string) => {
   try {
-    // Validate inputs
-    if (!projectId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
-      throw new Error("Invalid project ID format");
-    }
-    
-    if (!status || typeof status !== 'string') {
-      throw new Error("Invalid status format");
-    }
-    
     const { data, error } = await supabase
       .from('projects')
       .update({ status: status })
@@ -169,15 +142,6 @@ export const updateProjectStatus = async (projectId: string, status: string) => 
 
 export const updatePaymentStatus = async (projectId: string, status: string) => {
   try {
-    // Validate inputs
-    if (!projectId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
-      throw new Error("Invalid project ID format");
-    }
-    
-    if (!status || typeof status !== 'string') {
-      throw new Error("Invalid status format");
-    }
-    
     const { data, error } = await supabase
       .from('projects')
       .update({ payment_status: status })
@@ -195,39 +159,5 @@ export const updatePaymentStatus = async (projectId: string, status: string) => 
   } catch (error: any) {
     toast.error(`Failed to update payment status: ${error.message}`);
     return null;
-  }
-};
-
-// Create a new project with proper user ID handling
-export const createProject = async (projectData: Partial<Project>) => {
-  try {
-    console.log("Creating new project:", projectData);
-    
-    // Get current auth state to ensure we have the latest user ID
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user && projectData.type !== 'request') {
-      throw new Error("You must be logged in to create a project");
-    }
-    
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([{
-        ...projectData,
-        user_id: user?.id || projectData.userId, // Ensure we use the current user ID
-        created_at: new Date().toISOString()
-      }])
-      .select()
-      .single();
-      
-    if (error) {
-      console.error("Error creating project:", error);
-      throw error;
-    }
-    
-    return mapProject(data);
-  } catch (error: any) {
-    console.error("Error in createProject:", error);
-    throw error;
   }
 };

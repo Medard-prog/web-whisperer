@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -319,9 +320,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  // Determine if the user is an admin
-  const isAdmin = user?.isAdmin || false;
-  
   // Provide context value
   return (
     <AuthContext.Provider value={{ 
@@ -334,8 +332,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       updateProfile,
       refreshUser,
       resetPassword,
-      updatePassword,
-      isAdmin
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>

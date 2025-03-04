@@ -17,7 +17,6 @@ const LoadingScreen = ({
   onRetry
 }: LoadingScreenProps) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
-  const [documentHidden, setDocumentHidden] = useState(false);
   
   useEffect(() => {
     if (!isLoading) {
@@ -25,28 +24,15 @@ const LoadingScreen = ({
       return;
     }
     
-    // Handle document visibility changes
-    const handleVisibilityChange = () => {
-      setDocumentHidden(document.hidden);
-    };
-    
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    
-    // Only show timeout message if document is visible and still loading after timeout
+    // Show timeout message after specified time
     const timer = setTimeout(() => {
-      if (!document.hidden) {
-        setShowTimeoutMessage(true);
-      }
+      setShowTimeoutMessage(true);
     }, timeout);
     
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    return () => clearTimeout(timer);
   }, [isLoading, timeout]);
   
-  // Don't show loading screen if document is not visible (tab switched)
-  if (!isLoading || documentHidden) return null;
+  if (!isLoading) return null;
   
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
