@@ -1,9 +1,14 @@
 
-// Import types from the new modules
-import { Project, ProjectTask, ProjectNote, ProjectFile } from './projectTypes';
-import { User, Message, AdminNote } from './userTypes';
+import {
+  Project,
+  ProjectTask,
+  ProjectNote,
+  ProjectModificationRequest,
+  ProjectFile
+} from './projectTypes';
+import { User } from './userTypes';
+import { Message, AdminNote } from './index';
 
-// Mapper functions to convert snake_case from database to camelCase
 export function mapProject(data: any): Project {
   return {
     id: data.id,
@@ -53,6 +58,9 @@ export function mapProjectNote(data: any): ProjectNote {
     createdAt: data.created_at,
     createdBy: data.created_by,
     isAdminOnly: data.is_admin_only,
+    fileName: data.file_name,
+    fileUrl: data.file_url,
+    filePath: data.file_path
   };
 }
 
@@ -93,6 +101,20 @@ export function mapProjectFile(data: any): ProjectFile {
     uploadedAt: data.uploadedAt || data.uploaded_at || data.created_at || '',
     isAdminOnly: data.isAdminOnly || data.is_admin_only || false,
     url: data.url || ''
+  };
+}
+
+export function mapProjectModificationRequest(data: any): ProjectModificationRequest {
+  return {
+    id: data.id,
+    projectId: data.project_id,
+    userId: data.user_id,
+    description: data.description,
+    budget: data.budget,
+    timeline: data.timeline,
+    priority: data.priority,
+    status: data.status,
+    createdAt: data.created_at
   };
 }
 

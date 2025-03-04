@@ -1,55 +1,40 @@
 
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+ 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
-export function formatPrice(price: number) {
+export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('ro-RO', {
     style: 'currency',
     currency: 'RON',
-  }).format(price);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
 }
 
-export function getInitials(name: string) {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase();
-}
-
-export function formatDate(date: string | Date) {
-  return new Date(date).toLocaleDateString('ro-RO', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-export function calculateProjectPrice(
-  pageCount: number,
-  designComplexity: string,
-  hasCMS: boolean,
-  hasEcommerce: boolean,
-  hasSEO: boolean,
-  hasMaintenance: boolean
-) {
-  const basePrice = 1500;
-  const designPrices: Record<string, number> = {
-    simple: 0,
-    standard: 500,
-    premium: 1200,
-  };
+export function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // diff in seconds
   
-  const pagePricing = 150 * pageCount;
-  const designPricing = designPrices[designComplexity] || 0;
-  const cmsPricing = hasCMS ? 800 : 0;
-  const ecommercePricing = hasEcommerce ? 1500 : 0;
-  const seoPricing = hasSEO ? 600 : 0;
-  const maintenancePricing = hasMaintenance ? 200 : 0;
-  
-  return basePrice + pagePricing + designPricing + cmsPricing + ecommercePricing + seoPricing + maintenancePricing;
+  if (diff < 60) {
+    return 'Acum câteva secunde';
+  } else if (diff < 3600) {
+    const minutes = Math.floor(diff / 60);
+    return `Acum ${minutes} ${minutes === 1 ? 'minut' : 'minute'}`;
+  } else if (diff < 86400) {
+    const hours = Math.floor(diff / 3600);
+    return `Acum ${hours} ${hours === 1 ? 'oră' : 'ore'}`;
+  } else if (diff < 604800) {
+    const days = Math.floor(diff / 86400);
+    return `Acum ${days} ${days === 1 ? 'zi' : 'zile'}`;
+  } else if (diff < 2592000) {
+    const weeks = Math.floor(diff / 604800);
+    return `Acum ${weeks} ${weeks === 1 ? 'săptămână' : 'săptămâni'}`;
+  } else {
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    return date.toLocaleDateString('ro-RO', options);
+  }
 }

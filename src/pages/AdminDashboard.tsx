@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import ProjectCard from "@/components/ProjectCard";
 import PageTransition from "@/components/PageTransition";
 import { toast } from "sonner";
+import AdminRecentActivity from "@/components/AdminRecentActivity";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -241,79 +242,85 @@ const AdminDashboard = () => {
               </Card>
             </div>
             
-            {/* Analytics */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <LayoutDashboard className="h-5 w-5 mr-2 text-indigo-500" />
-                    Statistici proiecte
-                  </CardTitle>
-                  <CardDescription>Distribuția proiectelor după status</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="h-64 flex items-center justify-center">
-                      <Skeleton className="h-48 w-48 rounded-full" />
-                    </div>
-                  ) : (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={statusData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            paddingAngle={5}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {statusData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Recent Activity and Analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1">
+                <AdminRecentActivity />
+              </div>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <FileText className="h-5 w-5 mr-2 text-purple-500" />
-                    Tipuri de website
-                  </CardTitle>
-                  <CardDescription>Distribuția proiectelor după tip</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="h-64 flex items-center justify-center">
-                      <Skeleton className="h-48 w-full" />
-                    </div>
-                  ) : (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          layout="vertical"
-                          data={websiteTypeData}
-                          margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
-                        >
-                          <XAxis type="number" />
-                          <YAxis dataKey="name" type="category" width={80} />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#6366F1" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <LayoutDashboard className="h-5 w-5 mr-2 text-indigo-500" />
+                      Statistici proiecte
+                    </CardTitle>
+                    <CardDescription>Distribuția proiectelor după status</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="h-64 flex items-center justify-center">
+                        <Skeleton className="h-48 w-48 rounded-full" />
+                      </div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={statusData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              paddingAngle={5}
+                              dataKey="value"
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            >
+                              {statusData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <FileText className="h-5 w-5 mr-2 text-purple-500" />
+                      Tipuri de website
+                    </CardTitle>
+                    <CardDescription>Distribuția proiectelor după tip</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="h-64 flex items-center justify-center">
+                        <Skeleton className="h-48 w-full" />
+                      </div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            layout="vertical"
+                            data={websiteTypeData}
+                            margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
+                          >
+                            <XAxis type="number" />
+                            <YAxis dataKey="name" type="category" width={80} />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="#6366F1" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
             
             {/* Latest Projects */}

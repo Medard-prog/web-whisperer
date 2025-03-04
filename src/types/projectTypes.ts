@@ -1,5 +1,4 @@
 
-// Project-related types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 export type PaymentStatus = "pending" | "partial" | "paid" | "overdue";
 export type ProjectType = "project" | "request";
@@ -54,7 +53,22 @@ export interface ProjectNote {
   content: string;
   createdAt: string;
   createdBy?: string;
-  isAdminOnly?: boolean;
+  isAdminOnly: boolean;
+  fileName?: string;
+  fileUrl?: string;
+  filePath?: string;
+}
+
+export interface ProjectModificationRequest {
+  id: string;
+  projectId: string;
+  userId: string;
+  description: string;
+  budget: string;
+  timeline: string;
+  priority: string;
+  status: string;
+  createdAt: string;
 }
 
 export interface ProjectFile {
@@ -68,16 +82,4 @@ export interface ProjectFile {
   uploadedAt: string;
   isAdminOnly: boolean;
   url?: string;
-}
-
-export interface ProjectModificationRequest {
-  id: string;
-  projectId: string;
-  userId: string;
-  description: string;
-  budget: string;
-  timeline: string;
-  priority: string;
-  status: string;
-  createdAt: string;
 }

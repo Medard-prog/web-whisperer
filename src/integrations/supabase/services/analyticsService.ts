@@ -2,58 +2,101 @@
 import { supabase } from '../core/client';
 import { toast } from 'sonner';
 
-export const getProjectStatusChartData = async (dateRange?: { from?: Date, to?: Date }) => {
+// This function would pull recent activities from various tables
+export const fetchRecentActivity = async (limit = 20) => {
   try {
-    return [
-      { name: 'New', value: 10 },
-      { name: 'In Progress', value: 5 },
-      { name: 'Completed', value: 8 }
-    ];
+    // We'll need to fetch from multiple tables and combine the results
+    
+    // 1. Get recent messages
+    const { data: messages, error: messagesError } = await supabase
+      .from('messages')
+      .select('id, project_id, user_id, content, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+      
+    if (messagesError) throw messagesError;
+    
+    // 2. Get recent project modification requests
+    const { data: modifications, error: modsError } = await supabase
+      .from('project_modification_requests')
+      .select('id, project_id, user_id, description, created_at, status, priority')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+      
+    if (modsError) throw modsError;
+    
+    // 3. Get recent project notes
+    const { data: notes, error: notesError } = await supabase
+      .from('project_notes')
+      .select('id, project_id, created_by, content, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (notesError) throw notesError;
+    
+    // 4. Get recent project requests
+    const { data: projectRequests, error: projectsError } = await supabase
+      .from('project_requests')
+      .select('id, user_id, description, created_at, status')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+      
+    if (projectsError) throw projectsError;
+    
+    // Transform and combine data
+    const messageActivities = (messages || []).map(msg => ({
+      id: msg.id,
+      type: 'message' as const,
+      projectId: msg.project_id,
+      userId: msg.user_id,
+      content: msg.content,
+      createdAt: msg.created_at
+    }));
+    
+    const modificationActivities = (modifications || []).map(mod => ({
+      id: mod.id,
+      type: 'modification_request' as const,
+      projectId: mod.project_id,
+      userId: mod.user_id,
+      content: mod.description,
+      createdAt: mod.created_at,
+      status: mod.status,
+      priority: mod.priority
+    }));
+    
+    const noteActivities = (notes || []).map(note => ({
+      id: note.id,
+      type: 'note' as const,
+      projectId: note.project_id,
+      userId: note.created_by || '',
+      content: note.content,
+      createdAt: note.created_at
+    }));
+    
+    const projectRequestActivities = (projectRequests || []).map(req => ({
+      id: req.id,
+      type: 'project_request' as const,
+      userId: req.user_id || '',
+      content: req.description,
+      createdAt: req.created_at,
+      status: req.status
+    }));
+    
+    // Combine all activities and sort by creation date (newest first)
+    const allActivities = [
+      ...messageActivities, 
+      ...modificationActivities, 
+      ...noteActivities,
+      ...projectRequestActivities
+    ].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    return allActivities.slice(0, limit);
+    
   } catch (error: any) {
-    toast.error(`Failed to fetch chart data: ${error.message}`);
-    return [];
-  }
-};
-
-export const getProjectsByPaymentStatus = async (dateRange?: { from?: Date, to?: Date }) => {
-  try {
-    return [
-      { name: 'Paid', value: 12 },
-      { name: 'Partial', value: 3 },
-      { name: 'Unpaid', value: 4 }
-    ];
-  } catch (error: any) {
-    toast.error(`Failed to fetch payment data: ${error.message}`);
-    return [];
-  }
-};
-
-export const getTotalRevenueData = async (dateRange?: { from?: Date, to?: Date }) => {
-  try {
-    return [
-      { month: 'Jan', revenue: 2300 },
-      { month: 'Feb', revenue: 3200 },
-      { month: 'Mar', revenue: 4100 },
-      { month: 'Apr', revenue: 4800 },
-      { month: 'May', revenue: 5500 },
-      { month: 'Jun', revenue: 4900 }
-    ];
-  } catch (error: any) {
-    toast.error(`Failed to fetch revenue data: ${error.message}`);
-    return [];
-  }
-};
-
-export const getPopularFeaturesData = async () => {
-  try {
-    return [
-      { name: 'E-commerce', value: 15 },
-      { name: 'CMS', value: 22 },
-      { name: 'SEO', value: 18 },
-      { name: 'Maintenance', value: 10 }
-    ];
-  } catch (error: any) {
-    toast.error(`Failed to fetch features data: ${error.message}`);
+    console.error('Error fetching recent activity:', error);
+    toast.error('Nu s-a putut încărca activitatea recentă');
     return [];
   }
 };

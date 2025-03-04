@@ -6,25 +6,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ThumbsUp, ThumbsDown, Clock, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { 
+  ThumbsUp, 
+  ThumbsDown, 
+  Clock, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle,
+  Calendar,
+  DollarSign,
+  FileEdit,
+  User,
+  Tag
+} from "lucide-react";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "./ui/separator";
 
 const statusMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { 
     label: "În așteptare", 
-    color: "bg-yellow-100 text-yellow-800", 
+    color: "bg-yellow-100 text-yellow-800 border-yellow-200", 
     icon: <Clock className="h-4 w-4" /> 
   },
   approved: { 
     label: "Aprobat", 
-    color: "bg-green-100 text-green-800", 
+    color: "bg-green-100 text-green-800 border-green-200", 
     icon: <CheckCircle className="h-4 w-4" /> 
   },
   rejected: { 
     label: "Respins", 
-    color: "bg-red-100 text-red-800", 
+    color: "bg-red-100 text-red-800 border-red-200", 
     icon: <XCircle className="h-4 w-4" /> 
   }
 };
@@ -32,22 +45,22 @@ const statusMap: Record<string, { label: string; color: string; icon: React.Reac
 const priorityMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   low: { 
     label: "Scăzută", 
-    color: "bg-blue-100 text-blue-800", 
-    icon: null 
+    color: "bg-blue-100 text-blue-800 border-blue-200", 
+    icon: <Tag className="h-4 w-4" /> 
   },
   normal: { 
     label: "Normală", 
-    color: "bg-gray-100 text-gray-800", 
-    icon: null 
+    color: "bg-gray-100 text-gray-800 border-gray-200", 
+    icon: <Tag className="h-4 w-4" /> 
   },
   high: { 
     label: "Ridicată", 
-    color: "bg-orange-100 text-orange-800", 
+    color: "bg-orange-100 text-orange-800 border-orange-200", 
     icon: <AlertTriangle className="h-4 w-4" /> 
   },
   urgent: { 
     label: "Urgentă", 
-    color: "bg-red-100 text-red-800", 
+    color: "bg-red-100 text-red-800 border-red-200", 
     icon: <AlertTriangle className="h-4 w-4" /> 
   }
 };
@@ -62,6 +75,7 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<Record<string, any>>({});
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadModificationRequests();
@@ -95,7 +109,10 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
   };
 
   const handleStatusChange = async (requestId: string, status: string) => {
+    if (!isAdmin) return;
+    
     try {
+      setProcessingId(requestId);
       await updateModificationRequestStatus(requestId, status);
       
       // Update local state
@@ -107,10 +124,16 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
         )
       );
       
-      toast.success(`Cererea a fost ${status === 'approved' ? 'aprobată' : 'respinsă'}`);
+      toast.success(
+        status === 'approved' 
+          ? 'Cererea de modificare a fost aprobată cu succes!' 
+          : 'Cererea de modificare a fost respinsă'
+      );
     } catch (error: any) {
       console.error("Error updating request status:", error);
       toast.error("Nu s-a putut actualiza statusul cererii");
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -137,10 +160,16 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
     return (
       <Card className="border-dashed border-2 bg-gray-50">
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-gray-500 text-center mb-4">
+          <FileEdit className="h-12 w-12 text-gray-300 mb-3" />
+          <p className="text-gray-600 font-medium text-lg mb-1">
             {isAdmin
               ? "Nu există cereri de modificare pentru acest proiect"
               : "Nu ai solicitat nicio modificare pentru acest proiect"}
+          </p>
+          <p className="text-gray-500 text-center text-sm max-w-md">
+            {isAdmin
+              ? "Cererile de modificare vor apărea aici când un client solicită modificări la proiect."
+              : "Poți solicita modificări la proiect folosind butonul 'Solicită modificări' din pagina de detalii a proiectului."}
           </p>
         </CardContent>
       </Card>
@@ -150,10 +179,25 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
   return (
     <div className="space-y-6">
       {requests.map((request) => (
-        <Card key={request.id} className="overflow-hidden">
-          <CardHeader className="border-b bg-gray-50 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+        <Card 
+          key={request.id} 
+          className={`overflow-hidden ${
+            request.status === 'approved' 
+              ? 'border-green-200 bg-green-50/30' 
+              : request.status === 'rejected'
+                ? 'border-red-200 bg-red-50/30'
+                : ''
+          }`}
+        >
+          <CardHeader className={`border-b pb-3 ${
+            request.status === 'approved' 
+              ? 'bg-green-50' 
+              : request.status === 'rejected'
+                ? 'bg-red-50'
+                : 'bg-gray-50'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge className={statusMap[request.status]?.color || "bg-gray-100"}>
                   <span className="flex items-center gap-1">
                     {statusMap[request.status]?.icon}
@@ -166,15 +210,21 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
                     {priorityMap[request.priority]?.label || request.priority}
                   </span>
                 </Badge>
+                
+                <CardDescription className="sm:ml-2 mt-1 sm:mt-0">
+                  <Clock className="inline h-3 w-3 mr-1" />
+                  {format(new Date(request.createdAt), 'dd MMMM yyyy', { locale: ro })}
+                </CardDescription>
               </div>
-              <CardDescription>
-                {format(new Date(request.createdAt), 'dd MMMM yyyy', { locale: ro })}
-              </CardDescription>
             </div>
             
             {isAdmin && userData[request.userId] && (
-              <div className="mt-2 text-sm text-gray-500">
-                Solicitat de: {userData[request.userId].name || userData[request.userId].email}
+              <div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
+                <User className="h-3 w-3" />
+                <span>Solicitat de: </span>
+                <span className="font-medium">
+                  {userData[request.userId].name || userData[request.userId].email}
+                </span>
               </div>
             )}
           </CardHeader>
@@ -182,39 +232,92 @@ const ModificationRequestsPanel = ({ projectId, isAdmin }: ModificationRequestsP
           <CardContent className="p-4">
             <div className="space-y-4">
               <div>
-                <h3 className="font-medium text-gray-700">Descriere:</h3>
-                <p className="text-gray-600 mt-1 whitespace-pre-line">{request.description}</p>
+                <h3 className="font-medium text-gray-700 flex items-center">
+                  <FileEdit className="h-4 w-4 mr-1 text-gray-500" />
+                  Descriere modificări:
+                </h3>
+                <p className="text-gray-700 mt-2 whitespace-pre-line bg-white p-3 rounded border">
+                  {request.description}
+                </p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium text-gray-700">Buget:</h3>
-                  <p className="text-gray-600 mt-1">{request.budget}</p>
+                <div className="bg-white p-3 rounded border">
+                  <h3 className="font-medium text-gray-700 flex items-center">
+                    <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                    Buget estimat:
+                  </h3>
+                  <p className="text-gray-700 mt-1">{request.budget}</p>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-700">Termen:</h3>
-                  <p className="text-gray-600 mt-1">{request.timeline}</p>
+                <div className="bg-white p-3 rounded border">
+                  <h3 className="font-medium text-gray-700 flex items-center">
+                    <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+                    Termen estimat:
+                  </h3>
+                  <p className="text-gray-700 mt-1">{request.timeline}</p>
                 </div>
               </div>
             </div>
           </CardContent>
           
           {isAdmin && request.status === 'pending' && (
-            <CardFooter className="border-t bg-gray-50 gap-2">
+            <CardFooter className="border-t bg-gray-50 gap-2 p-4">
               <Button 
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-initial"
                 onClick={() => handleStatusChange(request.id, 'approved')}
+                disabled={processingId === request.id}
               >
-                <ThumbsUp className="h-4 w-4 mr-2" />
-                Aprobă
+                {processingId === request.id ? (
+                  <Skeleton className="h-4 w-4 rounded-full mr-2" />
+                ) : (
+                  <ThumbsUp className="h-4 w-4 mr-2" />
+                )}
+                Aprobă cererea
               </Button>
               <Button 
                 variant="destructive"
+                className="flex-1 sm:flex-initial"
                 onClick={() => handleStatusChange(request.id, 'rejected')}
+                disabled={processingId === request.id}
               >
-                <ThumbsDown className="h-4 w-4 mr-2" />
-                Respinge
+                {processingId === request.id ? (
+                  <Skeleton className="h-4 w-4 rounded-full mr-2" />
+                ) : (
+                  <ThumbsDown className="h-4 w-4 mr-2" />
+                )}
+                Respinge cererea
               </Button>
+            </CardFooter>
+          )}
+          
+          {request.status !== 'pending' && (
+            <CardFooter className={`border-t p-3 flex flex-col items-start ${
+              request.status === 'approved' 
+                ? 'bg-green-50' 
+                : 'bg-red-50'
+            }`}>
+              <p className={`text-sm font-medium flex items-center ${
+                request.status === 'approved' 
+                  ? 'text-green-700' 
+                  : 'text-red-700'
+              }`}>
+                {request.status === 'approved' ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Cererea a fost aprobată
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Cererea a fost respinsă
+                  </>
+                )}
+              </p>
+              {request.status === 'approved' && (
+                <p className="text-xs text-green-600 mt-1">
+                  Vom contacta cât de curând pentru detalii despre implementare.
+                </p>
+              )}
             </CardFooter>
           )}
         </Card>
