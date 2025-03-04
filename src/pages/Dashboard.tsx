@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
+import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/services/projectService";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectCard from "@/components/ProjectCard";
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[1, 2, 3].map((item) => (
                       <Card key={item} className="h-[220px]">
                         <CardHeader className="pb-2">
@@ -177,8 +177,24 @@ const Dashboard = () => {
                       </Card>
                     ))}
                   </div>
-                ) : projects.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* New Project Card */}
+                    <Card 
+                      className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer h-[220px] flex flex-col justify-center items-center hover:shadow-md transition-all"
+                      onClick={handleRequestProject}
+                    >
+                      <div className="text-center p-8">
+                        <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full p-4 mx-auto mb-4">
+                          <Plus className="h-8 w-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-medium text-gray-900 mb-2">Proiect Nou</h3>
+                        <p className="text-gray-600">
+                          Solicită un proiect nou pentru afacerea ta
+                        </p>
+                      </div>
+                    </Card>
+                    
                     {projects.map((project) => (
                       <ProjectCard
                         key={project.id}
@@ -186,61 +202,20 @@ const Dashboard = () => {
                         onClick={() => navigate(`/project/${project.id}`)}
                       />
                     ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 px-4">
-                    <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                      <FileText className="h-8 w-8 text-gray-500" />
-                    </div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">Niciun proiect momentan</h3>
-                    <p className="text-gray-500 max-w-md mx-auto mb-6">
-                      Nu ai niciun proiect activ în acest moment. Solicită un proiect nou pentru a începe colaborarea.
-                    </p>
-                    <Button
-                      onClick={handleRequestProject}
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Solicită Proiect Nou
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card className="border-none shadow-md">
-              <CardHeader>
-                <CardTitle>Profil utilizator</CardTitle>
-                <CardDescription>
-                  Detaliile contului tău
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full p-3 text-white">
-                    <UserRound className="h-8 w-8" />
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-medium">{user?.name || "Utilizator"}</h3>
-                    <p className="text-sm text-gray-500">{user?.email}</p>
-                    {user?.company && (
-                      <p className="text-sm text-gray-500">
-                        <span className="font-medium">Companie:</span> {user.company}
-                      </p>
+                    
+                    {projects.length === 0 && (
+                      <Card className="flex items-center justify-center h-[220px] bg-gray-50 border-dashed border-gray-300">
+                        <div className="text-center p-8">
+                          <FileText className="h-8 w-8 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-600 mb-2">Nu ai proiecte active</h3>
+                          <p className="text-gray-500 text-sm">
+                            Proiectele tale vor apărea aici după ce soliciți unul nou
+                          </p>
+                        </div>
+                      </Card>
                     )}
                   </div>
-                  
-                  <div className="ml-auto">
-                    <Button
-                      variant="outline"
-                      className="border-gray-300"
-                      onClick={() => navigate("/dashboard/settings")}
-                    >
-                      Editează profil
-                    </Button>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
