@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Message } from '@/types';
 import { fetchProjectById, fetchProjectMessages, sendProjectMessage, supabase } from '@/integrations/supabase/client';
@@ -13,7 +13,6 @@ import ChatInput from '@/components/chat/ChatInput';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
 
 const ProjectChat = () => {
   const { id } = useParams<{ id: string }>();

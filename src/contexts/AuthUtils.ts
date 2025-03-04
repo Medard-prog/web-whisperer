@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/core/client';
 import { UserDetails } from './AuthTypes';
 import { toast } from 'sonner';
 import { Session } from '@supabase/supabase-js';
