@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -37,6 +36,7 @@ interface ProjectDetailsPanelProps {
   loading: boolean;
   isAdmin?: boolean;
   onProjectUpdate?: (updatedProject: Project) => void;
+  hideAdditionalInfo?: boolean;
 }
 
 const statusMap = {
@@ -81,7 +81,13 @@ const paymentStatusMap = {
   },
 };
 
-const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdate }: ProjectDetailsPanelProps) => {
+const ProjectDetailsPanel = ({ 
+  project, 
+  loading, 
+  isAdmin = false, 
+  onProjectUpdate,
+  hideAdditionalInfo = false
+}: ProjectDetailsPanelProps) => {
   const [expandDescription, setExpandDescription] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editedProject, setEditedProject] = useState<Project | null>(null);
@@ -175,7 +181,6 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
       transition={{ duration: 0.5 }}
     >
       <Card className="shadow-lg border border-gray-200 overflow-hidden bg-white">
-        {/* Header with background gradient */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between">
             <div>
@@ -235,9 +240,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
 
         <CardContent className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left column - Main info */}
             <div className="lg:col-span-8 space-y-6">
-              {/* Status and Progress */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="shadow-sm border">
                   <CardHeader className="pb-2">
@@ -292,7 +295,6 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                 </Card>
               </div>
 
-              {/* Description */}
               <Card className="shadow-sm border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center">
@@ -322,7 +324,6 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                 </CardContent>
               </Card>
 
-              {/* Example URLs if available */}
               {project.exampleUrls && project.exampleUrls.length > 0 && (
                 <Card className="shadow-sm border">
                   <CardHeader className="pb-2">
@@ -345,8 +346,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                 </Card>
               )}
 
-              {/* Additional Info if available */}
-              {project.additionalInfo && (
+              {!hideAdditionalInfo && project.additionalInfo && (
                 <Card className="shadow-sm border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center">
@@ -363,9 +363,7 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
               )}
             </div>
 
-            {/* Right column - Details */}
             <div className="lg:col-span-4 space-y-4">
-              {/* Project Specifications */}
               <Card className="shadow-sm border">
                 <CardHeader className="pb-2 bg-gray-50">
                   <CardTitle className="text-base flex items-center">
@@ -422,7 +420,6 @@ const ProjectDetailsPanel = ({ project, loading, isAdmin = false, onProjectUpdat
                 </CardContent>
               </Card>
 
-              {/* Timeline */}
               <Card className="shadow-sm border">
                 <CardHeader className="pb-2 bg-gray-50">
                   <CardTitle className="text-base flex items-center">

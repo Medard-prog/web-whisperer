@@ -127,6 +127,7 @@ const ProjectDetails = () => {
                   project={project} 
                   loading={loading} 
                   onProjectUpdate={handleProjectUpdate}
+                  hideAdditionalInfo={true}
                 />
                 
                 {/* Action buttons */}

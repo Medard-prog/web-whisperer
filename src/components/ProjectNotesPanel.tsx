@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,7 +83,9 @@ const ProjectNotesPanel = ({
   };
   
   const addNote = async () => {
-    if (!noteContent.trim() || !userId) {
+    const currentUserId = user?.id;
+    
+    if (!noteContent.trim() || !currentUserId) {
       toast.error('Please add some content to your note');
       return;
     }
@@ -96,7 +97,7 @@ const ProjectNotesPanel = ({
         projectId,
         noteContent,
         true, // Always private
-        userId,
+        currentUserId,
         file || undefined
       );
       
@@ -147,7 +148,6 @@ const ProjectNotesPanel = ({
     }
   };
   
-  // Only show notes panel to admins
   if (!isAdmin) {
     return null;
   }
@@ -230,7 +230,7 @@ const ProjectNotesPanel = ({
               <Button 
                 size="sm" 
                 onClick={addNote} 
-                disabled={!noteContent.trim() || isSaving || !userId}
+                disabled={!noteContent.trim() || isSaving || !user?.id}
                 className="bg-primary gap-1"
               >
                 {isSaving ? (
