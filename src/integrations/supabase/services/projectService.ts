@@ -1,4 +1,3 @@
-
 import { supabase } from '../core/client';
 import { toast } from 'sonner';
 import { Project, mapProject } from '@/types';
@@ -160,19 +159,5 @@ export const updatePaymentStatus = async (projectId: string, status: string) => 
   } catch (error: any) {
     toast.error(`Failed to update payment status: ${error.message}`);
     return null;
-  }
-};
-
-export const fetchProjectsForReports = async (dateRange?: { from?: Date, to?: Date }) => {
-  try {
-    const { data, error } = await supabase
-      .from('project_requests')
-      .select('*');
-      
-    if (error) throw error;
-    return data || [];
-  } catch (error: any) {
-    toast.error(`Failed to fetch projects for reports: ${error.message}`);
-    return [];
   }
 };

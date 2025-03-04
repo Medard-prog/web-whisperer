@@ -11,7 +11,7 @@ type ActivityItem =
   | { id: string; type: "message"; projectId: string; userId: string; content: string; createdAt: string; }
   | { id: string; type: "modification_request"; projectId: string; userId: string; content: string; createdAt: string; status: string; priority: string; }
   | { id: string; type: "project_note"; projectId: string; userId: string; content: string; createdAt: string; }
-  | { id: string; type: "project_request"; id: string; userId: string; content: string; createdAt: string; status: string; };
+  | { id: string; type: "project_request"; userId: string; content: string; createdAt: string; status: string; projectId?: string; };
 
 const AdminRecentActivity = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -68,7 +68,11 @@ const AdminRecentActivity = () => {
     if (activity.type === 'message' || activity.type === 'project_note' || activity.type === 'modification_request') {
       navigate(`/admin/project/${activity.projectId}`);
     } else if (activity.type === 'project_request') {
-      navigate(`/admin/projects`);
+      if (activity.projectId) {
+        navigate(`/admin/project/${activity.projectId}`);
+      } else {
+        navigate(`/admin/projects`);
+      }
     }
   };
 
