@@ -1,12 +1,13 @@
+
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Message } from '@/types';
 import { fetchProjectById, fetchProjectMessages, sendProjectMessage, supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, MessageSquare, ArrowLeft } from 'lucide-react';
+import { AlertCircle, MessageSquare, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatMessage from '@/components/chat/ChatMessage';
 import ChatInput from '@/components/chat/ChatInput';
@@ -131,7 +132,7 @@ const ProjectChat = () => {
       
       setMessages(prevMessages => [...prevMessages, tempMessage]);
       
-      const message = await sendProjectMessage(
+      await sendProjectMessage(
         id,
         content,
         user.id,
@@ -179,16 +180,16 @@ const ProjectChat = () => {
       <DashboardSidebar />
       <PageTransition>
         <main className="flex-1 p-4">
-          <div className="container max-w-4xl py-6">
-            <div className="flex justify-between items-center mb-4">
+          <div className="container max-w-5xl py-6">
+            <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold flex items-center">
-                <MessageSquare className="mr-2 h-5 w-5" />
+                <MessageSquare className="mr-3 h-6 w-6 text-indigo-600" />
                 {loading ? "Loading Chat..." : `Chat: ${project?.title || "Project"}`}
               </h1>
               <Button 
                 variant="outline" 
                 onClick={() => navigate(`/project/${id}`)}
-                className="gap-2"
+                className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Project
@@ -196,37 +197,34 @@ const ProjectChat = () => {
             </div>
             
             {loading ? (
-              <Card>
+              <Card className="shadow-lg border border-gray-200">
                 <CardHeader>
                   <Skeleton className="h-6 w-40 mb-2" />
                   <Skeleton className="h-4 w-64" />
                 </CardHeader>
-                <CardContent className="h-[500px] flex flex-col justify-center items-center">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <Skeleton className="h-4 w-32 mt-4" />
+                <CardContent className="h-[600px] flex flex-col justify-center items-center">
+                  <Loader2 className="h-12 w-12 animate-spin text-indigo-600/50" />
+                  <p className="mt-4 text-gray-500">Loading chat...</p>
                 </CardContent>
-                <CardFooter>
-                  <Skeleton className="h-10 w-full" />
-                </CardFooter>
               </Card>
             ) : error ? (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : !project ? (
-              <Alert>
+              <Alert className="mb-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>Project not found</AlertDescription>
               </Alert>
             ) : (
-              <Card className="shadow-md border">
-                <CardHeader className="bg-muted/50 pb-3">
-                  <CardTitle className="text-lg flex items-center">
-                    <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+              <Card className="shadow-lg border-0 overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 pb-4 border-b">
+                  <CardTitle className="text-xl flex items-center text-indigo-800">
+                    <MessageSquare className="mr-2 h-5 w-5 text-indigo-600" />
                     {project.title}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="mt-1 text-indigo-700">
                     Use this chat to communicate about your project
                   </CardDescription>
                 </CardHeader>
@@ -234,13 +232,15 @@ const ProjectChat = () => {
                 <CardContent className="p-0">
                   <div 
                     ref={messagesContainerRef}
-                    className="h-[500px] overflow-y-auto p-4 space-y-4 bg-[#f5f0ff]"
+                    className="h-[600px] overflow-y-auto px-6 py-5 space-y-4 bg-gradient-to-b from-indigo-50/30 to-white"
                   >
                     {messages.length === 0 ? (
                       <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
-                        <MessageSquare className="h-12 w-12 mb-2 opacity-20" />
-                        <p>No messages yet</p>
-                        <p className="text-sm">Start the conversation by sending a message below</p>
+                        <div className="bg-indigo-100/50 p-8 rounded-full mb-4">
+                          <MessageSquare className="h-12 w-12 text-indigo-400" />
+                        </div>
+                        <p className="text-lg font-medium text-indigo-900">No messages yet</p>
+                        <p className="text-indigo-600">Start the conversation by sending a message below</p>
                       </div>
                     ) : (
                       <>
@@ -258,11 +258,13 @@ const ProjectChat = () => {
                   </div>
                 </CardContent>
                 
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  isLoading={sendingMessage}
-                  placeholder="Type your message..."
-                />
+                <div className="border-t p-4 bg-white">
+                  <ChatInput
+                    onSendMessage={handleSendMessage}
+                    isLoading={sendingMessage}
+                    placeholder="Type your message..."
+                  />
+                </div>
               </Card>
             )}
           </div>

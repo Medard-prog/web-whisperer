@@ -1,9 +1,9 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import PageTransition from "@/components/PageTransition";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import AdminRecentActivity from "@/components/AdminRecentActivity";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -17,16 +17,14 @@ import {
   BarChart3, 
   ListFilter, 
   LayoutDashboard, 
-  Users, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle,
   PlusCircle,
   FileStack,
   CreditCard,
   Construction,
-  Activity
+  Activity,
+  CheckCircle2,
+  XCircle,
+  Clock
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -190,7 +188,7 @@ const AdminDashboard = () => {
                             {item.name === 'paid' && <CheckCircle2 className="mr-1 h-3 w-3" />}
                             {item.name === 'partial' && <Activity className="mr-1 h-3 w-3" />}
                             {item.name === 'pending' && <Clock className="mr-1 h-3 w-3" />}
-                            {item.name === 'overdue' && <AlertCircle className="mr-1 h-3 w-3" />}
+                            {item.name === 'overdue' && <Activity className="mr-1 h-3 w-3" />}
                             {getStatusLabel(item.name)}
                           </Badge>
                         </div>

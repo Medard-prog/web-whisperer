@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import PageTransition from "@/components/PageTransition";
+import RecentEventsPanel from "@/components/RecentEventsPanel";
 import { Project } from "@/types";
 import { Plus, FileText, UserRound, CheckCircle, Clock, BarChart } from "lucide-react";
 import { toast } from "sonner";
@@ -145,6 +146,11 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+            
+            {/* Recent Events Panel */}
+            <div className="mb-8">
+              <RecentEventsPanel />
             </div>
             
             <Card className="mb-8 border-none shadow-md">
