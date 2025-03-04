@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import WavyBackground from '@/components/WavyBackground';
 import { supabase } from '@/integrations/supabase/client';
-import { AtSign, ArrowLeft, Lock } from 'lucide-react';
+import { AtSign, ArrowLeft } from 'lucide-react';
 
 // Reset password form schema
 const resetPasswordSchema = z.object({
@@ -42,18 +41,20 @@ export default function AuthResetPassword() {
     try {
       setIsSubmitting(true);
       
-      // Get the current origin URL to use for redirects
-      const currentOrigin = window.location.origin;
-      console.log("Current origin for reset password redirect:", currentOrigin);
+      // Get the absolute URL for the reset password page
+      const redirectUrl = `${window.location.origin}/auth/update-password`;
+      console.log("Reset password redirect URL:", redirectUrl);
       
       // Call Supabase to send the reset password email with the correct redirectTo URL
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${currentOrigin}/auth/update-password`,
+      const { data, error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: redirectUrl,
       });
       
       if (error) {
         throw error;
       }
+      
+      console.log("Password reset email sent successfully:", data);
       
       // Show success message and status
       setIsSuccess(true);
