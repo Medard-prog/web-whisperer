@@ -1,7 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getProjectStatusChartData, getProjectsByPaymentStatus, getTotalRevenueData, getPopularFeaturesData, fetchProjectsForReports } from '@/integrations/supabase/client';
+import { 
+  getProjectStatusChartData, 
+  getProjectsByPaymentStatus, 
+  getTotalRevenueData, 
+  getPopularFeaturesData,
+  fetchProjectsForReports 
+} from '@/integrations/supabase/services/analyticsService';
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { addDays } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
@@ -9,7 +14,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const Reports = () => {
-  // Initialize with valid DateRange object
   const [dateRange, setDateRange] = useState<{ from: Date, to: Date }>({
     from: addDays(new Date(), -30),
     to: new Date()
@@ -26,9 +30,9 @@ const Reports = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const statusChartData = await getProjectStatusChartData(dateRange);
-        const paymentStatusData = await getProjectsByPaymentStatus(dateRange);
-        const revenueChartData = await getTotalRevenueData(dateRange);
+        const statusChartData = await getProjectStatusChartData();
+        const paymentStatusData = await getProjectsByPaymentStatus();
+        const revenueChartData = await getTotalRevenueData();
         const featuresChartData = await getPopularFeaturesData();
         const projectsData = await fetchProjectsForReports(dateRange);
         
@@ -73,7 +77,6 @@ const Reports = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Project Status Distribution */}
           <Card className="col-span-1 md:col-span-2 lg:col-span-1">
             <CardHeader>
               <CardTitle>Project Status Distribution</CardTitle>
@@ -102,7 +105,6 @@ const Reports = () => {
             </CardContent>
           </Card>
           
-          {/* Payment Status Distribution */}
           <Card className="col-span-1 md:col-span-2 lg:col-span-1">
             <CardHeader>
               <CardTitle>Payment Status Distribution</CardTitle>
@@ -131,7 +133,6 @@ const Reports = () => {
             </CardContent>
           </Card>
           
-          {/* Popular Features */}
           <Card className="col-span-1 md:col-span-2 lg:col-span-1">
             <CardHeader>
               <CardTitle>Popular Features</CardTitle>
@@ -150,7 +151,6 @@ const Reports = () => {
             </CardContent>
           </Card>
           
-          {/* Revenue Over Time */}
           <Card className="col-span-1 md:col-span-3">
             <CardHeader>
               <CardTitle>Revenue Over Time</CardTitle>
@@ -172,7 +172,6 @@ const Reports = () => {
             </CardContent>
           </Card>
           
-          {/* Key Metrics */}
           <Card className="col-span-1 md:col-span-3">
             <CardHeader>
               <CardTitle>Key Metrics</CardTitle>

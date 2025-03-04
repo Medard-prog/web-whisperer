@@ -194,9 +194,8 @@ export const getTotalRevenueData = async () => {
     if (error) throw error;
     
     return data.map((item: any) => ({
-      name: item.month_year,
-      total: parseFloat(item.total_revenue),
-      collected: parseFloat(item.total_collected)
+      month: item.month_year,
+      revenue: parseFloat(item.total_revenue)
     }));
   } catch (error: any) {
     console.error('Error fetching revenue data:', error);
@@ -232,6 +231,23 @@ export const getPopularFeaturesData = async () => {
   } catch (error: any) {
     console.error('Error fetching feature data:', error);
     toast.error(`Failed to fetch feature data: ${error.message}`);
+    return [];
+  }
+};
+
+export const fetchProjectsForReports = async (dateRange: { from: Date, to: Date }) => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .gte('created_at', dateRange.from.toISOString())
+      .lte('created_at', dateRange.to.toISOString());
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error: any) {
+    console.error('Error fetching projects for reports:', error);
+    toast.error(`Failed to fetch projects: ${error.message}`);
     return [];
   }
 };

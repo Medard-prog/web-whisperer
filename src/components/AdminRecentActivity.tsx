@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, FileText, Mail, CircleAlert, Clock, ArrowRight } from "lucide-react";
@@ -9,10 +8,10 @@ import { Button } from './ui/button';
 import { formatRelativeTime } from '@/lib/utils';
 
 type ActivityItem = 
-  | { id: any; type: "message"; projectId: any; userId: any; content: any; createdAt: any; }
-  | { id: any; type: "modification_request"; projectId: any; userId: any; content: any; createdAt: any; status: any; priority: any; }
-  | { id: any; type: "project_note"; projectId: any; userId: any; content: any; createdAt: any; }
-  | { id: any; type: "project_request"; id: any; userId: any; content: any; createdAt: any; status: any; };
+  | { id: string; type: "message"; projectId: string; userId: string; content: string; createdAt: string; }
+  | { id: string; type: "modification_request"; projectId: string; userId: string; content: string; createdAt: string; status: string; priority: string; }
+  | { id: string; type: "project_note"; projectId: string; userId: string; content: string; createdAt: string; }
+  | { id: string; type: "project_request"; id: string; userId: string; content: string; createdAt: string; status: string; };
 
 const AdminRecentActivity = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -24,7 +23,7 @@ const AdminRecentActivity = () => {
       try {
         setLoading(true);
         const data = await fetchRecentActivity();
-        setActivities(data);
+        setActivities(data as ActivityItem[]);
       } catch (error) {
         console.error("Error loading recent activity:", error);
       } finally {
@@ -66,10 +65,8 @@ const AdminRecentActivity = () => {
   };
 
   const handleNavigate = (activity: ActivityItem) => {
-    if (activity.type === 'message' || activity.type === 'project_note') {
+    if (activity.type === 'message' || activity.type === 'project_note' || activity.type === 'modification_request') {
       navigate(`/admin/project/${activity.projectId}`);
-    } else if (activity.type === 'modification_request') {
-      navigate(`/admin/project/${activity.projectId}?tab=modifications`);
     } else if (activity.type === 'project_request') {
       navigate(`/admin/projects`);
     }
