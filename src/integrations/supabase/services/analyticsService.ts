@@ -1,4 +1,3 @@
-
 import { supabase } from '../core/client';
 import { toast } from 'sonner';
 
@@ -155,7 +154,39 @@ export const fetchRecentActivity = async (limit = 10) => {
   }
 };
 
-// Functions for the Reports page
+export const fetchRecentEvents = async (limit = 5) => {
+  try {
+    const recentActivity = await fetchRecentActivity(limit);
+    
+    // Transform the activity data into the format expected by RecentEventsPanel
+    return recentActivity.map(activity => {
+      const eventType = 
+        activity.type === 'message' ? 'message' :
+        activity.type === 'modification_request' ? 'support' :
+        activity.type === 'project_note' ? 'project' :
+        'payment';
+      
+      return {
+        id: activity.id,
+        title: activity.type === 'message' ? 'Mesaj nou' :
+               activity.type === 'modification_request' ? 'Cerere modificare' :
+               activity.type === 'project_note' ? 'Notă de proiect' : 
+               'Cerere nouă',
+        description: activity.content,
+        date: activity.createdAt,
+        type: eventType as 'project' | 'message' | 'payment' | 'support',
+        status: activity.status,
+        url: activity.type === 'message' || activity.type === 'project_note' || activity.type === 'modification_request' 
+              ? `/dashboard/project/${activity.projectId}` 
+              : undefined
+      };
+    });
+  } catch (error: any) {
+    console.error('Error fetching recent events:', error);
+    return [];
+  }
+};
+
 export const getProjectStatusChartData = async () => {
   try {
     const { data, error } = await supabase.rpc('get_project_status_counts');
