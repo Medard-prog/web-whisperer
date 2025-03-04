@@ -1,4 +1,3 @@
-
 // Project management types
 export type ProjectStatus = "pending" | "in_progress" | "completed" | "cancelled" | "new";
 export type PaymentStatus = "pending" | "partial" | "paid" | "overdue";
@@ -54,7 +53,10 @@ export interface ProjectNote {
   content: string;
   createdAt: string;
   createdBy?: string;
-  isAdminOnly?: boolean;  // Added this field to support admin-only notes
+  isAdminOnly?: boolean;  
+  fileUrl?: string;
+  filePath?: string;
+  fileName?: string;
 }
 
 export interface User {
@@ -160,6 +162,9 @@ export function mapProjectNote(data: any): ProjectNote {
     createdAt: data.created_at,
     createdBy: data.created_by,
     isAdminOnly: data.is_admin_only,
+    fileUrl: data.file_url,
+    filePath: data.file_path,
+    fileName: data.file_name
   };
 }
 

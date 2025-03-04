@@ -1,327 +1,141 @@
 
-import React, { useState, useEffect } from 'react';
-import { 
-  fetchRecentActivity, 
-  fetchUserData, 
-  fetchProjectById 
-} from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart3, FileText, Mail, CircleAlert, Clock, ArrowRight } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  MessageSquare, 
-  FileEdit, 
-  FileText, 
-  Clock, 
-  User, 
-  CheckCircle, 
-  AlertTriangle, 
-  ArrowRight, 
-  RefreshCw,
-  FolderOpen
-} from 'lucide-react';
-import { format, formatDistance } from 'date-fns';
-import { ro } from 'date-fns/locale';
+import { fetchRecentActivity } from "@/integrations/supabase/services/analyticsService";
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 import { formatRelativeTime } from '@/lib/utils';
 
-interface Activity {
-  id: string;
-  type: 'message' | 'project_request' | 'modification_request' | 'note';
-  projectId?: string;
-  userId: string;
-  content?: string;
-  createdAt: string;
-  status?: string;
-  priority?: string;
-}
+type ActivityItem = 
+  | { id: any; type: "message"; projectId: any; userId: any; content: any; createdAt: any; }
+  | { id: any; type: "modification_request"; projectId: any; userId: any; content: any; createdAt: any; status: any; priority: any; }
+  | { id: any; type: "project_note"; projectId: any; userId: any; content: any; createdAt: any; }
+  | { id: any; type: "project_request"; id: any; userId: any; content: any; createdAt: any; status: any; };
 
 const AdminRecentActivity = () => {
-  const navigate = useNavigate();
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [userData, setUserData] = useState<Record<string, any>>({});
-  const [projectData, setProjectData] = useState<Record<string, any>>({});
-  const [activeTab, setActiveTab] = useState('all');
-  const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    loadRecentActivity();
+    const loadActivity = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchRecentActivity();
+        setActivities(data);
+      } catch (error) {
+        console.error("Error loading recent activity:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivity();
   }, []);
 
-  const loadRecentActivity = async () => {
-    try {
-      setError(null);
-      setLoading(true);
-      
-      // In a real implementation, this would come from an API
-      // For now, let's simulate fetching data
-      const recentActivities = await fetchRecentActivity();
-      setActivities(recentActivities);
-      
-      // Fetch user data for each activity
-      const userIds = [...new Set(recentActivities.map(activity => activity.userId))];
-      const userDataMap: Record<string, any> = {};
-      
-      for (const userId of userIds) {
-        const userData = await fetchUserData(userId);
-        if (userData) {
-          userDataMap[userId] = userData;
-        }
-      }
-      
-      setUserData(userDataMap);
-      
-      // Fetch project data for each activity with a projectId
-      const projectIds = [...new Set(recentActivities
-        .filter(activity => activity.projectId)
-        .map(activity => activity.projectId as string)
-      )];
-      
-      const projectDataMap: Record<string, any> = {};
-      
-      for (const projectId of projectIds) {
-        const projectData = await fetchProjectById(projectId);
-        if (projectData) {
-          projectDataMap[projectId] = projectData;
-        }
-      }
-      
-      setProjectData(projectDataMap);
-      
-    } catch (error: any) {
-      console.error('Error loading recent activity:', error);
-      setError('Nu s-a putut încărca activitatea recentă');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadRecentActivity();
-    setRefreshing(false);
-  };
-  
-  const getActivityIcon = (type: Activity['type']) => {
+  const getActivityIcon = (type: string) => {
     switch (type) {
       case 'message':
-        return <MessageSquare className="h-5 w-5 text-blue-500" />;
-      case 'project_request':
-        return <FolderOpen className="h-5 w-5 text-purple-500" />;
+        return <Mail className="h-5 w-5 text-blue-500" />;
       case 'modification_request':
-        return <FileEdit className="h-5 w-5 text-amber-500" />;
-      case 'note':
-        return <FileText className="h-5 w-5 text-green-500" />;
+        return <FileText className="h-5 w-5 text-amber-500" />;
+      case 'project_note':
+        return <BarChart3 className="h-5 w-5 text-purple-500" />;
+      case 'project_request':
+        return <CircleAlert className="h-5 w-5 text-green-500" />;
       default:
         return <Clock className="h-5 w-5 text-gray-500" />;
     }
   };
-  
-  const getActivityTitle = (activity: Activity) => {
-    const userName = userData[activity.userId]?.name || 'Un utilizator';
-    const projectTitle = activity.projectId && projectData[activity.projectId] 
-      ? projectData[activity.projectId].title
-      : 'un proiect';
-      
+
+  const getActivityTitle = (activity: ActivityItem) => {
     switch (activity.type) {
       case 'message':
-        return `${userName} a trimis un mesaj nou`;
-      case 'project_request':
-        return `${userName} a solicitat un proiect nou`;
+        return 'Mesaj nou';
       case 'modification_request':
-        return `${userName} a solicitat modificări pentru ${projectTitle}`;
-      case 'note':
-        return `O notă nouă a fost adăugată la ${projectTitle}`;
-      default:
-        return 'Activitate nouă';
-    }
-  };
-  
-  const getActionLink = (activity: Activity) => {
-    if (!activity.projectId) return null;
-    
-    switch (activity.type) {
-      case 'message':
-        return `/admin/project/${activity.projectId}/chat`;
-      case 'modification_request':
-      case 'note':
-        return `/admin/project/${activity.projectId}`;
+        return 'Cerere de modificare';
+      case 'project_note':
+        return 'Notă nouă';
       case 'project_request':
-        return `/admin/projects`;
+        return 'Cerere de proiect';
       default:
-        return null;
-    }
-  };
-  
-  const filteredActivities = activeTab === 'all'
-    ? activities
-    : activities.filter(activity => activity.type === activeTab);
-    
-  const handleNavigate = (activity: Activity) => {
-    const link = getActionLink(activity);
-    if (link) {
-      navigate(link);
+        return 'Activitate';
     }
   };
 
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Activitate recentă</span>
-            <Button size="sm" variant="ghost" onClick={handleRefresh} disabled={refreshing}>
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-red-50 text-red-800 p-4 rounded-md">
-            <AlertTriangle className="h-5 w-5 mb-2" />
-            <p className="font-medium">{error}</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleNavigate = (activity: ActivityItem) => {
+    if (activity.type === 'message' || activity.type === 'project_note') {
+      navigate(`/admin/project/${activity.projectId}`);
+    } else if (activity.type === 'modification_request') {
+      navigate(`/admin/project/${activity.projectId}?tab=modifications`);
+    } else if (activity.type === 'project_request') {
+      navigate(`/admin/projects`);
+    }
+  };
 
   return (
-    <Card>
+    <Card className="shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between">
-          <span>Activitate recentă</span>
-          <Button size="sm" variant="ghost" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </Button>
-        </CardTitle>
+        <CardTitle className="text-lg font-medium">Activitate Recentă</CardTitle>
       </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-4">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="all">Toate</TabsTrigger>
-            <TabsTrigger value="message">Mesaje</TabsTrigger>
-            <TabsTrigger value="modification_request">Modificări</TabsTrigger>
-            <TabsTrigger value="project_request">Proiecte noi</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        
+      <CardContent className="p-4">
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="flex items-start space-x-3 p-3 border rounded-md">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-3 bg-gray-100 animate-pulse rounded-md h-16"></div>
             ))}
           </div>
-        ) : filteredActivities.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
-            <Clock className="h-12 w-12 mx-auto opacity-20 mb-3" />
-            <p className="text-lg font-medium">Nu există activitate recentă</p>
-            <p className="text-sm">
-              {activeTab === 'all'
-                ? 'Activitatea va apărea aici când utilizatorii interacționează cu platforma.'
-                : `Nu există activitate recentă de tipul "${activeTab}".`}
-            </p>
+        ) : activities.length === 0 ? (
+          <div className="text-center py-6 text-gray-500">
+            <p>Nu există activitate recentă</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredActivities.map(activity => (
+            {activities.map((activity) => (
               <div 
-                key={activity.id}
-                className="flex items-start p-3 border rounded-md hover:bg-gray-50 transition-colors"
+                key={activity.id} 
+                className="p-3 border rounded-md bg-white hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={() => handleNavigate(activity)}
-                style={{cursor: getActionLink(activity) ? 'pointer' : 'default'}}
               >
-                <div className="rounded-full p-2 bg-gray-100 mr-3">
-                  {getActivityIcon(activity.type)}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-800">
-                        {getActivityTitle(activity)}
-                      </h4>
-                      
-                      <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                        <Clock className="h-3 w-3" />
-                        <span title={format(new Date(activity.createdAt), 'dd MMMM yyyy HH:mm')}>
-                          {formatRelativeTime(new Date(activity.createdAt))}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {activity.projectId && projectData[activity.projectId] && (
-                      <Badge variant="outline" className="text-xs">
-                        {projectData[activity.projectId].title}
-                      </Badge>
-                    )}
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-gray-100 rounded-md">
+                    {getActivityIcon(activity.type)}
                   </div>
-                  
-                  {activity.content && (
-                    <p className="mt-2 text-sm text-gray-600 line-clamp-2 bg-gray-50 p-2 rounded">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-sm">{getActivityTitle(activity)}</h3>
+                        {activity.type === 'modification_request' && (
+                          <Badge className={
+                            activity.status === 'pending' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                            activity.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
+                            'bg-red-100 text-red-800 border-red-200'
+                          }>
+                            {activity.status === 'pending' ? 'În așteptare' :
+                             activity.status === 'approved' ? 'Aprobat' : 'Respins'}
+                          </Badge>
+                        )}
+                        {activity.type === 'project_request' && (
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                            Nou
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {formatRelativeTime(new Date(activity.createdAt))}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-1">
                       {activity.content}
                     </p>
-                  )}
-                  
-                  {activity.type === 'modification_request' && activity.status && (
-                    <div className="mt-2">
-                      <Badge 
-                        className={
-                          activity.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                            : activity.status === 'approved'
-                              ? 'bg-green-100 text-green-800 border-green-300'
-                              : 'bg-red-100 text-red-800 border-red-300'
-                        }
-                      >
-                        {activity.status === 'pending'
-                          ? 'În așteptare'
-                          : activity.status === 'approved'
-                            ? 'Aprobat'
-                            : 'Respins'}
-                      </Badge>
-                      
-                      {activity.priority && (
-                        <Badge 
-                          className="ml-2 bg-blue-100 text-blue-800 border-blue-300"
-                        >
-                          {activity.priority === 'low'
-                            ? 'Prioritate scăzută'
-                            : activity.priority === 'normal'
-                              ? 'Prioritate normală'
-                              : activity.priority === 'high'
-                                ? 'Prioritate ridicată'
-                                : 'Prioritate urgentă'}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                  
-                  {getActionLink(activity) && (
-                    <div className="mt-2 flex justify-end">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-primary hover:text-primary-dark gap-1 h-7"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNavigate(activity);
-                        }}
-                      >
-                        <span className="text-xs">Vezi detalii</span>
-                        <ArrowRight className="h-3 w-3" />
+                    <div className="flex justify-end mt-2">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        Vizualizează <ArrowRight className="ml-1 h-3 w-3" />
                       </Button>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             ))}

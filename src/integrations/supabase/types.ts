@@ -152,6 +152,9 @@ export type Database = {
           content: string
           created_at: string | null
           created_by: string | null
+          file_name: string | null
+          file_path: string | null
+          file_url: string | null
           id: string
           is_admin_only: boolean | null
           project_id: string | null
@@ -160,6 +163,9 @@ export type Database = {
           content: string
           created_at?: string | null
           created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_url?: string | null
           id?: string
           is_admin_only?: boolean | null
           project_id?: string | null
@@ -168,6 +174,9 @@ export type Database = {
           content?: string
           created_at?: string | null
           created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_url?: string | null
           id?: string
           is_admin_only?: boolean | null
           project_id?: string | null
