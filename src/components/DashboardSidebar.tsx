@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -91,17 +92,21 @@ const adminLinks: SidebarLink[] = [
 
 interface DashboardSidebarProps {
   className?: string;
+  isAdmin?: boolean;
 }
 
-const DashboardSidebar = ({ className }: DashboardSidebarProps) => {
+const DashboardSidebar = ({ className, isAdmin: propIsAdmin }: DashboardSidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, logout } = useAuth();
-  const [isOpen, setIsOpen] = React.useState(false);
+  const { user, signOut } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
   };
+  
+  // Use isAdmin from prop or from user context
+  const isAdmin = propIsAdmin !== undefined ? propIsAdmin : user?.isAdmin;
   
   const visibleLinks = isAdmin ? adminLinks : links;
   
@@ -110,7 +115,7 @@ const DashboardSidebar = ({ className }: DashboardSidebarProps) => {
   };
   
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     navigate("/");
   };
   

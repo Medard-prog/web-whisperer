@@ -21,4 +21,5 @@ export interface AuthContextType {
   refreshUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<boolean>;
   updatePassword: (password: string) => Promise<boolean>;
+  isAdmin?: boolean;
 }
