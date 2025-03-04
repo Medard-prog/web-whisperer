@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,7 +10,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
   LayoutDashboard, 
   FolderKanban, 
-  CreditCard, 
   Settings, 
   Users, 
   FileText, 
@@ -59,8 +59,12 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    try {
+      await signOut();
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
   
   const isActive = (path: string) => {
@@ -73,7 +77,8 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
   const userMenuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: FolderKanban, label: "Proiectele mele", href: "/dashboard/projects" },
-    { icon: CreditCard, label: "Facturi", href: "/dashboard/invoices" },
+    // Removed Facturi item
+    { icon: HelpCircle, label: "Suport", href: "/dashboard/help" },
     { icon: Settings, label: "Setări", href: "/dashboard/settings" },
   ];
   
@@ -151,13 +156,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
                 </h2>
                 <div className="space-y-1">
                   <SidebarItem
-                    icon={HelpCircle}
-                    label="Ajutor & Suport"
-                    href={isAdmin ? "/admin/help" : "/dashboard/help"}
-                    active={isActive(isAdmin ? "/admin/help" : "/dashboard/help")}
-                    onClick={() => setIsMobileOpen(false)}
-                  />
-                  <SidebarItem
                     icon={LogOut}
                     label="Deconectare"
                     href="#"
@@ -174,12 +172,12 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
                     <Avatar className="h-9 w-9">
                       <AvatarImage src="" alt={user?.name} />
                       <AvatarFallback className="bg-purple-600 text-white">
-                        {user?.name.charAt(0)}
+                        {user?.name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{user?.name}</span>
-                      <span className="text-xs text-gray-500">{user?.email}</span>
+                      <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                      <span className="text-xs text-gray-500">{user?.email || ''}</span>
                     </div>
                   </div>
                 </div>
@@ -212,12 +210,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
           </h2>
           <div className="space-y-1">
             <SidebarItem
-              icon={HelpCircle}
-              label="Ajutor & Suport"
-              href={isAdmin ? "/admin/help" : "/dashboard/help"}
-              active={isActive(isAdmin ? "/admin/help" : "/dashboard/help")}
-            />
-            <SidebarItem
               icon={LogOut}
               label="Deconectare"
               href="#"
@@ -232,12 +224,12 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
             <Avatar className="h-9 w-9">
               <AvatarImage src="" alt={user?.name} />
               <AvatarFallback className="bg-purple-600 text-white">
-                {user?.name.charAt(0)}
+                {user?.name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="text-sm font-medium">{user?.name}</span>
-              <span className="text-xs text-gray-500">{user?.email}</span>
+              <span className="text-sm font-medium">{user?.name || 'User'}</span>
+              <span className="text-xs text-gray-500">{user?.email || ''}</span>
             </div>
           </div>
         </div>

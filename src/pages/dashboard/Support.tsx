@@ -1,16 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
-import { fetchSupportMessages, sendSupportMessage } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import DashboardSidebar from "@/components/DashboardSidebar";
+import PageTransition from "@/components/PageTransition";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { fetchSupportMessages, sendSupportMessage } from "@/integrations/supabase/services/userService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import { formatRelativeTime } from "@/lib/utils";
+import { HelpCircle, Send, Info, ArrowRight } from "lucide-react";
 
 interface SupportMessage {
   id: string;
-  user_id: string;
   content: string;
   created_at: string;
   is_from_user: boolean;
@@ -19,194 +25,253 @@ interface SupportMessage {
 
 const Support = () => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    const loadMessages = async () => {
-      if (user?.id) {
-        setLoading(true);
-        try {
-          const data = await fetchSupportMessages(user.id);
-          setMessages(data);
-        } catch (error) {
-          console.error('Error loading support messages:', error);
-          toast.error('Could not load support messages');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    loadMessages();
-  }, [user?.id]);
+    if (user) {
+      loadMessages();
+    }
+  }, [user]);
   
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user?.id) return;
-    
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  
+  const loadMessages = async () => {
     try {
-      const sentMessage = await sendSupportMessage(user.id, newMessage);
-      if (sentMessage) {
-        setMessages(prev => [sentMessage, ...prev]);
-        setNewMessage('');
-        
-        // Mock response from support agent (for demo purposes)
-        setTimeout(() => {
-          const mockResponse = {
-            id: `mock-${Date.now()}`,
-            user_id: user.id,
-            content: 'Thank you for your message. Our team will get back to you shortly.',
-            created_at: new Date().toISOString(),
-            is_from_user: false,
-            is_read: false
-          };
-          setMessages(prev => [mockResponse, ...prev]);
-        }, 1000);
-      }
+      setLoading(true);
+      if (!user) return;
+      
+      const messagesData = await fetchSupportMessages(user.id);
+      setMessages(messagesData.reverse()); // Reverse to show oldest first
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      console.error("Error loading support messages:", error);
+      toast.error("Nu s-au putut încărca mesajele de suport");
+    } finally {
+      setLoading(false);
     }
   };
   
-  const formatDate = (dateString: string) => {
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!message.trim() || !user) return;
+    
     try {
-      const date = new Date(dateString);
-      // Check if date is valid before formatting
-      if (isNaN(date.getTime())) {
-        return 'Invalid date';
-      }
-      return new Intl.DateTimeFormat('en-US', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date);
+      setSending(true);
+      
+      // Optimistically add the message to the UI
+      const tempMessage: SupportMessage = {
+        id: Date.now().toString(),
+        content: message,
+        created_at: new Date().toISOString(),
+        is_from_user: true
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setMessage("");
+      
+      // Send to database
+      await sendSupportMessage(user.id, message);
+      
+      // Auto-response for demo purposes
+      setTimeout(() => {
+        const autoResponse: SupportMessage = {
+          id: (Date.now() + 1).toString(),
+          content: "Mulțumim pentru mesaj! Un membru al echipei noastre vă va răspunde în curând.",
+          created_at: new Date().toISOString(),
+          is_from_user: false
+        };
+        setMessages(prev => [...prev, autoResponse]);
+      }, 1000);
+      
     } catch (error) {
-      console.error('Error formatting date:', error, dateString);
-      return 'Invalid date';
+      console.error("Error sending support message:", error);
+      toast.error("Nu s-a putut trimite mesajul");
+    } finally {
+      setSending(false);
     }
   };
   
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Support</h1>
+    <div className="flex min-h-screen bg-gray-50">
+      <DashboardSidebar />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Support</CardTitle>
-              <CardDescription>
-                Get help with your projects or account
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col space-y-4">
-                <Textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message here..."
-                  className="min-h-[120px]"
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
-                  className="self-end"
-                >
-                  Send Message
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <PageTransition>
+        <div className="flex-1 p-6 max-w-[1600px] mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <HelpCircle className="h-6 w-6 text-purple-600" />
+                Asistență & Suport
+              </h1>
+              <p className="text-gray-500 mt-1">
+                Echipa noastră de suport îți stă la dispoziție pentru orice întrebare
+              </p>
+            </div>
+          </div>
           
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-4">Message History</h2>
-            {loading ? (
-              <div className="flex justify-center my-8">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : messages.length > 0 ? (
-              <div className="space-y-4">
-                {messages.map(message => (
-                  <Card key={message.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start gap-4">
-                        <Avatar>
-                          <AvatarImage 
-                            src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}`} 
-                            alt="Profile picture" 
-                          />
-                          <AvatarFallback>{message.is_from_user ? user?.email?.charAt(0).toUpperCase() || 'U' : 'S'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-1">
-                            <p className="font-medium">{message.is_from_user ? 'You' : 'Support Agent'}</p>
-                            <span className="text-xs text-gray-500">{formatDate(message.created_at)}</span>
-                          </div>
-                          <p className="text-gray-700">{message.content}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-6 text-center text-gray-500">
-                  No messages yet. Start a conversation with our support team!
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Left sidebar with FAQs */}
+            <div className="md:col-span-1">
+              <Card className="shadow-md border-0">
+                <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+                  <CardTitle className="text-lg font-semibold text-indigo-900">
+                    Întrebări frecvente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="space-y-3 mt-2">
+                    <div className="p-3 bg-white shadow-sm rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                      <p className="font-medium text-gray-900">Cum pot solicita un proiect nou?</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Accesează pagina "Dashboard" și apasă pe butonul "Solicită Proiect Nou".
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 bg-white shadow-sm rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                      <p className="font-medium text-gray-900">Cum pot modifica un proiect?</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        În pagina proiectului găsești butonul "Solicită Modificări".
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 bg-white shadow-sm rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                      <p className="font-medium text-gray-900">Cum funcționează plățile?</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Plățile se fac conform contractului, de obicei 50% avans și 50% la finalizare.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+                    <h3 className="font-medium text-purple-800 flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      Trebuie ajutor urgent?
+                    </h3>
+                    <p className="text-sm text-gray-700 mt-2">
+                      Contactează-ne direct la:
+                    </p>
+                    <p className="text-sm font-medium mt-1">
+                      Email: support@webcreator.com
+                    </p>
+                    <p className="text-sm font-medium">
+                      Telefon: +40 755 123 456
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
-            )}
+            </div>
+            
+            {/* Right side with chat */}
+            <Card className="md:col-span-2 shadow-md border-0 flex flex-col">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b flex flex-row justify-between items-center">
+                <div>
+                  <CardTitle className="text-lg font-semibold text-indigo-900">
+                    Conversație cu echipa de suport
+                  </CardTitle>
+                  <CardDescription>
+                    Timp mediu de răspuns: ~30 minute în timpul programului
+                  </CardDescription>
+                </div>
+                <Badge className="bg-green-100 text-green-800 border-green-200">
+                  Online
+                </Badge>
+              </CardHeader>
+              
+              <CardContent className="flex-1 p-0 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 max-h-[500px]">
+                  {loading ? (
+                    <div className="space-y-4 p-4">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="flex gap-2">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div className="space-y-2 flex-1">
+                            <Skeleton className="h-4 w-2/3" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : messages.length > 0 ? (
+                    <div className="space-y-4">
+                      {messages.map((msg) => (
+                        <div 
+                          key={msg.id} 
+                          className={`flex ${msg.is_from_user ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`flex gap-3 max-w-[80%] ${msg.is_from_user ? 'flex-row-reverse' : ''}`}>
+                            <Avatar className={`h-9 w-9 ${msg.is_from_user ? 'bg-purple-100' : 'bg-blue-100'}`}>
+                              <AvatarFallback className={`${msg.is_from_user ? 'bg-purple-600' : 'bg-blue-600'} text-white`}>
+                                {msg.is_from_user ? user?.name?.charAt(0) || 'U' : 'S'}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div>
+                              <div className={`px-4 py-2 rounded-lg ${
+                                msg.is_from_user 
+                                  ? 'bg-purple-100 text-purple-900' 
+                                  : 'bg-white border border-gray-200 shadow-sm'
+                              }`}>
+                                <p className="text-sm">{msg.content}</p>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {formatRelativeTime(new Date(msg.created_at))}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-60 text-center p-4">
+                      <div className="bg-purple-100 text-purple-700 p-3 rounded-full mb-3">
+                        <HelpCircle className="h-8 w-8" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900">Nicio conversație încă</h3>
+                      <p className="text-gray-500 mt-1 max-w-md">
+                        Trimite primul tău mesaj pentru a începe o conversație cu echipa noastră de suport.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4 border-t bg-white">
+                  <form onSubmit={handleSubmit} className="flex gap-2">
+                    <Textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Scrie un mesaj..."
+                      className="flex-1 min-h-[60px] resize-none"
+                    />
+                    <Button 
+                      type="submit" 
+                      disabled={!message.trim() || sending}
+                      className="self-end bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    >
+                      {sending ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-        
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>FAQs</CardTitle>
-              <CardDescription>
-                Commonly asked questions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-medium">How long does it take to complete a project?</h3>
-                  <p className="text-sm text-gray-600 mt-1">Project timelines vary depending on complexity and requirements, typically ranging from 2-12 weeks.</p>
-                </div>
-                <div>
-                  <h3 className="font-medium">Do you offer ongoing maintenance?</h3>
-                  <p className="text-sm text-gray-600 mt-1">Yes, we offer monthly maintenance packages to keep your site secure and up-to-date.</p>
-                </div>
-                <div>
-                  <h3 className="font-medium">What payment methods do you accept?</h3>
-                  <p className="text-sm text-gray-600 mt-1">We accept credit/debit cards, bank transfers, and PayPal.</p>
-                </div>
-                <div>
-                  <h3 className="font-medium">How do I request changes to my project?</h3>
-                  <p className="text-sm text-gray-600 mt-1">You can request changes through the project chat or by contacting support directly.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p><span className="font-medium">Phone:</span> +40 123 456 789</p>
-                <p><span className="font-medium">Email:</span> support@website-builder.ro</p>
-                <p><span className="font-medium">Hours:</span> Mon-Fri, 9:00 - 18:00</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      </PageTransition>
     </div>
   );
 };

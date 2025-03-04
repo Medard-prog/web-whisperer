@@ -7,6 +7,8 @@ import RequireAuth from "@/components/RequireAuth";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
+import AuthResetPassword from "@/pages/AuthResetPassword";
+import AuthUpdatePassword from "@/pages/AuthUpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import Dashboard from "@/pages/Dashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -37,6 +39,8 @@ const AppRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+        <Route path="/auth/update-password" element={<AuthUpdatePassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/request" element={<RequestProject />} />
         

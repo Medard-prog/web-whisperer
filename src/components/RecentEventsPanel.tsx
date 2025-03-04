@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { formatRelativeTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -239,57 +238,59 @@ const RecentEventsPanel = () => {
         </Button>
       </CardHeader>
       <CardContent className="px-6 py-4">
-        {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="flex items-start space-x-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
+        <div className="h-[300px] overflow-y-auto pr-2">
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-start space-x-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {events.length > 0 ? (
-              events.map(event => (
-                <div 
-                  key={event.id}
-                  className="p-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => handleEventClick(event)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-full ${getEventBadgeColor(event.type, event.status)}`}>
-                        {getEventIcon(event.type, event.status)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{event.projectTitle}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className={getEventBadgeColor(event.type, event.status)}>
-                            {getEventTypeLabel(event.type, event.status)}
-                          </Badge>
-                          <span className="text-xs text-gray-500">
-                            {formatRelativeTime(new Date(event.timestamp))}
-                          </span>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {events.length > 0 ? (
+                events.map(event => (
+                  <div 
+                    key={event.id}
+                    className="p-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleEventClick(event)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-full ${getEventBadgeColor(event.type, event.status)}`}>
+                          {getEventIcon(event.type, event.status)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{event.projectTitle}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline" className={getEventBadgeColor(event.type, event.status)}>
+                              {getEventTypeLabel(event.type, event.status)}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {formatRelativeTime(new Date(event.timestamp))}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-600 line-clamp-1">{event.content}</p>
                   </div>
-                  <p className="mt-2 text-sm text-gray-600 line-clamp-1">{event.content}</p>
+                ))
+              ) : (
+                <div className="text-center py-6">
+                  <Bell className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-500">Nu există evenimente recente</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-6">
-                <Bell className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-                <p className="text-gray-500">Nu există evenimente recente</p>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

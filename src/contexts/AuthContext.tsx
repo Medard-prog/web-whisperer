@@ -107,6 +107,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("User signed out");
           setUser(null);
           navigate('/auth');
+        } else if (event === 'PASSWORD_RECOVERY') {
+          // Handle password recovery
+          navigate('/auth/update-password');
         }
       }
     );
@@ -193,13 +196,68 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Error signing out:', error);
+        toast.error('Eroare la deconectare');
+        throw error;
+      }
+      
       setUser(null);
       navigate('/auth');
       toast.success('Te-ai deconectat cu succes');
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Eroare la deconectare');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      });
+      
+      if (error) {
+        handleAuthError(error, 'resetare parolă');
+        throw error;
+      }
+      
+      toast.success('Email de resetare trimis', {
+        description: 'Verifică-ți email-ul pentru a reseta parola'
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error in resetPassword:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const updatePassword = async (password: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (error) {
+        handleAuthError(error, 'actualizare parolă');
+        throw error;
+      }
+      
+      toast.success('Parola a fost actualizată');
+      
+      return true;
+    } catch (error) {
+      console.error('Error in updatePassword:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -252,7 +310,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signUp,
       signOut, 
       updateProfile,
-      refreshUser 
+      refreshUser,
+      resetPassword,
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
