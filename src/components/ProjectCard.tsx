@@ -1,4 +1,3 @@
-
 import { CalendarIcon, Clock } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +7,10 @@ import { format } from "date-fns";
 interface ProjectCardProps {
   project: Project;
   onClick?: () => void;
+  className?: string;
 }
 
-const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
+const ProjectCard = ({ project, onClick, className }: ProjectCardProps) => {
   const statusColors = {
     pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
     in_progress: "bg-blue-100 text-blue-800 hover:bg-blue-200",
@@ -27,10 +27,8 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
     new: "Nou"
   };
 
-  // Safely format a date with fallback
   const formatSafeDate = (dateStr: string) => {
     try {
-      // Check if dateStr is valid by creating a date and checking if it's valid
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) {
         return "Data necunoscută";
@@ -44,7 +42,7 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
 
   return (
     <Card 
-      className="h-full transition-all hover:shadow-md cursor-pointer"
+      className={`h-full transition-all hover:shadow-md cursor-pointer ${className || ''}`}
       onClick={onClick}
     >
       <CardHeader className="pb-2">
