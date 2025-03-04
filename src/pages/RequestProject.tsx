@@ -9,10 +9,23 @@ import PageTransition from "@/components/PageTransition";
 import { toast } from "sonner";
 
 const RequestProject = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [initialValues, setInitialValues] = useState<Partial<RequestFormValues> | null>(null);
+  
+  useEffect(() => {
+    const handleAuthChange = async () => {
+      if (user === null && !loading) {
+        console.log("User not logged in on request page");
+      } else if (user && !loading) {
+        console.log("User logged in on request page:", user.id);
+        await refreshUser();
+      }
+    };
+    
+    handleAuthChange();
+  }, [user, loading, refreshUser]);
   
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -77,11 +90,16 @@ const RequestProject = () => {
     try {
       console.log("Starting submission with data:", formData);
       
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id || user?.id;
+      
+      console.log("Current user ID for project submission:", currentUserId);
+      
       const requestData = {
         title: formData.projectName,
         description: formData.description || '',
         website_type: formData.projectType || '',
-        user_id: user?.id,
+        user_id: currentUserId,
         status: 'new',
         type: 'request',
         design_complexity: formData.designComplexity || "standard",
@@ -109,7 +127,7 @@ const RequestProject = () => {
         description: "Te vom contacta în curând pentru a discuta despre proiectul tău.",
       });
       
-      if (user) {
+      if (currentUserId) {
         navigate("/dashboard");
       } else {
         navigate("/");

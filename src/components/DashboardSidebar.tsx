@@ -67,6 +67,10 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
     }
   };
   
+  const handleProfileClick = () => {
+    navigate(isAdmin ? "/admin/settings" : "/dashboard/settings");
+  };
+  
   const isActive = (path: string) => {
     if (path === "/dashboard" || path === "/admin") {
       return location.pathname === path;
@@ -77,7 +81,6 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
   const userMenuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: FolderKanban, label: "Proiectele mele", href: "/dashboard/projects" },
-    // Removed Facturi item
     { icon: HelpCircle, label: "Suport", href: "/dashboard/help" },
     { icon: Settings, label: "Setări", href: "/dashboard/settings" },
   ];
@@ -92,8 +95,30 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
   
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
   
+  const userProfileSection = (
+    <div 
+      className="p-4 cursor-pointer" 
+      onClick={handleProfileClick}
+    >
+      <div className="rounded-md border bg-gradient-to-r from-purple-50 to-indigo-50 p-3 hover:bg-purple-100 transition-colors">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src="" alt={user?.name} />
+            <AvatarFallback className="bg-purple-600 text-white">
+              {user?.name?.charAt(0) || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{user?.name || 'User'}</span>
+            <span className="text-xs text-gray-500">{user?.email || ''}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  
   const sidebar = (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex h-full flex-col">
       <div className="flex h-14 items-center border-b px-4">
         <Link to={isAdmin ? "/admin" : "/dashboard"} className="flex items-center gap-2 font-semibold">
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white h-8 w-8 rounded-md flex items-center justify-center">
@@ -166,26 +191,13 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
                   />
                 </div>
               </div>
-              <div className="mt-auto px-2 py-2">
-                <div className="rounded-md border bg-gradient-to-r from-purple-50 to-indigo-50 p-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src="" alt={user?.name} />
-                      <AvatarFallback className="bg-purple-600 text-white">
-                        {user?.name?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">{user?.name || 'User'}</span>
-                      <span className="text-xs text-gray-500">{user?.email || ''}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {userProfileSection}
             </nav>
           </SheetContent>
         </Sheet>
       </div>
+      
+      {/* Main sidebar content - will scroll */}
       <div className="flex-1 overflow-auto px-4">
         <div className="py-2">
           <h2 className="mb-2 px-2 text-lg font-semibold tracking-tight">
@@ -218,22 +230,9 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
           </div>
         </div>
       </div>
-      <div className="mt-auto p-4">
-        <div className="rounded-md border bg-gradient-to-r from-purple-50 to-indigo-50 p-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src="" alt={user?.name} />
-              <AvatarFallback className="bg-purple-600 text-white">
-                {user?.name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{user?.name || 'User'}</span>
-              <span className="text-xs text-gray-500">{user?.email || ''}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      
+      {/* User profile section - will stay fixed at bottom */}
+      {userProfileSection}
     </div>
   );
   
@@ -250,7 +249,7 @@ const DashboardSidebar = ({ isAdmin = false }: DashboardSidebarProps) => {
         </SheetContent>
       </Sheet>
       
-      <div className="hidden md:block w-64 border-r bg-white/80 backdrop-blur-sm">
+      <div className="hidden md:block w-64 border-r bg-white/80 backdrop-blur-sm h-screen sticky top-0 flex flex-col">
         {sidebar}
       </div>
     </>

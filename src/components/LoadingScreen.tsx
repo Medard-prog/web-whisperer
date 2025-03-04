@@ -17,9 +17,31 @@ const LoadingScreen = ({
   onRetry
 }: LoadingScreenProps) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
   
   useEffect(() => {
-    if (!isLoading) {
+    // Only show loading screen if tab is active and loading is true
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setShouldRender(false);
+      } else if (isLoading) {
+        setShouldRender(true);
+      }
+    };
+    
+    // Add visibility change listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    // Initial state
+    setShouldRender(isLoading && !document.hidden);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isLoading]);
+  
+  useEffect(() => {
+    if (!isLoading || !shouldRender) {
       setShowTimeoutMessage(false);
       return;
     }
@@ -30,9 +52,10 @@ const LoadingScreen = ({
     }, timeout);
     
     return () => clearTimeout(timer);
-  }, [isLoading, timeout]);
+  }, [isLoading, timeout, shouldRender]);
   
-  if (!isLoading) return null;
+  // Don't render anything if not loading or tab is inactive
+  if (!isLoading || !shouldRender) return null;
   
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">

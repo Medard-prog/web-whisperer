@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/client";
+import { fetchProjects, fetchProjectRequests } from "@/integrations/supabase/services/projectService";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import ProjectCard from "@/components/ProjectCard";
 import { Button } from "@/components/ui/button";
@@ -118,14 +118,6 @@ const Dashboard = () => {
                   Bine ai venit, {user?.name || "User"}! Iată stadiul proiectelor tale.
                 </p>
               </div>
-              
-              <Button
-                onClick={handleRequestProject}
-                className="mt-4 sm:mt-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Solicită Proiect Nou
-              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -162,7 +154,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[1, 2, 3].map((item) => (
                       <Card key={item} className="h-[220px]">
                         <CardHeader className="pb-2">
@@ -178,12 +170,30 @@ const Dashboard = () => {
                     ))}
                   </div>
                 ) : projects.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* New Project Card */}
+                    <Card 
+                      className="cursor-pointer h-full border-2 border-dashed border-purple-300 bg-purple-50 hover:bg-purple-100 transition-colors"
+                      onClick={handleRequestProject}
+                    >
+                      <div className="flex flex-col items-center justify-center h-full py-10">
+                        <div className="bg-purple-600 rounded-full p-4 mb-4">
+                          <Plus className="h-8 w-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-medium text-purple-900">Proiect Nou</h3>
+                        <p className="text-purple-700 mt-2 text-center px-4">
+                          Solicită un proiect nou pentru a începe colaborarea
+                        </p>
+                      </div>
+                    </Card>
+                    
+                    {/* Project Cards */}
                     {projects.map((project) => (
                       <ProjectCard
                         key={project.id}
                         project={project}
                         onClick={() => navigate(`/project/${project.id}`)}
+                        className="h-full"
                       />
                     ))}
                   </div>

@@ -165,7 +165,8 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       await refreshUser();
       setLoginDialogOpen(false);
       toast.success("Ați fost conectat cu succes", { description: "Vă mulțumim pentru conectare." });
-      // Submit the form after successful login
+      
+      // Submit the form after successful login and a short delay to ensure user data is refreshed
       setTimeout(() => handleFormSubmit(), 500);
       
     } catch (error: any) {
@@ -195,8 +196,11 @@ const MultiStepRequestForm = ({ initialValues, onSubmit }: MultiStepRequestFormP
       setLoginDialogOpen(false);
       toast.success("Cont creat cu succes!", { description: "Verificați email-ul pentru a confirma" });
       
-      // For development, we'll proceed with the form submission without email verification
-      setTimeout(() => handleFormSubmit(), 500);
+      // Ensure the user is refreshed before submitting
+      await refreshUser();
+      
+      // For development, we'll proceed with the form submission after signup
+      setTimeout(() => handleFormSubmit(), 800);
       
     } catch (error: any) {
       console.error("Error during signup:", error);
