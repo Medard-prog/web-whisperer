@@ -7,7 +7,11 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { getProjectStatusCounts, getPaymentStatusCounts, getPopularFeaturesData } from "@/integrations/supabase/client";
+import { 
+  getProjectStatusChartData, 
+  getProjectsByPaymentStatus, 
+  getPopularFeaturesData 
+} from "@/integrations/supabase/services/analyticsService";
 import { Button } from "@/components/ui/button";
 import { 
   BarChart3, 
@@ -30,12 +34,12 @@ const AdminDashboard = () => {
   
   const { data: projectStatusCounts, isLoading: loadingStatusCounts } = useQuery({
     queryKey: ['projectStatusCounts'],
-    queryFn: getProjectStatusCounts
+    queryFn: getProjectStatusChartData
   });
   
   const { data: paymentStatusCounts, isLoading: loadingPaymentCounts } = useQuery({
     queryKey: ['paymentStatusCounts'],
-    queryFn: getPaymentStatusCounts
+    queryFn: getProjectsByPaymentStatus
   });
   
   const { data: featuresData, isLoading: loadingFeaturesData } = useQuery({
@@ -79,23 +83,23 @@ const AdminDashboard = () => {
     return labels[status] || status;
   };
   
-  const getFeatureLabel = (feature: string) => {
+  const getFeatureLabel = (featureName: string) => {
     const labels: Record<string, string> = {
-      hasCMS: 'CMS',
-      hasEcommerce: 'E-commerce',
-      hasSEO: 'SEO',
-      hasMaintenance: 'Mentenanță'
+      'E-commerce': 'E-commerce',
+      'CMS': 'CMS',
+      'SEO': 'SEO',
+      'Mentenanță': 'Mentenanță'
     };
     
-    return labels[feature] || feature;
+    return labels[featureName] || featureName;
   };
   
-  const getFeatureIcon = (feature: string) => {
-    switch (feature) {
-      case 'hasCMS': return <FileStack className="h-4 w-4" />;
-      case 'hasEcommerce': return <CreditCard className="h-4 w-4" />;
-      case 'hasSEO': return <BarChart3 className="h-4 w-4" />;
-      case 'hasMaintenance': return <Construction className="h-4 w-4" />;
+  const getFeatureIcon = (featureName: string) => {
+    switch (featureName) {
+      case 'CMS': return <FileStack className="h-4 w-4" />;
+      case 'E-commerce': return <CreditCard className="h-4 w-4" />;
+      case 'SEO': return <BarChart3 className="h-4 w-4" />;
+      case 'Mentenanță': return <Construction className="h-4 w-4" />;
       default: return <Activity className="h-4 w-4" />;
     }
   };
@@ -142,19 +146,19 @@ const AdminDashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    projectStatusCounts?.map(item => (
-                      <div key={item.status} className="flex items-center justify-between">
+                    Array.isArray(projectStatusCounts) && projectStatusCounts.map((item: {name: string, value: number}) => (
+                      <div key={item.name} className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <Badge className={getStatusColor(item.status)}>
-                            {item.status === 'new' && <PlusCircle className="mr-1 h-3 w-3" />}
-                            {item.status === 'pending' && <Clock className="mr-1 h-3 w-3" />}
-                            {item.status === 'in_progress' && <Activity className="mr-1 h-3 w-3" />}
-                            {item.status === 'completed' && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                            {item.status === 'cancelled' && <XCircle className="mr-1 h-3 w-3" />}
-                            {getStatusLabel(item.status)}
+                          <Badge className={getStatusColor(item.name)}>
+                            {item.name === 'new' && <PlusCircle className="mr-1 h-3 w-3" />}
+                            {item.name === 'pending' && <Clock className="mr-1 h-3 w-3" />}
+                            {item.name === 'in_progress' && <Activity className="mr-1 h-3 w-3" />}
+                            {item.name === 'completed' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                            {item.name === 'cancelled' && <XCircle className="mr-1 h-3 w-3" />}
+                            {getStatusLabel(item.name)}
                           </Badge>
                         </div>
-                        <span className="font-bold text-gray-900">{item.count}</span>
+                        <span className="font-bold text-gray-900">{item.value}</span>
                       </div>
                     ))
                   )}
@@ -179,18 +183,18 @@ const AdminDashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    paymentStatusCounts?.map(item => (
-                      <div key={item.payment_status} className="flex items-center justify-between">
+                    Array.isArray(paymentStatusCounts) && paymentStatusCounts.map((item: {name: string, value: number}) => (
+                      <div key={item.name} className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <Badge className={getPaymentStatusColor(item.payment_status)}>
-                            {item.payment_status === 'paid' && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                            {item.payment_status === 'partial' && <Activity className="mr-1 h-3 w-3" />}
-                            {item.payment_status === 'pending' && <Clock className="mr-1 h-3 w-3" />}
-                            {item.payment_status === 'overdue' && <AlertCircle className="mr-1 h-3 w-3" />}
-                            {getStatusLabel(item.payment_status)}
+                          <Badge className={getPaymentStatusColor(item.name)}>
+                            {item.name === 'paid' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                            {item.name === 'partial' && <Activity className="mr-1 h-3 w-3" />}
+                            {item.name === 'pending' && <Clock className="mr-1 h-3 w-3" />}
+                            {item.name === 'overdue' && <AlertCircle className="mr-1 h-3 w-3" />}
+                            {getStatusLabel(item.name)}
                           </Badge>
                         </div>
-                        <span className="font-bold text-gray-900">{item.count}</span>
+                        <span className="font-bold text-gray-900">{item.value}</span>
                       </div>
                     ))
                   )}
@@ -215,15 +219,15 @@ const AdminDashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    featuresData?.map(item => (
-                      <div key={item.feature} className="flex items-center justify-between">
+                    Array.isArray(featuresData) && featuresData.map((item: {name: string, value: number}) => (
+                      <div key={item.name} className="flex items-center justify-between">
                         <div className="flex items-center">
                           <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                            {getFeatureIcon(item.feature)}
-                            <span className="ml-1">{getFeatureLabel(item.feature)}</span>
+                            {getFeatureIcon(item.name)}
+                            <span className="ml-1">{getFeatureLabel(item.name)}</span>
                           </Badge>
                         </div>
-                        <span className="font-bold text-gray-900">{item.count}</span>
+                        <span className="font-bold text-gray-900">{item.value}</span>
                       </div>
                     ))
                   )}
