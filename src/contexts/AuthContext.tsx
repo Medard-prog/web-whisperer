@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Initialize auth state
   useEffect(() => {
@@ -81,8 +82,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     initializeAuth();
     
+    // Parse hash fragment for error messages from Supabase auth redirect
+    if (location.hash) {
+      const hashParams = new URLSearchParams(location.hash.substring(1));
+      const error = hashParams.get('error');
+      const errorDescription = hashParams.get('error_description');
+      
+      if (error) {
+        console.error('Auth redirect error:', error, errorDescription);
+        toast.error('Eroare de autentificare', {
+          description: errorDescription || 'A apărut o eroare la autentificare.',
+        });
+      }
+    }
+    
     // Cleanup is handled in setupAuthListener
-  }, [navigate]);
+  }, [navigate, location]);
   
   // Setup auth state change listener as a separate function
   const setupAuthListener = async () => {
@@ -218,8 +233,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const resetPassword = async (email: string) => {
     try {
       setLoading(true);
+      
+      // Get the current origin URL to use for redirects
+      const currentOrigin = window.location.origin;
+      console.log("Current origin for reset password redirect:", currentOrigin);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${currentOrigin}/auth/update-password`,
       });
       
       if (error) {

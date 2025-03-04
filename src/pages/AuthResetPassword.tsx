@@ -42,9 +42,13 @@ export default function AuthResetPassword() {
     try {
       setIsSubmitting(true);
       
-      // Call Supabase to send the reset password email
+      // Get the current origin URL to use for redirects
+      const currentOrigin = window.location.origin;
+      console.log("Current origin for reset password redirect:", currentOrigin);
+      
+      // Call Supabase to send the reset password email with the correct redirectTo URL
       const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${currentOrigin}/auth/update-password`,
       });
       
       if (error) {

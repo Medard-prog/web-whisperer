@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -35,6 +35,7 @@ export default function AuthUpdatePassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const form = useForm<z.infer<typeof updatePasswordSchema>>({
     resolver: zodResolver(updatePasswordSchema),
@@ -44,17 +45,51 @@ export default function AuthUpdatePassword() {
     },
   });
 
+  // Parse hash fragment for error messages from Supabase auth redirect
+  useEffect(() => {
+    if (location.hash) {
+      const hashParams = new URLSearchParams(location.hash.substring(1));
+      const error = hashParams.get('error');
+      const errorDescription = hashParams.get('error_description');
+      
+      if (error) {
+        console.error('Auth redirect error:', error, errorDescription);
+        toast.error('Link invalid sau expirat', {
+          description: errorDescription || 'Te rugăm să soliciți un nou link de resetare a parolei.',
+        });
+        setTimeout(() => {
+          navigate('/auth/reset-password');
+        }, 3000);
+      }
+    }
+  }, [location, navigate]);
+
   // Check if the URL has a valid password recovery token
   useEffect(() => {
     const checkResetToken = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // If no user with recovery token, redirect to reset password
-      if (!user) {
-        toast.error('Link invalid sau expirat', {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        // If no user with recovery token, redirect to reset password
+        if (!user) {
+          console.error('No authenticated user found for password reset');
+          toast.error('Link invalid sau expirat', {
+            description: 'Te rugăm să soliciți un nou link de resetare a parolei.',
+          });
+          setTimeout(() => {
+            navigate('/auth/reset-password');
+          }, 3000);
+        } else {
+          console.log('Valid user found for password reset');
+        }
+      } catch (error) {
+        console.error('Error checking reset token:', error);
+        toast.error('Eroare la verificarea link-ului', {
           description: 'Te rugăm să soliciți un nou link de resetare a parolei.',
         });
-        navigate('/auth/reset-password');
+        setTimeout(() => {
+          navigate('/auth/reset-password');
+        }, 3000);
       }
     };
     
