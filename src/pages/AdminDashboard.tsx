@@ -118,11 +118,8 @@ const AdminDashboard = () => {
             </Button>
           </div>
           
-          {/* Full-width Recent Activity */}
-          <AdminRecentActivity />
-          
-          {/* Stats cards in a grid below */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          {/* Stats cards in a grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Project Status */}
             <Card className="shadow-md border">
               <CardHeader className="pb-2 flex flex-row items-center justify-between bg-indigo-50">
@@ -233,6 +230,9 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </div>
+          
+          {/* Recent Activity below stats */}
+          <AdminRecentActivity />
         </div>
       </PageTransition>
     </div>

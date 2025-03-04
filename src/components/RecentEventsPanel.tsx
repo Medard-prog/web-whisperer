@@ -19,6 +19,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { formatRelativeTime } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface RecentEvent {
   id: string;
@@ -38,131 +40,123 @@ const RecentEventsPanel = () => {
   const [events, setEvents] = useState<RecentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   
-  useEffect(() => {
+  const fetchRecentEvents = async () => {
     if (!user) return;
+    setLoading(true);
     
-    const fetchRecentEvents = async () => {
-      setLoading(true);
+    try {
+      // Get user's projects
+      const { data: userProjects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, title')
+        .eq('user_id', user.id);
+        
+      if (projectsError) throw projectsError;
       
-      try {
-        // Fetch recent messages
-        const { data: messages, error: messagesError } = await supabase
-          .from('messages')
-          .select('id, project_id, content, created_at, is_admin')
-          .eq('is_admin', true) // Only messages from admin
-          .in('project_id', [
-            // We'd get the user's project IDs here
-            // This is a placeholder implementation
-          ])
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (messagesError) throw messagesError;
-        
-        // Fetch recent modification requests
-        const { data: modifications, error: modificationsError } = await supabase
-          .from('modification_requests')
-          .select('id, project_id, description, created_at, status')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (modificationsError) throw modificationsError;
-        
-        // Fetch project status changes
-        const { data: statusChanges, error: statusChangesError } = await supabase
-          .from('project_status_history')
-          .select('id, project_id, new_status, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (statusChangesError) throw statusChangesError;
-        
-        // Get project titles
-        const projectIds = new Set([
-          ...(messages?.map(m => m.project_id) || []),
-          ...(modifications?.map(m => m.project_id) || []),
-          ...(statusChanges?.map(s => s.project_id) || [])
-        ]);
-        
-        const { data: projects, error: projectsError } = await supabase
-          .from('projects')
-          .select('id, title')
-          .in('id', Array.from(projectIds));
-          
-        if (projectsError) throw projectsError;
-        
-        const projectTitles = projects?.reduce((acc, project) => {
-          acc[project.id] = project.title;
-          return acc;
-        }, {} as Record<string, string>) || {};
-        
-        // Transform data into events
-        const messageEvents: RecentEvent[] = (messages || []).map(message => ({
-          id: message.id,
-          type: 'message',
-          projectId: message.project_id,
-          projectTitle: projectTitles[message.project_id] || 'Unknown Project',
-          content: message.content,
-          timestamp: message.created_at,
-          isRead: false // This would come from a read status table in a real implementation
-        }));
-        
-        const modificationEvents: RecentEvent[] = (modifications || []).map(mod => ({
-          id: mod.id,
-          type: 'modification',
-          projectId: mod.project_id,
-          projectTitle: projectTitles[mod.project_id] || 'Unknown Project',
-          content: mod.description,
-          timestamp: mod.created_at,
-          status: mod.status
-        }));
-        
-        const statusEvents: RecentEvent[] = (statusChanges || []).map(change => ({
-          id: change.id,
-          type: 'status_change',
-          projectId: change.project_id,
-          projectTitle: projectTitles[change.project_id] || 'Unknown Project',
-          content: `Project status changed to ${change.new_status}`,
-          timestamp: change.created_at,
-          status: change.new_status
-        }));
-        
-        // Combine all events and sort by timestamp
-        const allEvents = [...messageEvents, ...modificationEvents, ...statusEvents]
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 5); // Keep only the 5 most recent
-          
-        setEvents(allEvents);
-      } catch (error) {
-        console.error('Error fetching recent events:', error);
-      } finally {
+      if (!userProjects || userProjects.length === 0) {
+        setEvents([]);
         setLoading(false);
+        return;
       }
-    };
-    
-    fetchRecentEvents();
-    
-    // Set up realtime listeners for new events
-    const messagesChannel = supabase
-      .channel('dashboard-events')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `is_admin=eq.true`
-      }, (payload) => {
-        // In a real implementation, we'd filter by the user's projects
-        console.log('New message:', payload);
-        // Refresh events
-        fetchRecentEvents();
-      })
-      .subscribe();
       
-    return () => {
-      messagesChannel.unsubscribe();
-    };
+      const projectIds = userProjects.map(p => p.id);
+      const projectTitles = userProjects.reduce((acc, project) => {
+        acc[project.id] = project.title;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      // Fetch recent messages from admin
+      const { data: messages, error: messagesError } = await supabase
+        .from('messages')
+        .select('id, project_id, content, created_at')
+        .eq('is_admin', true)
+        .in('project_id', projectIds)
+        .order('created_at', { ascending: false })
+        .limit(5);
+        
+      if (messagesError) throw messagesError;
+      
+      // Fetch recent modification requests
+      const { data: modifications, error: modificationsError } = await supabase
+        .from('project_modification_requests')
+        .select('id, project_id, description, created_at, status')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+        
+      if (modificationsError) throw modificationsError;
+      
+      // Transform data into events
+      const messageEvents: RecentEvent[] = (messages || []).map(message => ({
+        id: message.id,
+        type: 'message',
+        projectId: message.project_id,
+        projectTitle: projectTitles[message.project_id] || 'Proiect necunoscut',
+        content: message.content,
+        timestamp: message.created_at,
+        isRead: false // This would come from a read status table in a real implementation
+      }));
+      
+      const modificationEvents: RecentEvent[] = (modifications || []).map(mod => ({
+        id: mod.id,
+        type: 'modification',
+        projectId: mod.project_id,
+        projectTitle: projectTitles[mod.project_id] || 'Proiect necunoscut',
+        content: mod.description,
+        timestamp: mod.created_at,
+        status: mod.status
+      }));
+      
+      // Combine all events and sort by timestamp
+      const allEvents = [...messageEvents, ...modificationEvents]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 5); // Keep only the 5 most recent
+          
+      setEvents(allEvents);
+    } catch (error) {
+      console.error('Error fetching recent events:', error);
+      toast.error('Nu s-au putut încărca evenimentele recente');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchRecentEvents();
+      
+      // Set up realtime listeners for new events
+      const messagesChannel = supabase
+        .channel('dashboard-events')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `is_admin=eq.true`
+        }, () => {
+          // Refresh events when a new message is received
+          fetchRecentEvents();
+        })
+        .subscribe();
+        
+      // Set up realtime listeners for modification request status changes
+      const modificationsChannel = supabase
+        .channel('modification-events')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_modification_requests'
+        }, () => {
+          // Refresh events when a modification request is updated
+          fetchRecentEvents();
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(messagesChannel);
+        supabase.removeChannel(modificationsChannel);
+      };
+    }
   }, [user]);
   
   const getEventIcon = (type: string, status?: string) => {
@@ -224,46 +218,9 @@ const RecentEventsPanel = () => {
   };
   
   const refreshEvents = () => {
-    setLoading(true);
-    // In a real implementation, this would trigger the fetch function
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    fetchRecentEvents();
   };
 
-  // For demo purposes, display some mock data if no real data available
-  const mockEvents: RecentEvent[] = [
-    {
-      id: '1',
-      type: 'message',
-      projectId: '123',
-      projectTitle: 'Website E-commerce',
-      content: 'Am actualizat designul conform cerințelor.',
-      timestamp: new Date().toISOString(),
-      isRead: false
-    },
-    {
-      id: '2',
-      type: 'modification',
-      projectId: '456',
-      projectTitle: 'Blog Corporate',
-      content: 'Cerere de adăugare secțiune nouă',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      status: 'approved'
-    },
-    {
-      id: '3',
-      type: 'status_change',
-      projectId: '789',
-      projectTitle: 'Magazin Online',
-      content: 'Proiectul a trecut în etapa de dezvoltare',
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      status: 'in_progress'
-    }
-  ];
-  
-  const displayEvents = events.length > 0 ? events : mockEvents;
-  
   return (
     <Card className="shadow-md border-0">
       <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b px-6 py-4 flex flex-row justify-between items-center">
@@ -296,8 +253,8 @@ const RecentEventsPanel = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {displayEvents.length > 0 ? (
-              displayEvents.map(event => (
+            {events.length > 0 ? (
+              events.map(event => (
                 <div 
                   key={event.id}
                   className="p-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -315,7 +272,7 @@ const RecentEventsPanel = () => {
                             {getEventTypeLabel(event.type, event.status)}
                           </Badge>
                           <span className="text-xs text-gray-500">
-                            {format(new Date(event.timestamp), 'dd MMM, HH:mm')}
+                            {formatRelativeTime(new Date(event.timestamp))}
                           </span>
                         </div>
                       </div>
