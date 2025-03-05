@@ -3,7 +3,7 @@ import React from "react";
 import { motion, useAnimation } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { 
-  MessageSquare, Palette, Code, RocketLaunch
+  MessageSquare, Palette, Code, Rocket
 } from "lucide-react";
 
 interface WorkStepProps {
@@ -119,7 +119,7 @@ const WorkProcess = () => {
               number={4} 
               title="Lansare" 
               description="Lansăm proiectul și oferim asistență continuă pentru a asigura succesul pe termen lung."
-              icon={<RocketLaunch className="h-8 w-8" />}
+              icon={<Rocket className="h-8 w-8" />}
               isLast
             />
           </motion.div>
