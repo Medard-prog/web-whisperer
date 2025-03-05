@@ -34,7 +34,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="pt-16 pb-24 md:pt-20 md:pb-32 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-gray-900 dark:to-purple-950/50 overflow-hidden">
+    <section className="pt-28 pb-24 md:pt-32 md:pb-32 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-gray-900 dark:to-purple-950/50 overflow-hidden">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
           <motion.div

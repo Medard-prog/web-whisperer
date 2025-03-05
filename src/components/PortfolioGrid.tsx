@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ExternalLink } from "lucide-react";
+import { ArrowUpRight, ExternalLink, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Project {
@@ -80,83 +80,116 @@ const PortfolioGrid = () => {
     }
   };
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.5
+      }
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 auto-rows-auto">
+    <motion.div 
+      variants={container}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true }}
+      className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 auto-rows-auto"
+    >
       {projects.map((project) => (
-        <Link 
+        <motion.div
           key={project.id}
-          to={project.link}
-          className={`group relative overflow-hidden rounded-xl ${getCellClass(project.size)}`}
+          variants={item}
+          className={`group relative overflow-hidden rounded-xl shadow-md ${getCellClass(project.size)}`}
           onMouseEnter={() => setHoveredId(project.id)}
           onMouseLeave={() => setHoveredId(null)}
         >
-          <div 
-            className="w-full h-full min-h-[240px] md:min-h-0 bg-cover bg-center relative"
-            style={{ backgroundImage: `url(${project.image})` }}
+          <Link 
+            to={project.link}
+            className="block w-full h-full"
           >
-            {/* Overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent transition-opacity duration-300"></div>
-            
-            {/* Content */}
-            <div className="absolute inset-0 p-6 flex flex-col justify-end">
-              {project.featured && (
-                <Badge className="mb-auto self-start bg-purple-500 hover:bg-purple-600 text-white">
-                  Proiect Featured
-                </Badge>
-              )}
+            <div 
+              className="w-full h-full min-h-[240px] md:min-h-[300px] bg-cover bg-center relative"
+              style={{ backgroundImage: `url(${project.image})` }}
+            >
+              {/* Overlay gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent transition-opacity duration-300"></div>
               
-              <h3 className="text-white text-xl font-semibold">{project.title}</h3>
-              
-              <div className="mt-2 flex items-center">
-                <Badge className="bg-gray-800/80 text-white hover:bg-gray-700/80 backdrop-blur-sm">
-                  {project.category === "corporate" && "Corporate"}
-                  {project.category === "ecommerce" && "eCommerce"}
-                  {project.category === "prezentare" && "Prezentare"}
-                  {project.category === "aplicatii" && "Aplicație"}
-                </Badge>
+              {/* Content */}
+              <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                {project.featured && (
+                  <Badge className="mb-auto self-start bg-purple-500 hover:bg-purple-600 text-white">
+                    Proiect Featured
+                  </Badge>
+                )}
+                
+                <h3 className="text-white text-xl font-semibold">{project.title}</h3>
+                
+                <div className="mt-2 flex items-center">
+                  <Badge className="bg-gray-800/80 text-white hover:bg-gray-700/80 backdrop-blur-sm">
+                    {project.category === "corporate" && "Corporate"}
+                    {project.category === "ecommerce" && "eCommerce"}
+                    {project.category === "prezentare" && "Prezentare"}
+                    {project.category === "aplicatii" && "Aplicație"}
+                  </Badge>
+                </div>
+                
+                <motion.p 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ 
+                    opacity: hoveredId === project.id ? 1 : 0,
+                    height: hoveredId === project.id ? "auto" : 0
+                  }}
+                  transition={{ duration: 0.3 }}
+                  className="text-gray-200 text-sm mt-2 line-clamp-2"
+                >
+                  {project.description}
+                </motion.p>
+                
+                <motion.div 
+                  className="mt-4 flex items-center text-white text-sm font-medium"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ 
+                    opacity: hoveredId === project.id ? 1 : 0,
+                    y: hoveredId === project.id ? 0 : 10
+                  }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <span>Vezi proiect</span>
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </motion.div>
               </div>
               
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ 
-                  opacity: hoveredId === project.id ? 1 : 0,
-                  height: hoveredId === project.id ? "auto" : 0
-                }}
-                transition={{ duration: 0.3 }}
-                className="text-gray-200 text-sm mt-2 line-clamp-2"
-              >
-                {project.description}
-              </motion.p>
-              
+              {/* Arrow indicator - only visible on hover */}
               <motion.div 
-                className="mt-4 flex items-center text-white text-sm font-medium"
-                initial={{ opacity: 0, y: 10 }}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all duration-300"
+                initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ 
                   opacity: hoveredId === project.id ? 1 : 0,
-                  y: hoveredId === project.id ? 0 : 10
+                  scale: hoveredId === project.id ? 1 : 0.8,
                 }}
-                transition={{ duration: 0.3 }}
               >
-                <span>Vezi proiect</span>
-                <ArrowUpRight className="ml-1 h-4 w-4" />
+                <ExternalLink className="h-4 w-4 text-white" />
               </motion.div>
             </div>
-            
-            {/* Arrow indicator - only visible on hover */}
-            <motion.div 
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all duration-300"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ 
-                opacity: hoveredId === project.id ? 1 : 0,
-                scale: hoveredId === project.id ? 1 : 0.8,
-              }}
-            >
-              <ExternalLink className="h-4 w-4 text-white" />
-            </motion.div>
-          </div>
-        </Link>
+          </Link>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 };
 
