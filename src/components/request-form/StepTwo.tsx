@@ -17,7 +17,7 @@ const projectTypes = [
 ];
 
 const StepTwo = () => {
-  const { control } = useFormContext();
+  const { control, setValue } = useFormContext();
   
   return (
     <div className="space-y-6">
@@ -51,7 +51,11 @@ const StepTwo = () => {
             <FormItem>
               <FormLabel>Tipul Proiectului</FormLabel>
               <Select 
-                onValueChange={field.onChange} 
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  setValue("projectType", value);
+                }}
+                value={field.value}
                 defaultValue={field.value}
               >
                 <FormControl>

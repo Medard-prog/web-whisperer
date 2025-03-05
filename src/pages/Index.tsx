@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -14,7 +14,7 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import CtaSection from "@/components/CtaSection"; 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import RequestForm from "@/components/RequestForm"; // Fixed import
+import MultiStepRequestForm from "@/components/MultiStepRequestForm";
 
 const Index = () => {
   // Animation controls for scroll reveal animations
@@ -42,6 +42,17 @@ const Index = () => {
     servicesInView, processInView, portfolioInView, pricingInView, testimonialsInView,
     controlsServices, controlsProcess, controlsPortfolio, controlsPricing, controlsTestimonials
   ]);
+
+  // Handle form submission
+  const handleRequestSubmit = async (data: any) => {
+    try {
+      console.log("Form data received:", data);
+      // Navigate to the request page with the form data
+      window.location.href = `/request?pageCount=${data.pageCount || ''}&designComplexity=${data.designComplexity || ''}&hasCms=${data.hasCms || false}&hasEcommerce=${data.hasEcommerce || false}&hasSeo=${data.hasSeo || false}&hasMaintenance=${data.hasMaintenance || false}&price=${data.price || 0}`;
+    } catch (error) {
+      console.error("Error handling form submission:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -184,7 +195,7 @@ const Index = () => {
             </div>
             
             <div className="max-w-4xl mx-auto">
-              <RequestForm simplified={true} />
+              <MultiStepRequestForm onSubmit={handleRequestSubmit} />
             </div>
           </div>
         </motion.section>

@@ -22,7 +22,7 @@ const WorkStep = ({ number, title, description, icon, isLast = false }: WorkStep
       </div>
       
       {!isLast && (
-        <div className="absolute top-10 left-1/2 w-full h-0.5 bg-gradient-to-r from-purple-200 via-purple-300 to-purple-200 dark:from-purple-800/30 dark:via-purple-700/30 dark:to-purple-800/30 transform translate-x-1/2 z-0 hidden md:block"></div>
+        <div className="absolute top-10 left-1/2 w-[calc(100%-3rem)] h-0.5 bg-gradient-to-r from-purple-200 via-purple-300 to-purple-200 dark:from-purple-800/30 dark:via-purple-700/30 dark:to-purple-800/30 -translate-x-1/4 z-0 hidden md:block"></div>
       )}
       
       <div className="mb-2 flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white text-sm font-bold">
