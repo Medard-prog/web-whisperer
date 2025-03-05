@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -57,11 +56,12 @@ const commonFeatures = [
 ];
 
 interface RequestFormProps {
-  onSubmit: (data: z.infer<typeof formSchema>) => void;
+  onSubmit?: (data: z.infer<typeof formSchema>) => void;
   initialValues?: Partial<z.infer<typeof formSchema>>;
+  simplified?: boolean;
 }
 
-const RequestForm = ({ onSubmit, initialValues }: RequestFormProps) => {
+const RequestForm = ({ onSubmit, initialValues, simplified = false }: RequestFormProps) => {
   const [open, setOpen] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -81,7 +81,13 @@ const RequestForm = ({ onSubmit, initialValues }: RequestFormProps) => {
   });
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
-    onSubmit(data);
+    if (onSubmit) {
+      onSubmit(data);
+    } else {
+      console.log("Form submitted:", data);
+      alert("Mulțumim pentru cererea ta! Te vom contacta în curând.");
+      form.reset();
+    }
   };
 
   return (

@@ -14,7 +14,7 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import CtaSection from "@/components/CtaSection"; 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { RequestForm } from "@/components/RequestForm";
+import RequestForm from "@/components/RequestForm"; // Fixed import
 
 const Index = () => {
   // Animation controls for scroll reveal animations
