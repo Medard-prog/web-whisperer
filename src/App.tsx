@@ -1,4 +1,4 @@
-
+import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
@@ -30,7 +30,6 @@ import AdminProjectChat from "@/pages/admin/ProjectChat";
 import { lazy, Suspense } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 
-// Move the Router outside of the App component to be used in main.tsx
 const AppRoutes = () => {
   return (
     <Suspense fallback={<LoadingScreen />}>
@@ -86,9 +85,11 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <HelmetProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </HelmetProvider>
   );
 };
 
