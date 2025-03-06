@@ -11,9 +11,9 @@ const Footer = () => {
           <div>
             <Link to="/" className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-md bg-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                W
+                M
               </div>
-              <span className="text-xl font-bold text-purple-600">WebStudio</span>
+              <span className="text-xl font-bold text-purple-600">MetWeb</span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
               Transformăm ideile în experiențe digitale excepționale pentru afacerea ta.
@@ -96,14 +96,14 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-start">
                 <Mail className="w-4 h-4 text-purple-600 mt-1 mr-3" />
-                <a href="mailto:contact@webstudio.ro" className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 text-sm">
-                  contact@webstudio.ro
+                <a href="mailto:metweb.romania@gmail.com" className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 text-sm">
+                  metweb.romania@gmail.com
                 </a>
               </li>
               <li className="flex items-start">
                 <Phone className="w-4 h-4 text-purple-600 mt-1 mr-3" />
-                <a href="tel:+40723456789" className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 text-sm">
-                  +40 723 456 789
+                <a href="tel:+40727608260" className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 text-sm">
+                  +40 727 608 260
                 </a>
               </li>
               <li className="flex items-start">
@@ -118,7 +118,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-200 dark:border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 md:mb-0">
-            © {new Date().getFullYear()} WebStudio. Toate drepturile rezervate.
+            © {new Date().getFullYear()} MetWeb. Toate drepturile rezervate.
           </p>
           <div className="flex space-x-6">
             <Link to="/termeni-si-conditii" className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 text-sm">
